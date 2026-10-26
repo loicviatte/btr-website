@@ -107,7 +107,11 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
             <input id="askok" type="checkbox" checked="{{ok}}" onChange="{{onOk}}" style="width: 22px; height: 22px; margin: 2px 0 0; accent-color: #fecb7a; flex: none;">
             <label for="askok" style="font-size: 15px; color: #e8ddd1;">Marius can say my name and my handle on the show</label>
           </div>
-          <button type="submit" style="align-self: flex-start; min-height: 52px; padding: 0 26px; background: #fecb7a; border: 0; border-radius: 0; color: #000000; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">SEND MY QUESTION</button>
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" value="{{hp}}" onChange="{{onHp}}" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
+          <sc-if value="{{hasError}}" hint-placeholder-val="{{false}}">
+            <p role="alert" style="margin: 0; padding: 12px 14px; border: 1px solid #fecb7a; color: #fecb7a; font-size: 15px;">{{error}}</p>
+          </sc-if>
+          <button type="submit" disabled="{{sending}}" style="align-self: flex-start; min-height: 52px; padding: 0 26px; background: #fecb7a; border: 0; border-radius: 0; color: #000000; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">{{btnText}}</button>
         </form>
       </sc-if>
 
@@ -234,7 +238,7 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { name: '', ig: '', q: '', ok: true, sent: false };
+    this.state = { name: '', ig: '', q: '', ok: true, sent: false, sending: false, error: '', hp: '' };
   }
   renderVals() {
     const s = this.state;
@@ -252,8 +256,27 @@ class Component extends DCLogic {
       onIg: (e) => this.setState({ ig: e.target.value }),
       onQ: (e) => this.setState({ q: e.target.value }),
       onOk: (e) => this.setState({ ok: e.target.checked }),
-      send: (e) => { if (e && e.preventDefault) e.preventDefault(); if (!s.name.trim() || !s.q.trim()) return; this.setState({ sent: true }); },
-      again: () => this.setState({ q: '', sent: false })
+      sending: s.sending,
+      btnText: s.sending ? 'SENDING…' : 'SEND MY QUESTION',
+      hasError: !!s.error,
+      error: s.error,
+      hp: s.hp,
+      onHp: (e) => this.setState({ hp: e.target.value }),
+      send: (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (s.sending || !s.name.trim() || !s.q.trim()) return;
+        const api = typeof window !== 'undefined' && window.__btrAskApi;
+        if (!api) { this.setState({ sent: true }); return; }
+        this.setState({ sending: true, error: '' });
+        fetch(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: s.name, ig: s.ig, q: s.q, ok: s.ok, website: s.hp }) })
+          .then((r) => r.json().catch(() => ({})).then((j) => ({ ok: r.ok, j })))
+          .then(({ ok, j }) => {
+            if (ok) this.setState({ sending: false, sent: true });
+            else this.setState({ sending: false, error: (j && j.error) || 'Your question could not be sent. Please try again, or send it to us on Instagram @breaktheroutinepodcast.' });
+          })
+          .catch(() => this.setState({ sending: false, error: 'No connection. Please try again in a moment.' }));
+      },
+      again: () => this.setState({ q: '', sent: false, error: '' })
     };
   }
 }
