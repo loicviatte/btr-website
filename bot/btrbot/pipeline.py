@@ -128,14 +128,15 @@ class Pipeline:
         return chosen
 
     # ---- 3. thumbnails ------------------------------------------------------
-    def thumbnails(self, ep: Episode) -> tuple[Path, Path]:
+    def thumbnails(self, ep: Episode) -> tuple[Path, Path, Path]:
         g, m = ep["pick_guest"], ep["pick_marius"]
         q = clean_quote(ep["final"])
         name = ep.get("guest_name", "")
         work = ep.dir / "render"
         yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
+        sq = render.square(work, g["cx"], m["cx"], q, name)
         ig = render.instagram(work, self.cfg.models_dir, Path(g["hires"]), g, q, name)
-        return yt, ig
+        return yt, ig, sq
 
     def description(self, ep: Episode) -> str:
         refs = ep.get("refs") or self.yt.public_references(4)

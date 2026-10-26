@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Heavy.woff2") format("woff2");font-weight:800 900}
+html,body{margin:0;background:#080403}
+.f{position:relative;width:1080px;height:1080px;overflow:hidden;background:#080403;font-family:"PP Monument Extended","Arial Black",sans-serif;color:#fff}
+.abs{position:absolute;top:{{ img_top }}px;width:{{ img_w }}px;height:{{ img_h }}px}
+/* square: the people cover the whole lower half, so the gold haze sits higher, right behind their shoulders */
+.haze{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 10%,rgba(19,14,4,.012) 14%,rgba(57,48,20,.035) 18%,rgba(90,76,35,.06) 22%,rgba(114,98,47,.1) 26%,rgba(137,118,58,.14) 30%,rgba(159,137,69,.2) 34%,rgba(180,154,79,.28) 38%,rgba(199,171,88,.42) 42%,rgba(217,187,96,.71) 46%,rgba(223,191,100,.85) 50%,rgba(223,191,100,.85) 100%)}
+.mask{-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) {{ fade_a }}px,rgba(0,0,0,1) {{ fade_b }}px);mask-image:linear-gradient(90deg,rgba(0,0,0,0) 0px,rgba(0,0,0,0) {{ fade_a }}px,rgba(0,0,0,1) {{ fade_b }}px)}
+#q{position:absolute;top:540px;display:flex;flex-direction:column;align-items:stretch}
+#q p{margin:0;line-height:1;font-weight:800;white-space:nowrap}
+.s{font-size:72px}
+#key{font-size:120px;margin:10px 0 16px !important}
+.g{color:#fecb7a}
+.name{position:absolute;left:540px;top:880px;margin:0;transform:translateX(-50%);font-size:69px;line-height:1.2;font-weight:800;text-align:center;white-space:nowrap;color:#fcdf9a;mix-blend-mode:hard-light;text-transform:uppercase}
+.logo{position:absolute;left:540px;top:11.6px;width:281px;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<div class="f">
+  <img class="abs" src="{{ guest_bg }}" style="left:{{ guest_left }}px">
+  <img class="abs mask" src="{{ marius_bg }}" style="left:{{ marius_left }}px">
+  <div class="haze"></div>
+  <img class="abs" src="{{ marius_cut }}" style="left:{{ marius_left }}px">
+  <img class="abs" src="{{ guest_cut }}" style="left:{{ guest_left }}px">
+  <div id="q">
+    <p class="s" id="top" style="text-align:left"><span class="g">“</span>{{ top }}</p>
+    <p id="key">{{ key }}</p>
+    <p class="s" id="bottom" style="text-align:right">{{ bottom }}<span class="g">”</span></p>
+  </div>
+  <img class="logo" src="{{ assets }}/btr-secondary-white.png">
+  <p class="name">{{ name1 }}<br>{{ name2 }}</p>
+</div>
+<script>
+window.fit = () => {
+  const q = document.getElementById('q'), key = document.getElementById('key');
+  const smalls = [document.getElementById('top'), document.getElementById('bottom')];
+  const maxW = {{ max_w }}, center = 540;
+  let k = 120;
+  if (key.textContent.trim().length <= 5) k = 150; else if (key.textContent.trim().length <= 7) k = 135;
+  key.style.fontSize = k + 'px';
+  while (key.scrollWidth > maxW && k > 84) { k -= 2; key.style.fontSize = k + 'px'; }
+  let s = 72;
+  while (Math.max(...smalls.map(e => e.scrollWidth)) > maxW && s > 50) { s -= 2; smalls.forEach(e => e.style.fontSize = s + 'px'); }
+  q.style.left = Math.round(center - q.getBoundingClientRect().width / 2) + 'px';
+  return {key: k, small: s, width: q.getBoundingClientRect().width};
+};
+</script>
+</body>
+</html>

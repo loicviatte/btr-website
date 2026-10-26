@@ -1,4 +1,4 @@
-"""Build the two thumbnails from chosen 4K frames, with the validated BTR templates."""
+"""Build the three thumbnails (YouTube, Instagram vertical, square) from chosen 4K frames, with the validated BTR templates."""
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -89,5 +89,26 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     png = work / "thumb_instagram.png"
     _shot(page, png, 1080, 1920)
     jpg = work / "thumb_instagram.jpg"
+    Image.open(png).convert("RGB").save(jpg, quality=92)
+    return jpg
+
+
+def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str) -> Path:
+    """1080x1080 post, guest left / Marius right. Reuses the 1920x1080 frames and cutouts made by youtube()."""
+    k = 1.1                                   # frames shown at 2112x1188, as in the validated canvas board
+    w, h = round(1920 * k), round(1080 * k)
+    gl = int(max(1080 - w, min(0, 300 - guest_cx * w)))     # guest face ~x 300
+    ml = int(max(1080 - w, min(400, 790 - marius_cx * w)))  # Marius face ~x 790
+    n1, n2 = _names(guest_name)
+    html = env.get_template("square.html").render(
+        assets=ASSETS.as_uri(), guest_bg="yt_guest_bg.jpg", marius_bg="yt_marius_bg.jpg",
+        guest_cut="yt_guest_cut.png", marius_cut="yt_marius_cut.png", guest_left=gl, marius_left=ml,
+        img_w=w, img_h=h, img_top=-10, fade_a=max(0, 438 - ml), fade_b=max(1, 658 - ml),
+        top=quote["top"], key=quote["key"], bottom=quote["bottom"], name1=n1, name2=n2, max_w=960)
+    page = work / "square.html"
+    page.write_text(html)
+    png = work / "thumb_square.png"
+    _shot(page, png, 1080, 1080)
+    jpg = work / "thumb_square.jpg"
     Image.open(png).convert("RGB").save(jpg, quality=92)
     return jpg

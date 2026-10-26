@@ -5,7 +5,7 @@ Ce bot surveille la chaîne YouTube Break The Routine. Dès qu'une vidéo passe 
 1. récupère le transcript (sous-titres YouTube) ;
 2. t'envoie sur **Telegram 3 axes de titre et de citation**, en se basant sur les anciens titres de la chaîne. Tu en discutes avec lui jusqu'à trouver le bon ;
 3. cherche dans la vidéo des **gros plans du guest et de Marius** qui collent à la phrase, et te les envoie. Tu en choisis un ou tu demandes d'autres ;
-4. fabrique la **miniature YouTube 1920×1080** et la **miniature Instagram 1080×1920** avec les templates validés (détourage, extension IA, voile or) ;
+4. fabrique la **miniature YouTube 1920×1080** , la **miniature Instagram 1080×1920** et la **version carrée 1080×1080** avec les templates validés (détourage, extension IA, voile or) ;
 5. après ta validation, met **le titre, la description (structure actuelle de la chaîne) et la miniature** sur YouTube ;
 6. fait le **chapitrage** (règles BTR : anglais, 3 à 8 mots, sans tiret) avec les sous-titres YouTube, ou avec ton SRT DaVinci si tu l'envoies dans le chat, puis l'ajoute à la description.
 

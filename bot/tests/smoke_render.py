@@ -19,3 +19,4 @@ print("guest", gi); print("marius", mi)
 q = {"top": "People were", "key": "BREAKING", "bottom": "the rules"}
 t = time.time(); print(render.youtube(out, guest, gi["cx"], marius, mi["cx"], q, "Peter Nash"), round(time.time()-t), "s")
 t = time.time(); print(render.instagram(out, models, guest, gi, q, "Peter Nash"), round(time.time()-t), "s")
+t = time.time(); print(render.square(out, gi["cx"], mi["cx"], q, "Peter Nash"), round(time.time()-t), "s")

@@ -134,8 +134,8 @@ async def propose_frames(ctx, ep, who: str, more=False):
 
 
 async def make_thumbs(ctx, ep):
-    await say(ctx, "🎨 Je fabrique les deux miniatures (détourage, extension, voile or)… ~3 min")
-    yt, ig = await run(pipe.thumbnails, ep)
+    await say(ctx, "🎨 Je fabrique les 3 miniatures : YouTube, Instagram vertical et carré (détourage, extension, voile or)… ~4 min")
+    yt, ig, sq = await run(pipe.thumbnails, ep)
     if not ep.get("description"):
         ep["description"] = await run(pipe.description, ep)
     ep.stage = "thumbs_proposed"
@@ -143,7 +143,9 @@ async def make_thumbs(ctx, ep):
     with open(yt, "rb") as f:
         await ctx.bot.send_photo(cfg.chat_id, f, caption="Miniature YouTube")
     with open(ig, "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram (fichier HD)")
+        await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
+    with open(sq, "rb") as f:
+        await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
     desc = ep["description"].replace("{{CHAPTERS}}", "[chapitres ajoutés quand le SRT est prêt]").replace("{CHAPTERS}", "[chapitres]")
     await say(ctx, f"<b>Titre :</b> {esc(ep['final']['title'])}\n\n<b>Description :</b>\n{esc(desc)[:3300]}")
     kb = [[B("✅ Publier sur YouTube", callback_data="publish")],
