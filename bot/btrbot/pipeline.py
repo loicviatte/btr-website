@@ -26,6 +26,10 @@ def mmss(t: str) -> float:
     return float(sec)
 
 
+class DryRun(Exception):
+    """Raised instead of writing to a video that is already public."""
+
+
 class Pipeline:
     def __init__(self, cfg: Settings):
         self.cfg = cfg
@@ -138,7 +142,15 @@ class Pipeline:
         text = srt.plain_text(self.cues(ep))
         return self.llm.description(ep["final"]["title"], ep.get("guest_name", ""), refs, text)
 
+    def _guard(self, ep: Episode) -> None:
+        """Never touch a video that is already public: /episode on a live episode is a dry run."""
+        status = self.yt.video(ep.video_id)["status"].get("privacyStatus")
+        if status == "public":
+            raise DryRun("Cette vidéo est déjà publique, donc c'était un test : je n'ai rien modifié sur YouTube. "
+                               "Les miniatures sont dans le chat, et sur une vidéo non répertoriée je publie pour de vrai.")
+
     def publish(self, ep: Episode) -> None:
+        self._guard(ep)
         desc = ep["description"].replace("{CHAPTERS}", "").replace("{{CHAPTERS}}", "")
         desc = re.sub(r"\n{3,}", "\n\n", desc).strip()
         self.yt.update_metadata(ep.video_id, ep["final"]["title"], desc)
@@ -152,6 +164,7 @@ class Pipeline:
         return ch
 
     def publish_chapters(self, ep: Episode, chapters: list[list[str]]) -> str:
+        self._guard(ep)
         block = "\n".join(f"{t} {title}" for t, title in chapters)
         cur = self.yt.video(ep.video_id)["snippet"].get("description", "")
         base = ep.get("description") or cur

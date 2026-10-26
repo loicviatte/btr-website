@@ -12,7 +12,7 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, Con
                           filters)
 
 from .config import Settings
-from .pipeline import Pipeline, clean_quote
+from .pipeline import DryRun, Pipeline, clean_quote
 from .state import Registry
 
 log = logging.getLogger("btrbot")
@@ -43,6 +43,8 @@ async def guarded(ctx, label: str, coro):
     async with LOCK:
         try:
             return await coro
+        except DryRun as e:
+            await say(ctx, f"🧪 {esc(e)}")
         except Exception as e:  # noqa: BLE001
             log.exception(label)
             await say(ctx, f"⚠️ {esc(label)} a échoué : <code>{esc(e)}</code>\n<pre>{esc(traceback.format_exc()[-800:])}</pre>")
@@ -256,10 +258,13 @@ async def on_button(update: Update, ctx):
             await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
     elif d == "publish":
         async def go():
-            await run(pipe.publish, ep)
+            try:
+                await run(pipe.publish, ep)
+                await say(ctx, f"🚀 Publié sur https://youtu.be/{ep.video_id} (titre, description, miniature).")
+            except DryRun as e:
+                await say(ctx, f"🧪 {esc(e)}\nVoici quand même la description prévue :\n<pre>{esc(ep.get('description', ''))[:3000]}</pre>")
             ep.stage = "published"
             ep.save()
-            await say(ctx, f"🚀 Publié sur https://youtu.be/{ep.video_id} (titre, description, miniature).")
             await propose_chapters(ctx, ep, "sous-titres YouTube" if not ep.file("captions_davinci.srt").exists() else "ton SRT")
         await guarded(ctx, "Publication YouTube", go())
     elif d == "chapters_ok":
