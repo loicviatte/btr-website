@@ -1,0 +1,7 @@
+secrets/
+data/
+models/
+.env
+.venv/
+__pycache__/
+!.env.example

@@ -1,0 +1,76 @@
+# Deploys the Telegram bot (bot/) to its server. All config lives in GitHub secrets:
+# the .env on the server is written by this workflow, never by hand.
+# Runs on every push that touches bot/, or by hand (Actions → Deploy bot → Run workflow).
+#
+# Secrets used:
+#   BOT_SERVER_HOST, BOT_SERVER_SSH_KEY   server IP + private SSH key (root)
+#   TELEGRAM_BOT_TOKEN, ANTHROPIC_API_KEY
+#   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, YT_CHANNEL_ID   (already there for the site)
+#   TELEGRAM_CHAT_ID (optional: otherwise the first /start claims the bot)
+#   BOT_YT_COOKIES   (optional: content of a cookies.txt, if YouTube blocks the server)
+name: Deploy bot
+on:
+  push:
+    branches: [main]
+    paths: ['bot/**', '.github/workflows/bot-deploy.yml']
+  workflow_dispatch: {}
+concurrency: bot-deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HOST: ${{ secrets.BOT_SERVER_HOST }}
+      DIR: /opt/btr-bot
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH access
+        env:
+          KEY: ${{ secrets.BOT_SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh root@"$HOST" "command -v rsync >/dev/null || (apt-get update -y && apt-get install -y rsync); mkdir -p $DIR/secrets"
+
+      - name: Copy code
+        run: |
+          rsync -az --delete \
+            --exclude .venv --exclude data --exclude models --exclude secrets --exclude .env --exclude .installed \
+            bot/ root@"$HOST":"$DIR"/
+
+      - name: Write config from secrets
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_CHANNEL_ID: ${{ secrets.YT_CHANNEL_ID }}
+          COOKIES: ${{ secrets.BOT_YT_COOKIES }}
+        run: |
+          {
+            echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"
+            echo "TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID"
+            echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+            echo "YT_CLIENT_ID=$YT_CLIENT_ID"
+            echo "YT_CLIENT_SECRET=$YT_CLIENT_SECRET"
+            echo "YT_REFRESH_TOKEN=$YT_REFRESH_TOKEN"
+            echo "YOUTUBE_CHANNEL_ID=${YT_CHANNEL_ID:-UCPTfscPkr0Div6di8S3IX9w}"
+          } | ssh root@"$HOST" "umask 077 && cat > $DIR/.env"
+          if [ -n "$COOKIES" ]; then
+            printf '%s\n' "$COOKIES" | ssh root@"$HOST" "umask 077 && cat > $DIR/secrets/youtube_cookies.txt"
+          fi
+
+      - name: Install (first time, or when install.sh / requirements change)
+        run: |
+          ssh root@"$HOST" "cd $DIR && sum=\$(cat install.sh requirements.txt | sha256sum) && \
+            if [ \"\$(cat .installed 2>/dev/null)\" != \"\$sum\" ]; then bash install.sh && echo \"\$sum\" > .installed; else echo 'Already installed'; fi"
+
+      - name: Restart
+        run: ssh root@"$HOST" "systemctl restart btr-bot && sleep 8 && systemctl is-active btr-bot"
+
+      - name: Health check
+        run: ssh root@"$HOST" "cd $DIR && .venv/bin/python -m btrbot.check" || true
