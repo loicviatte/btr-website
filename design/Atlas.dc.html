@@ -360,11 +360,22 @@ class Component extends DCLogic {
     this.dots = dots;
   }
   componentDidMount() {
+    const n = 11;
+    let i = -1;
+    try {
+      const h = decodeURIComponent((window.location.hash || '').slice(1)).toLowerCase();
+      const slugs = ['pakistan', 'papua-new-guinea', 'mexico', 'namibia', 'chad', 'laos', 'rwanda', 'malawi', 'japan', 'morocco', 'sao-tome-and-principe'];
+      i = slugs.indexOf(h);
+    } catch (e) {}
+    if (i < 0) i = Math.floor(Math.random() * n);
+    this.setState({ picked: i, slide: 0, view: null, autoFit: false });
+    this.fitTimer = setTimeout(() => { if (!this.state.view) this.setState({ autoFit: true }); }, 650);
     if (!this.mq) return;
     this.onMq = () => { if (this.mq.matches !== this.state.narrow) this.setState({ narrow: this.mq.matches, view: null }); };
     if (this.mq.addEventListener) this.mq.addEventListener('change', this.onMq); else if (this.mq.addListener) this.mq.addListener(this.onMq);
   }
   componentWillUnmount() {
+    clearTimeout(this.fitTimer);
     if (!this.mq || !this.onMq) return;
     if (this.mq.removeEventListener) this.mq.removeEventListener('change', this.onMq); else if (this.mq.removeListener) this.mq.removeListener(this.onMq);
   }
@@ -404,7 +415,7 @@ class Component extends DCLogic {
       const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
       return clampV({ k: kk, tx: VW / 2 - cx * kk, ty: VH / 2 - cy * kk });
     };
-    const view = this.state.view || home();
+    const view = this.state.view || (this.state.autoFit ? fit(picked) : home());
     const k = view.k, tx = view.tx, ty = view.ty;
     const zoomed = k > 1.01;
     const zoomBy = (f) => () => { const v = this.state.view || home(); const nk = Math.max(1, Math.min(8, v.k * f)); const cx = (VW / 2 - v.tx) / v.k, cy = (VH / 2 - v.ty) / v.k; this.setState({ view: clampV({ k: nk, tx: VW / 2 - cx * nk, ty: VH / 2 - cy * nk }) }); };
@@ -470,7 +481,7 @@ class Component extends DCLogic {
       slideDots,
       onTrackScroll: (e) => { const t = e.currentTarget; const k = Math.round(t.scrollLeft / (t.clientWidth + 16)); if (k !== this.state.slide) this.setState({ slide: k }); },
       mapLayer, shapes, zoomed, mapBoxStyle, onDown, onMove, onUp, zoomIn: zoomBy(1.6), zoomOut: zoomBy(1 / 1.6),
-      unzoom: () => this.setState({ view: null }),
+      unzoom: () => this.setState({ view: null, autoFit: false }),
       dots: this.dots,
       pins,
       sel: { cityUpper: s.city.toUpperCase(), mentions: s.mentions, count: 'Picked by ' + s.mentions[0].guest }
