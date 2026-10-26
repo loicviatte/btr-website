@@ -32,7 +32,9 @@ a:hover [data-zoom]{transform:scale(1.045)}
 [data-btn="line"]:hover{background-color:rgba(254,203,122,0.08) !important;border-color:#fecb7a !important;transform:translateY(-2px)}
 [data-btn]:active{transform:translateY(0) !important}
 .btr-links a{position:relative}
-.btr-links a::after{content:"";position:absolute;left:0;right:0;bottom:8px;height:2px;background:#fecb7a;transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.btr-links a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#fecb7a;transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.btr-links a[aria-current="page"]{border-bottom-color:transparent !important}
+.btr-links a[aria-current="page"]::after{transform:scaleX(1)}
 .btr-links a:hover::after{transform:scaleX(1)}
 header{transition:box-shadow .4s ease,background-color .4s ease}
 header[data-scrolled="1"]{box-shadow:0 12px 32px rgba(0,0,0,0.45)}
