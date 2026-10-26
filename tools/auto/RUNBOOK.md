@@ -83,13 +83,15 @@ Only when the episode has a World Atlas draw (and it is a new country for this g
    title `<YYYY-MM-DD> <Guest> - <episode title>.srt`, `parentId` `1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-`
    (BREAKTHEROUTINE/SRT), `textContent` = the captions.srt text, `contentMimeType` `text/plain`,
    `disableConversionToGoogleType` true. Keep the returned file id.
-2. Start the carousel task now (`fire_trigger`, trigger `trig_0151tdHEtCDERz4pbqP4nJDi`, "BTR World Atlas auto-carousel")
+2. Only if Loïc has the carousel task switched on (`list_triggers`: "BTR World Atlas auto-carousel" `enabled: true`; he pauses it
+   when he prefers to run it himself): start it now (`fire_trigger`, trigger `trig_0151tdHEtCDERz4pbqP4nJDi`, "BTR World Atlas auto-carousel")
    with text: `Signal du site BTR : nouvel épisode « <title> », guest <Name>, publié le <date>. Pays tiré (vu par
    le site) : <country>, à <m:ss> dans la vidéo <url>. SRT dans Google Drive BREAKTHEROUTINE/SRT, file id <id>.`
    It researches and verifies the 8 slides, adds them to the BTR Designs canvas, schedules Instagram/TikTok in Metricool
    (notification mode) and messages Loïc. Its verified research then fills the site's Atlas cards through atlas-sync
    on a later run of this task.
-If uploading or firing fails, say so in the message to Loïc (the carousel task also checks Drive on Tue/Wed 13:59).
+If the task is paused, don't start it: tell Loïc the SRT is in Drive, ready for him to launch the carousel.
+If uploading or firing fails, say so in the message to Loïc.
 
 ## 7. Tell Loïc (in French, short)
 What went online (guest, episode page link `https://www.breaktheroutinepodcast.com/episodes/<slug>`), the chain
