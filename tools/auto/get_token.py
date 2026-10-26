@@ -36,7 +36,11 @@ while 'code' not in code_box:
     threading.Event().wait(0.3)
 body = urllib.parse.urlencode({'code': code_box['code'], 'client_id': cfg['client_id'], 'client_secret': cfg['client_secret'],
                                'redirect_uri': REDIRECT, 'grant_type': 'authorization_code'}).encode()
-tok = json.loads(urllib.request.urlopen(urllib.request.Request('https://oauth2.googleapis.com/token', data=body)).read())
+try:
+    tok = json.loads(urllib.request.urlopen(urllib.request.Request('https://oauth2.googleapis.com/token', data=body)).read())
+except Exception:   # Python without certificates on macOS: let curl (system certificates) do the call
+    import subprocess
+    tok = json.loads(subprocess.run(['curl', '-s', '-d', body.decode(), 'https://oauth2.googleapis.com/token'], capture_output=True, text=True).stdout)
 if 'refresh_token' not in tok:
     sys.exit('No refresh token returned: ' + json.dumps(tok))
 print('\nPaste these three secrets into GitHub (repo → Settings → Secrets and variables → Actions → New repository secret):\n')
