@@ -48,14 +48,14 @@ details.chain-all summary::-webkit-details-marker{display:none}
 details.chain-all[open] summary span:last-child{transform:rotate(45deg)}
 details.chain-all summary span:last-child{transition:transform .3s ease}
 @keyframes chArr{from{opacity:0}to{opacity:1}}
-.btr-logo-w{filter:brightness(0) invert(1);transition:filter .35s ease}a:hover > .btr-logo-w,a:focus-visible > .btr-logo-w{filter:none}
+.btr-logo-w{filter:brightness(0) invert(1)}.btr-logo-c{position:absolute;left:0;top:0;opacity:0;transition:opacity .4s ease}a:hover > .btr-logo-c,a:focus-visible > .btr-logo-c{opacity:1}
 </style>
 </helmet>
 <div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
 
   <header style="position: sticky; top: 0; z-index: 50; background: rgba(8,4,3,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(254,203,122,0.16);">
     <nav aria-label="Main" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 16px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
-      <a href="{{lp}}Main.dc.html" aria-label="Break The Routine, home" style="display: block; line-height: 0;"><img class="btr-logo-w" src="/_blob/745152d7135187f4378802fc563253b5" alt="BTR, The Dancesport Podcast" style="width: 104px; height: auto; display: block;"></a>
+      <a href="{{lp}}Main.dc.html" aria-label="Break The Routine, home" style="position: relative; display: block; line-height: 0;"><img class="btr-logo-w" src="/_blob/745152d7135187f4378802fc563253b5" alt="BTR, The Dancesport Podcast" style="width: 104px; height: auto; display: block;"><img class="btr-logo-c" src="/_blob/745152d7135187f4378802fc563253b5" alt="" aria-hidden="true" style="width: 104px; height: auto; display: block;"></a>
       <div class="btr-links" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0 26px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">
         <a href="{{lp}}Episodes.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">Episodes</a>
         <a href="{{lp}}Chain.dc.html" aria-current="page" style="color: #fecb7a; text-decoration: none; padding: 14px 0; border-bottom: 2px solid #fecb7a;">The Chain</a>
