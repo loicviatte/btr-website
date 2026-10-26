@@ -37,6 +37,11 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
 input::placeholder,textarea::placeholder{color:#8f8073}
 .atl-map{scroll-margin-top:96px}
 @media (max-width: 600px){.atl-track{height:440px !important}.atl-card{padding:16px 18px !important}.atl-video{flex:1 1 100% !important;max-width:100% !important;min-width:0 !important}.atl-drawn{margin-top:12px !important}.atl-col{gap:12px !important}.atl-cover{gap:14px !important;padding-top:8px !important}.atl-body{padding:10px 0 !important;gap:12px !important}}
+.chain-strip::-webkit-scrollbar{display:none}
+@media (max-width: 600px){.chain-strip{padding:20px 24px !important}}
+details.chain-all summary::-webkit-details-marker{display:none}
+details.chain-all[open] summary span:last-child{transform:rotate(45deg)}
+details.chain-all summary span:last-child{transition:transform .3s ease}
 @media (max-width: 900px){.ep-guest-img{aspect-ratio:16/9 !important}.ep-guest-img img{object-position:center !important}}
 @media (max-width: 600px){.ep-trow{grid-template-columns:52px 1fr !important;gap:12px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
 html.btr-seen .btr-intro{display:none !important}

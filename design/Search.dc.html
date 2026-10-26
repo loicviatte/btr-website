@@ -107,7 +107,6 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
                 <span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 16px; font-weight: 800; color: #fcdf9a;">{{g.guest}}</span>
                 <span style="font-size: 14px; color: #c9b8a6;">{{g.episode}} · {{g.countText}}</span>
               </p>
-              <a href="{{g.page}}" style="padding: 6px 0; font-size: 15px;">{{g.moreText}}</a>
             </div>
             <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px;">
               <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
@@ -115,7 +114,7 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
                   <p style="flex: 1 1 520px; min-width: 0; margin: 0; font-size: 17px; line-height: 1.55;">{{r.before}}<span style="background: #fecb7a; color: #000000; padding: 0 3px;">{{r.match}}</span>{{r.after}}</p>
                   <a href="{{r.url}}" aria-label="{{r.aria}}" style="display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 18px; border: 1px solid rgba(254,203,122,0.55); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; white-space: nowrap;">
                     <svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5 L15 9 L4 15.5 Z" fill="#fecb7a"></path></svg>
-                    PLAY FROM {{r.time}}
+                    PLAY MOMENT · {{r.time}}
                   </a>
                 </li>
               </sc-for>
