@@ -2,7 +2,8 @@
 // Plays "moments" without leaving the site.
 //  - A YouTube link with a timecode (&t=…) that is itself a video box (chain answer, World Atlas draw)
 //    turns into the player right inside that box.
-//  - On an episode page, chapters / transcript times play inside the episode's main player ([data-player]).
+//  - On an episode page, chapters / transcript times play inside the episode's main player ([data-player]);
+//    sidebar links (chain answer, atlas draw) open in the overlay player.
 //  - Anything else with a timecode, and Instagram reels, opens in an overlay player.
 // Plain links to an episode (no timecode) keep opening YouTube in a new tab.
 import { useEffect, useRef, useState } from 'react';
@@ -89,7 +90,8 @@ export default function MediaLightbox() {
       if (m.type === 'yt') {
         if (isBox(a)) { playInline(a, m); return; }
         const player = document.querySelector('main [data-player]');
-        if (player) {
+        // links in the episode sidebar (chain answer, atlas draw) open in the overlay player
+        if (player && !a.closest('aside')) {
           playInline(player, m);
           player.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
