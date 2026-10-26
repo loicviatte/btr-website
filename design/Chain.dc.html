@@ -141,9 +141,6 @@ details.chain-all summary span:last-child{transition:transform .3s ease}
           <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">{{sel.kind}}</p>
           <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(22px, 2.4vw, 36px); font-weight: 800; line-height: 1.16; text-wrap: balance;"><span style="color: #fecb7a;">{{sel.openQ}}</span>{{sel.text}}<span style="color: #fecb7a;">{{sel.closeQ}}</span></p>
         </div>
-        <sc-if value="{{sel.hasAsk}}" hint-placeholder-val="{{false}}">
-          <a href="{{sel.askUrl}}" style="position: relative; align-self: flex-start; font-size: 14px;">Watch {{sel.fromFirst}} ask it at {{sel.askTime}}</a>
-        </sc-if>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0;">

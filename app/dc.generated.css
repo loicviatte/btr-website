@@ -50,3 +50,4 @@ html.btr-seen .btr-intro{display:none !important}
 @media (prefers-reduced-motion: reduce){.btr-in-logo,.btr-in-rule,.btr-in-l1,.btr-in-l2,.btr-in-cta{animation:none}}
 @media (max-width: 600px){.m-hero-btn{display:none !important}}
 input::placeholder{color:#8f8073}
+.srch-facets::-webkit-scrollbar{display:none}
