@@ -60,8 +60,14 @@ def uploads():
         ch = api('channels', part='contentDetails,snippet', id=os.environ['YT_CHANNEL_ID'])
     print('Channel:', ch['items'][0]['snippet']['title'])
     pl = ch['items'][0]['contentDetails']['relatedPlaylists']['uploads']
-    items = api('playlistItems', part='contentDetails', playlistId=pl, maxResults=50)['items']
-    ids = [i['contentDetails']['videoId'] for i in items]
+    ids, page = [], None
+    for _ in range(3):      # the latest 150 uploads (shorts included), plenty between two runs
+        kw = {'part': 'contentDetails', 'playlistId': pl, 'maxResults': 50}
+        if page: kw['pageToken'] = page
+        res = api('playlistItems', **kw)
+        ids += [i['contentDetails']['videoId'] for i in res['items']]
+        page = res.get('nextPageToken')
+        if not page: break
     out = []
     for k in range(0, len(ids), 50):
         out += api('videos', part='snippet,contentDetails,status', id=','.join(ids[k:k + 50]))['items']
