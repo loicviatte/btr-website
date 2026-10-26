@@ -6,6 +6,12 @@ cd "$(dirname "$0")"
 DIR="$(pwd)"
 USER_NAME="$(whoami)"
 
+echo "== Swap (safety net for the image models on a 4 GB server)"
+if [ ! -f /swapfile ]; then
+  sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+fi
+
 echo "== System packages"
 sudo apt-get update -y
 sudo apt-get install -y python3-venv python3-pip ffmpeg fonts-dejavu-core curl unzip
