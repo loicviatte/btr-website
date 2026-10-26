@@ -42,6 +42,7 @@ input::placeholder,textarea::placeholder{color:#8f8073}
 details.chain-all summary::-webkit-details-marker{display:none}
 details.chain-all[open] summary span:last-child{transform:rotate(45deg)}
 details.chain-all summary span:last-child{transition:transform .3s ease}
+@keyframes chArr{from{opacity:0}to{opacity:1}}
 @media (max-width: 900px){.ep-guest-img{aspect-ratio:16/9 !important}.ep-guest-img img{object-position:center !important}}
 @media (max-width: 600px){.ep-trow{grid-template-columns:1fr !important;gap:2px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
 @keyframes btrTIn{from{opacity:0}to{opacity:1}}

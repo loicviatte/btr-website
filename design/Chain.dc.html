@@ -47,6 +47,7 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
 details.chain-all summary::-webkit-details-marker{display:none}
 details.chain-all[open] summary span:last-child{transform:rotate(45deg)}
 details.chain-all summary span:last-child{transition:transform .3s ease}
+@keyframes chArr{from{opacity:0}to{opacity:1}}
 </style>
 </helmet>
 <div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
@@ -112,7 +113,7 @@ details.chain-all summary span:last-child{transition:transform .3s ease}
     </div>
 
     <div style="position: relative; border-top: 1px solid rgba(254,203,122,0.16); border-bottom: 1px solid rgba(254,203,122,0.16);">
-      <ol ref="{{stripRef}}" aria-label="Guests in order" class="chain-strip" style="list-style: none; margin: 0; padding: 22px 48px; display: flex; align-items: flex-start; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none;">
+      <ol ref="{{stripRef}}" aria-label="Guests in order" class="chain-strip" onScroll="{{onStrip}}" style="list-style: none; margin: 0; padding: 22px 48px; display: flex; align-items: flex-start; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none;">
         <sc-for list="{{nodes}}" as="n" hint-placeholder-count="10">
           <li style="display: flex; align-items: flex-start; flex: none;">
             <button type="button" onClick="{{n.pick}}" aria-pressed="{{n.pressed}}" aria-label="{{n.aria}}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 72px; padding: 0; background: transparent; border: 0; border-radius: 0; color: #ffffff; font: inherit; cursor: pointer;">
@@ -125,8 +126,14 @@ details.chain-all summary span:last-child{transition:transform .3s ease}
           </li>
         </sc-for>
       </ol>
-      <div aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: 56px; background: linear-gradient(90deg, #080403 20%, rgba(8,4,3,0) 100%); pointer-events: none;"></div>
-      <div aria-hidden="true" style="position: absolute; right: 0; top: 0; bottom: 0; width: 56px; background: linear-gradient(270deg, #080403 20%, rgba(8,4,3,0) 100%); pointer-events: none;"></div>
+      <div aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(90deg, #080403 35%, rgba(8,4,3,0) 100%); pointer-events: none;"></div>
+      <sc-if value="{{canL}}" hint-placeholder-val="{{true}}">
+        <div style="position: absolute; left: 6px; top: 32px; pointer-events: none;"><button type="button" tabindex="-1" onClick="{{scrollL}}" aria-label="Scroll back through the guests" style="display: grid; place-items: center; width: 36px; height: 36px; padding: 0; background: #080403; border: 1px solid rgba(254,203,122,0.7); border-radius: 0; color: #fecb7a; cursor: pointer; pointer-events: auto; animation: chArr .25s ease both;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M15 5l-7 7 7 7"></path></svg></button></div>
+      </sc-if>
+      <div aria-hidden="true" style="position: absolute; right: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(270deg, #080403 35%, rgba(8,4,3,0) 100%); pointer-events: none;"></div>
+      <sc-if value="{{canR}}" hint-placeholder-val="{{true}}">
+        <div style="position: absolute; right: 6px; top: 32px; pointer-events: none;"><button type="button" tabindex="-1" onClick="{{scrollR}}" aria-label="Scroll forward through the guests" style="display: grid; place-items: center; width: 36px; height: 36px; padding: 0; background: #080403; border: 1px solid rgba(254,203,122,0.7); border-radius: 0; color: #fecb7a; cursor: pointer; pointer-events: auto; animation: chArr .25s ease both;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M9 5l7 7-7 7"></path></svg></button></div>
+      </sc-if>
     </div>
 
     <section aria-live="polite" aria-label="Selected link" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px;">
@@ -279,10 +286,27 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { picked: 10, q: '' };
+    this.state = { picked: 10, q: '', canL: false, canR: false };
     this.strip = null;
   }
-  componentDidMount() { this.centerStrip(false); }
+  componentDidMount() {
+    this.centerStrip(false);
+    this.edges();
+    this._onResize = () => this.edges();
+    try { window.addEventListener('resize', this._onResize); } catch (e) {}
+    setTimeout(() => this.edges(), 400);
+  }
+  componentWillUnmount() { try { window.removeEventListener('resize', this._onResize); } catch (e) {} }
+  edges() {
+    const s = this.strip; if (!s) return;
+    const canL = s.scrollLeft > 8, canR = s.scrollLeft + s.clientWidth < s.scrollWidth - 8;
+    if (canL !== this.state.canL || canR !== this.state.canR) this.setState({ canL, canR });
+  }
+  nudge(dir) {
+    const s = this.strip; if (!s) return;
+    const dx = dir * Math.max(160, s.clientWidth * 0.7);
+    try { s.scrollBy({ left: dx, behavior: 'smooth' }); } catch (e) { s.scrollLeft += dx; }
+  }
   componentDidUpdate(prevProps, prevState) { if (prevState.picked !== this.state.picked) this.centerStrip(true); }
   centerStrip(smooth) {
     const s = this.strip; if (!s) return;
@@ -383,6 +407,11 @@ class Component extends DCLogic {
       prev: () => go(picked - 1),
       next: () => go(picked + 1),
       stripRef: (el) => { this.strip = el; },
+      onStrip: () => this.edges(),
+      canL: this.state.canL,
+      canR: this.state.canR,
+      scrollL: () => this.nudge(-1),
+      scrollR: () => this.nudge(1),
       nav: { pos: picked + 1, total, from: from.name, to: to.name },
       ctx: {
         prevStyle: ctxStyle(!!pq), nextStyle: ctxStyle(!!nq),
