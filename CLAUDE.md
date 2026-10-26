@@ -1,6 +1,6 @@
 # Break The Routine website — notes for Claude
 
-- Owner: Loïc (French speaker; reply in French, keep it short, come with solutions). Podcast host: Marius Iepure. Co-founders: Marius, Alexandra Lukey, Loïc. Georgia is in the team.
+- Owner: Loïc (French speaker; reply in French, keep it short, come with solutions). Podcast host: Marius Iepure. Co-founders: Marius, Alexandra Lukey, Loïc. Georgia Garrard is in the team (dancer, director of ALT Dance).
 - Stack: Next.js 15 (App Router), React 19, static pages. Deploy: Vercel from `main` (push = deploy).
 - Source of truth for the look: `design/*.dc.html` (Claude Design canvas pages, also on the canvas "BTR Website": https://claude.ai/artifact/8b6pfW4j7HEfXn26Jx4Bdp). `npm run compile` turns them into `components/dc/*.jsx`, the routes in `app/`, and `app/dc.generated.css`. Never hand-edit generated files; edit `design/` then compile.
 - Each design page = HTML template with `{{holes}}`, `<sc-for>`, `<sc-if>`, `<dc-import>` + a `class Component extends DCLogic` script (React class component; `renderVals()` feeds the template). Runtime helpers: `lib/dc.js` (`css()`, `dcUrl()` maps `X.dc.html` links to routes and `/_blob/<id>` to `public/assets/<id>.<ext>`).
