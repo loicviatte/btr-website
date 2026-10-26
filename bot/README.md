@@ -40,7 +40,7 @@ Va dans **btr-website → Settings → Secrets and variables → Actions → New
 | `BOT_SERVER_HOST` | l'IP du serveur |
 | `BOT_SERVER_SSH_KEY` | le contenu de `~/.ssh/btr_bot` (la clé **privée** : `cat ~/.ssh/btr_bot \| pbcopy`) |
 | `TELEGRAM_BOT_TOKEN` | le token de BotFather |
-| `ANTHROPIC_API_KEY` | ta clé Anthropic |
+| `ANTHROPIC_API_KEY_BOT` | ta clé Anthropic dédiée au bot |
 | `BOT_YT_COOKIES` | *(optionnel)* le contenu du `cookies.txt` YouTube, voir plus bas |
 
 `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` et `YT_CHANNEL_ID` y sont **déjà** pour le site : le bot les réutilise tels quels (même app Google « BTR Website », scope `youtube.force-ssl`).

@@ -4,7 +4,7 @@
 #
 # Secrets used:
 #   BOT_SERVER_HOST, BOT_SERVER_SSH_KEY   server IP + private SSH key (root)
-#   TELEGRAM_BOT_TOKEN, ANTHROPIC_API_KEY
+#   TELEGRAM_BOT_TOKEN, ANTHROPIC_API_KEY_BOT
 #   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, YT_CHANNEL_ID   (already there for the site)
 #   TELEGRAM_CHAT_ID (optional: otherwise the first /start claims the bot)
 #   BOT_YT_COOKIES   (optional: content of a cookies.txt, if YouTube blocks the server)
@@ -44,7 +44,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_BOT }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
