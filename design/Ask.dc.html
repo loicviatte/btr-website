@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ask the next guest</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&amp;display=swap">
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("/_blob/18cdc448c0222c0f173be1ae5b1ef88b") format("woff2");font-weight:800 900;font-style:normal;font-display:swap}
+@font-face{font-family:"PP Monument Extended";src:url("/_blob/3ba0618c1bf39385e530b4f4464382ce") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+body{margin:0;background:#080403}
+a{color:#fecb7a}a:hover{color:#ffffff}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #fecb7a;outline-offset:3px}
+input::placeholder,textarea::placeholder{color:#8f8073}
+.btr-burger{display:none}
+summary.btr-burger-btn{list-style:none}summary.btr-burger-btn::-webkit-details-marker{display:none}
+details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-close{display:none}
+@media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
+</style>
+</helmet>
+<div style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
+
+  <header style="position: sticky; top: 0; z-index: 50; background: rgba(8,4,3,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(254,203,122,0.16);">
+    <nav aria-label="Main" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 16px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
+      <a href="{{lp}}Main.dc.html" aria-label="Break The Routine, home" style="display: block; line-height: 0;"><img src="/_blob/745152d7135187f4378802fc563253b5" alt="BTR, The Dancesport Podcast" style="width: 104px; height: auto; display: block;"></a>
+      <div class="btr-links" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0 26px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">
+        <a href="{{lp}}Episodes.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">Episodes</a>
+        <a href="{{lp}}Chain.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">The Chain</a>
+        <a href="{{lp}}Atlas.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">World Atlas</a>
+        <a href="{{lp}}Search.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">Search</a>
+        <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">About</a>
+      </div>
+      <a class="btr-sub" href="https://www.youtube.com/@BreakTheRoutinePodcast" style="display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 18px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;">Subscribe</a>
+      <details class="btr-burger" style="position: static;">
+        <summary class="btr-burger-btn" aria-label="Menu" style="display: grid; place-items: center; width: 48px; height: 48px; box-sizing: border-box; border: 1px solid rgba(254,203,122,0.55); color: #fecb7a; cursor: pointer;">
+          <svg class="btr-burger-open" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M2 5h16M2 10h16M2 15h16"></path></svg>
+          <svg class="btr-burger-close" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4l12 12M16 4L4 16"></path></svg>
+        </summary>
+        <div style="position: absolute; left: 0; right: 0; top: 100%; box-sizing: border-box; padding: 8px clamp(16px, 4vw, 56px) 24px; background: #080403; border-bottom: 1px solid rgba(254,203,122,0.3); display: flex; flex-direction: column;">
+          <a href="{{lp}}Episodes.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">Episodes</a>
+          <a href="{{lp}}Chain.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">The Chain</a>
+          <a href="{{lp}}Atlas.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">World Atlas</a>
+          <a href="{{lp}}Search.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">Search</a>
+          <a href="{{lp}}About.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">About</a>
+          <a href="https://www.youtube.com/@BreakTheRoutinePodcast" style="display: inline-flex; align-self: flex-start; align-items: center; min-height: 48px; margin-top: 20px; padding: 0 20px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;">Subscribe on YouTube</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <main style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 64px clamp(16px, 4vw, 56px) 104px; display: flex; flex-wrap: wrap; gap: 56px 72px; align-items: flex-start;">
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 36px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">ASK THE NEXT GUEST</p>
+        <h1 style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(30px, 4.2vw, 60px); font-weight: 800; line-height: 1.02; text-wrap: balance;">Your question, on the next episode</h1>
+        <p style="margin: 0; max-width: 600px; color: #c9b8a6;">You won't know who the guest is until Tuesday. Marius picks one question from the audience for every episode and reads your name on air.</p>
+      </div>
+
+      <sc-if value="{{showForm}}" hint-placeholder-val="{{true}}">
+        <form onSubmit="{{send}}" style="display: flex; flex-direction: column; gap: 22px; padding: clamp(24px, 3vw, 40px); background: #0e0705; border: 1px solid rgba(254,203,122,0.22);">
+          <div style="display: flex; flex-wrap: wrap; gap: 22px;">
+            <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+              <label for="askname" style="font-size: 15px; font-weight: 600;">Your name</label>
+              <input id="askname" type="text" value="{{name}}" onChange="{{onName}}" required autocomplete="name" placeholder="First name and surname" style="min-height: 50px; box-sizing: border-box; padding: 0 14px; background: #080403; border: 1px solid rgba(254,203,122,0.35); border-radius: 0; color: #ffffff; font: inherit; font-size: 16px;">
+            </div>
+            <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+              <label for="askig" style="font-size: 15px; font-weight: 600;">Instagram <span style="font-weight: 400; color: #c9b8a6;">(optional)</span></label>
+              <input id="askig" type="text" value="{{ig}}" onChange="{{onIg}}" placeholder="@yourhandle" style="min-height: 50px; box-sizing: border-box; padding: 0 14px; background: #080403; border: 1px solid rgba(254,203,122,0.35); border-radius: 0; color: #ffffff; font: inherit; font-size: 16px;">
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; gap: 12px;">
+              <label for="askq" style="font-size: 15px; font-weight: 600;">Your question</label>
+              <span style="font-size: 14px; font-variant-numeric: tabular-nums; color: {{countColor}};">{{count}} / 280</span>
+            </div>
+            <textarea id="askq" rows="4" maxlength="280" value="{{q}}" onChange="{{onQ}}" required placeholder="Something you have always wanted to ask a judge, a champion or a coach" style="box-sizing: border-box; padding: 14px; background: #080403; border: 1px solid rgba(254,203,122,0.35); border-radius: 0; color: #ffffff; font: inherit; font-size: 17px; line-height: 1.5; resize: vertical;"></textarea>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <input id="askok" type="checkbox" checked="{{ok}}" onChange="{{onOk}}" style="width: 22px; height: 22px; margin: 2px 0 0; accent-color: #fecb7a; flex: none;">
+            <label for="askok" style="font-size: 15px; color: #e8ddd1;">Marius can say my name and my handle on the show</label>
+          </div>
+          <button type="submit" style="align-self: flex-start; min-height: 52px; padding: 0 26px; background: #fecb7a; border: 0; border-radius: 0; color: #000000; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">SEND MY QUESTION</button>
+        </form>
+      </sc-if>
+
+      <sc-if value="{{sent}}" hint-placeholder-val="{{false}}">
+        <div aria-live="polite" style="display: flex; flex-direction: column; gap: 16px; padding: clamp(24px, 3vw, 40px); background: #fecb7a; color: #000000;">
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em;">QUESTION RECEIVED</p>
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(20px, 2vw, 28px); font-weight: 800; line-height: 1.2;">“{{q}}”</p>
+          <p style="margin: 0;">Thanks {{name}}. If Marius picks it, you'll hear your name in the episode. Watch Tuesday's release.</p>
+          <button type="button" onClick="{{again}}" style="align-self: flex-start; min-height: 48px; padding: 0 22px; background: #080403; border: 0; border-radius: 0; color: #ffffff; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">ASK ANOTHER</button>
+        </div>
+      </sc-if>
+    </div>
+
+    <aside aria-label="Marius on set" style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+      <div style="position: relative; aspect-ratio: 4 / 3; max-width: 100%; overflow: hidden;">
+        <img src="/_blob/9d82d474bebf50fec8071ef445720e4f" alt="Marius Iepure reading from the show tablet on set" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 65% center;">
+        <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(199,171,88,0.4) 80%, rgba(223,191,100,0.8) 100%);"></div>
+        <p style="position: absolute; left: 20px; right: 20px; bottom: 18px; margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; line-height: 1.25;">Read out on air, every episode</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer style="background: #080403;">
+    <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 72px clamp(16px, 4vw, 56px) 40px; display: flex; flex-direction: column; gap: 56px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 40px 72px; justify-content: space-between;">
+        <img src="/_blob/11f81f408479a20d47ba1e740c14afea" alt="Break the Routine" style="width: min(360px, 100%); height: auto; align-self: flex-start;">
+        <div style="display: flex; flex-wrap: wrap; gap: 32px 72px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">LISTEN</p>
+            <a href="https://www.youtube.com/@BreakTheRoutinePodcast" style="color: #ffffff; text-decoration: none; padding: 6px 0;">YouTube</a>
+            <a href="https://open.spotify.com/playlist/75ezrU9QqXelJ7TwSuAT6f" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Spotify playlist</a>
+            <a href="https://podcasts.apple.com/us/podcast/break-the-routine/id6789345225" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Apple Podcasts</a>
+            <a href="https://www.instagram.com/breaktheroutinepodcast/" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Instagram</a>
+            <a href="https://www.tiktok.com/@breaktheroutinepodcast" style="color: #ffffff; text-decoration: none; padding: 6px 0;">TikTok</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">THE SHOW</p>
+            <a href="{{lp}}Episodes.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Episodes</a>
+            <a href="{{lp}}Chain.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">The Chain</a>
+            <a href="{{lp}}Atlas.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">World Atlas</a>
+            <a href="{{lp}}Search.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Search</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">WORK WITH US</p>
+            <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Be a guest</a>
+            <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Partners</a>
+            <p style="margin: 0; padding: 6px 0; color: #c9b8a6;">breaktheroutine@protonmail.com</p>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0; padding-top: 24px; border-top: 1px solid rgba(254,203,122,0.16); font-size: 14px; color: #a8998b;">A Dance United &amp; Oti Marius Dance Studio Production · © 2026 Break The Routine</p>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1800}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { name: '', ig: '', q: '', ok: true, sent: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const count = (s.q || '').length;
+    return { lp: this.props.lp ?? '',
+      name: s.name,
+      ig: s.ig,
+      q: s.q,
+      ok: s.ok,
+      count,
+      countColor: count > 250 ? '#fecb7a' : '#c9b8a6',
+      showForm: !s.sent,
+      sent: s.sent,
+      onName: (e) => this.setState({ name: e.target.value }),
+      onIg: (e) => this.setState({ ig: e.target.value }),
+      onQ: (e) => this.setState({ q: e.target.value }),
+      onOk: (e) => this.setState({ ok: e.target.checked }),
+      send: (e) => { if (e && e.preventDefault) e.preventDefault(); if (!s.name.trim() || !s.q.trim()) return; this.setState({ sent: true }); },
+      again: () => this.setState({ q: '', sent: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

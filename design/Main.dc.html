@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Break The Routine — Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&amp;display=swap">
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("/_blob/18cdc448c0222c0f173be1ae5b1ef88b") format("woff2");font-weight:800 900;font-style:normal;font-display:swap}
+@font-face{font-family:"PP Monument Extended";src:url("/_blob/3ba0618c1bf39385e530b4f4464382ce") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+body{margin:0;background:#080403}
+a{color:#fecb7a}a:hover{color:#ffffff}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #fecb7a;outline-offset:3px}
+.btr-burger{display:none}
+summary.btr-burger-btn{list-style:none}summary.btr-burger-btn::-webkit-details-marker{display:none}
+details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-close{display:none}
+html.btr-seen .btr-intro{display:none !important}
+@keyframes btrIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}@keyframes btrRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.btr-in-logo{animation:btrIn 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-rule{animation:btrRule 700ms 600ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l1{animation:btrIn 800ms 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l2{animation:btrIn 700ms 1700ms cubic-bezier(.2,.7,.2,1) both}.btr-in-cta{animation:btrIn 700ms 2300ms cubic-bezier(.2,.7,.2,1) both}
+@media (prefers-reduced-motion: reduce){.btr-in-logo,.btr-in-rule,.btr-in-l1,.btr-in-l2,.btr-in-cta{animation:none}}
+@media (max-width: 600px){.m-hero-btn{display:none !important}}
+@media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
+</style>
+</helmet>
+<div style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
+  <sc-if value="{{introOn}}" hint-placeholder-val="{{false}}">
+    <button class="btr-intro" type="button" onClick="{{skipIntro}}" aria-label="Enter the Break The Routine website" style="{{introStyle}}">
+      <span style="display: flex; flex-direction: column; align-items: center; gap: 28px; max-width: 760px; text-align: center;">
+        <img class="btr-in-logo" src="/_blob/11f81f408479a20d47ba1e740c14afea" alt="" style="width: min(440px, 70vw); height: auto; display: block;">
+        <span class="btr-in-rule" aria-hidden="true" style="display: block; width: 64px; height: 2px; background: #fecb7a;"></span>
+        <span class="btr-in-l1" style="display: block; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(18px, 2.6vw, 30px); font-weight: 800; line-height: 1.2; color: #ffffff; text-wrap: balance;">DanceSport rarely talks about itself in the open.</span>
+        <span class="btr-in-l2" style="display: block; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(26px, 4vw, 48px); font-weight: 800; line-height: 1; color: #fecb7a;">We do.</span>
+        <span class="btr-in-cta" style="display: inline-flex; align-items: center; gap: 10px; min-height: 48px; margin-top: 12px; padding: 0 24px; background: #fecb7a; color: #000000; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0.06em;">ENTER WEBSITE<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></span>
+      </span>
+    </button>
+  </sc-if>
+
+  <header style="position: sticky; top: 0; z-index: 50; background: rgba(8,4,3,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(254,203,122,0.16);">
+    <nav aria-label="Main" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 16px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
+      <a href="{{lp}}Main.dc.html" aria-label="Break The Routine, home" style="display: block; line-height: 0;"><img src="/_blob/745152d7135187f4378802fc563253b5" alt="BTR, The Dancesport Podcast" style="width: 104px; height: auto; display: block;"></a>
+      <div class="btr-links" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0 26px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">
+        <a href="{{lp}}Episodes.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">Episodes</a>
+        <a href="{{lp}}Chain.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">The Chain</a>
+        <a href="{{lp}}Atlas.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">World Atlas</a>
+        <a href="{{lp}}Search.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">Search</a>
+        <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 14px 0;">About</a>
+      </div>
+      <a class="btr-sub" href="https://www.youtube.com/@BreakTheRoutinePodcast" style="display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 18px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;">Subscribe</a>
+      <details class="btr-burger" style="position: static;">
+        <summary class="btr-burger-btn" aria-label="Menu" style="display: grid; place-items: center; width: 48px; height: 48px; box-sizing: border-box; border: 1px solid rgba(254,203,122,0.55); color: #fecb7a; cursor: pointer;">
+          <svg class="btr-burger-open" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M2 5h16M2 10h16M2 15h16"></path></svg>
+          <svg class="btr-burger-close" aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4l12 12M16 4L4 16"></path></svg>
+        </summary>
+        <div style="position: absolute; left: 0; right: 0; top: 100%; box-sizing: border-box; padding: 8px clamp(16px, 4vw, 56px) 24px; background: #080403; border-bottom: 1px solid rgba(254,203,122,0.3); display: flex; flex-direction: column;">
+          <a href="{{lp}}Episodes.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">Episodes</a>
+          <a href="{{lp}}Chain.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">The Chain</a>
+          <a href="{{lp}}Atlas.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">World Atlas</a>
+          <a href="{{lp}}Search.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">Search</a>
+          <a href="{{lp}}About.dc.html" style="display: block; padding: 16px 0; border-bottom: 1px solid rgba(254,203,122,0.16); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;">About</a>
+          <a href="https://www.youtube.com/@BreakTheRoutinePodcast" style="display: inline-flex; align-self: flex-start; align-items: center; min-height: 48px; margin-top: 20px; padding: 0 20px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;">Subscribe on YouTube</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-label="Latest episode" style="max-width: 1440px; margin: 0 auto;">
+      <div style="position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; container-type: inline-size; background: #080403;">
+        <img src="/_blob/6704faaedd6251c16887bc9024d7381e" alt="Oti Mabuse and Marius Iepure on set, thumbnail quote: My family didn’t speak to me" style="position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover;">
+        <a class="m-hero-btn" href="https://www.youtube.com/watch?v=pi1IhRO8v4w" style="position: absolute; left: 3.2%; bottom: 5.5%; display: inline-flex; align-items: center; gap: 1cqw; min-height: 44px; padding: 1cqw 1.6cqw; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: max(12px, 1.05cqw); font-weight: 800; letter-spacing: 0.04em;">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex: none;"><path d="M4 2.5 L15 9 L4 15.5 Z" fill="#000000"></path></svg>
+          WATCH THE EPISODE
+        </a>
+      </div>
+    </section>
+
+    <section style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 36px clamp(16px, 4vw, 56px) 56px; display: flex; flex-wrap: wrap; gap: 24px 48px; align-items: flex-end; justify-content: space-between;">
+      <div style="flex: 1 1 520px; min-width: 0;">
+        <p style="margin: 0 0 14px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">LATEST EPISODE · 22 OCT 2026 · 58 MIN</p>
+        <h1 style="margin: 0 0 14px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(26px, 3.2vw, 46px); font-weight: 800; line-height: 1.08; text-wrap: balance;">She left everything behind to chase her dance dream</h1>
+        <p style="margin: 0; max-width: 640px; color: #c9b8a6;">Oti Mabuse on growing up dancing in a newly free South Africa, walking away from civil engineering, and crossing continents to become a two-time Strictly champion.</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <a href="https://www.youtube.com/watch?v=pi1IhRO8v4w" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">WATCH ON YOUTUBE</a>
+        <a href="https://open.spotify.com/show/033MKpAWIDCQzSHvlWeTF1" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid rgba(254,203,122,0.55); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">SPOTIFY</a>
+        <a href="https://podcasts.apple.com/us/podcast/break-the-routine/id6789345225" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid rgba(254,203,122,0.55); color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">APPLE PODCASTS</a>
+      </div>
+    </section>
+
+    <section aria-label="Where to listen" style="border-top: 1px solid rgba(254,203,122,0.16); border-bottom: 1px solid rgba(254,203,122,0.16); background: #0e0705;">
+      <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 26px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
+        <p style="margin: 0; font-size: 15px; color: #c9b8a6;">Watch and listen wherever you are</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px 34px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(14px, 1.5vw, 20px); font-weight: 800;">
+          <a href="https://www.youtube.com/@BreakTheRoutinePodcast" style="color: #ffffff; text-decoration: none; padding: 10px 0;">YouTube</a>
+          <a href="https://open.spotify.com/show/033MKpAWIDCQzSHvlWeTF1" style="color: #ffffff; text-decoration: none; padding: 10px 0;">Spotify</a>
+          <a href="https://podcasts.apple.com/us/podcast/break-the-routine/id6789345225" style="color: #ffffff; text-decoration: none; padding: 10px 0;">Apple Podcasts</a>
+          <a href="https://www.instagram.com/breaktheroutinepodcast/" style="color: #ffffff; text-decoration: none; padding: 10px 0;">Instagram</a>
+          <a href="https://www.tiktok.com/@breaktheroutinepodcast" style="color: #ffffff; text-decoration: none; padding: 10px 0;">TikTok</a>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="eps" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 80px clamp(16px, 4vw, 56px) 88px; display: flex; flex-direction: column; gap: 36px;">
+      <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px;">
+        <h2 id="eps" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(24px, 2.6vw, 36px); font-weight: 800; line-height: 1.1;">Previous episodes</h2>
+        <a href="{{lp}}Episodes.dc.html" style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; padding: 12px 0;">ALL 15 EPISODES →</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 40px 28px;">
+
+        <a href="{{lp}}Episode-leila-stewart.dc.html" style="display: flex; flex-direction: column; gap: 16px; color: #ffffff; text-decoration: none; min-width: 0;">
+          <img src="/_blob/d6442b82364bfd30966d31b8267286d1" alt="Leila Stewart episode thumbnail" style="display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <p style="margin: 0; font-size: 13px; letter-spacing: 0.04em; color: #c9b8a6;">14 Oct 2026 · 1 h 44</p>
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 18px; font-weight: 800; color: #fcdf9a;">LEILA STEWART</p>
+            <p style="margin: 0; font-size: 15px; color: #c9b8a6;">The Safeguarding Questions DanceSport Can’t Ignore</p>
+          </div>
+        </a>
+
+        <a href="{{lp}}Episode-peter-maxwell.dc.html" style="display: flex; flex-direction: column; gap: 16px; color: #ffffff; text-decoration: none; min-width: 0;">
+          <img src="/_blob/24eb7384bb059d4fdbde52ab2838ee99" alt="Peter Maxwell episode thumbnail" style="display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <p style="margin: 0; font-size: 13px; letter-spacing: 0.04em; color: #c9b8a6;">6 Oct 2026 · 1 h 26</p>
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 18px; font-weight: 800; color: #fcdf9a;">PETER MAXWELL</p>
+            <p style="margin: 0; font-size: 15px; color: #c9b8a6;">Why He Left at His Peak for New York</p>
+          </div>
+        </a>
+
+        <a href="{{lp}}Episode-peter-nash.dc.html" style="display: flex; flex-direction: column; gap: 16px; color: #ffffff; text-decoration: none; min-width: 0;">
+          <img src="/_blob/0ee862b260ef371646c30a6ad984c008" alt="Peter Nash episode thumbnail" style="display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <p style="margin: 0; font-size: 13px; letter-spacing: 0.04em; color: #c9b8a6;">24 &amp; 30 Sep 2026 · 2 parts</p>
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 18px; font-weight: 800; color: #fcdf9a;">PETER NASH</p>
+            <p style="margin: 0; font-size: 15px; color: #c9b8a6;">50 Years Inside the DanceSport Machinery</p>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <section aria-labelledby="chain" style="background: #110906; border-top: 1px solid rgba(254,203,122,0.16); border-bottom: 1px solid rgba(254,203,122,0.16);">
+      <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 80px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; gap: 48px 72px; align-items: center;">
+        <div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">THE CHAIN</p>
+          <h2 id="chain" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(24px, 2.6vw, 38px); font-weight: 800; line-height: 1.1; text-wrap: balance;">Every guest leaves a question for the next one</h2>
+          <p style="margin: 0; max-width: 520px; color: #c9b8a6;">13 guests so far, from Kiera Brunton to Oti Mabuse. Follow the chain back to the start, or see the question that is still open.</p>
+          <a href="{{lp}}Chain.dc.html" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; margin-top: 8px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">FOLLOW THE CHAIN</a>
+        </div>
+        <div style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 28px;">
+          <ol aria-label="Guests in the chain" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 0;">
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid rgba(254,203,122,0.4); font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 14px; font-weight: 800; color: #c9b8a6;">OO</span><span aria-hidden="true" style="width: 28px; height: 2px; background: rgba(254,203,122,0.5);"></span></li>
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid rgba(254,203,122,0.4); font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 14px; font-weight: 800; color: #c9b8a6;">PN</span><span aria-hidden="true" style="width: 28px; height: 2px; background: rgba(254,203,122,0.5);"></span></li>
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid rgba(254,203,122,0.4); font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 14px; font-weight: 800; color: #c9b8a6;">PM</span><span aria-hidden="true" style="width: 28px; height: 2px; background: rgba(254,203,122,0.5);"></span></li>
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; background: #fecb7a; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 14px; font-weight: 800; color: #000000;">LS</span><span aria-hidden="true" style="width: 28px; height: 0; border-top: 2px dashed rgba(254,203,122,0.7);"></span></li>
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; border: 2px dashed #fecb7a; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 14px; font-weight: 800; color: #fecb7a;">OM</span><span aria-hidden="true" style="width: 28px; height: 0; border-top: 2px dashed rgba(254,203,122,0.7);"></span></li>
+            <li style="display: flex; align-items: center;"><span style="display: grid; place-items: center; width: 64px; height: 64px; border: 2px dashed #fecb7a; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 24px; font-weight: 800; color: #fecb7a;">?</span></li>
+          </ol>
+          <div style="border: 1px solid rgba(254,203,122,0.3); padding: 28px; display: flex; flex-direction: column; gap: 10px;">
+            <p style="margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #c9b8a6;">Latest answered · Peter Maxwell to Leila Stewart</p>
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(18px, 1.8vw, 24px); font-weight: 800; line-height: 1.25;">“Do we take ballroom and Latin dancing too seriously, or not seriously enough?”</p>
+            <a href="https://www.youtube.com/watch?v=yO0vuX-Ygpc&amp;t=6040s" style="align-self: flex-start; padding: 6px 0; font-size: 15px;">Leila’s answer at 1:40:40</a>
+            <p style="margin: 0; padding-top: 12px; border-top: 1px dashed rgba(254,203,122,0.35); font-size: 15px; color: #fecb7a;">Next: Leila’s question for Oti, in part 2 of Oti’s episode</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Explore the show" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 88px clamp(16px, 4vw, 56px); display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px;">
+
+      <a href="{{lp}}Atlas.dc.html" style="position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 340px; box-sizing: border-box; padding: 32px; overflow: hidden; color: #ffffff; text-decoration: none; background: repeating-linear-gradient(90deg, #080403 0px, #080403 14px, #0e0806 14px, #0e0806 18px); border: 1px solid rgba(254,203,122,0.2);">
+        <div aria-hidden="true" style="position: absolute; left: 3%; right: 3%; top: 20px; aspect-ratio: 1000 / 444;">
+          <img src="/_blob/31a333fde001c22d71340b7ca1561eca" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; max-width: none;">
+          <span style="position: absolute; left: 68.63%; top: 35.47%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 90.69%; top: 62.21%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 22.04%; top: 39.86%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 54.72%; top: 73.65%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 55.18%; top: 46.24%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 78.72%; top: 43.87%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 58.41%; top: 58.90%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 59.56%; top: 67.12%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 86.09%; top: 29.89%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 48.26%; top: 33.92%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #080403; border: 2px solid #fecb7a;"></span>
+          <span style="position: absolute; left: 51.89%; top: 57.12%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; background: #fecb7a; box-shadow: 0 0 0 6px rgba(254,203,122,0.22);"></span>
+        </div>
+        <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,4,3,0) 48%, rgba(8,4,3,0.92) 82%);"></div>
+        <span style="position: relative; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">WORLD ATLAS</span>
+        <span style="position: relative; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 22px; font-weight: 800; line-height: 1.15;">11 countries from the World Atlas game, on one map</span>
+        <span style="position: relative; font-size: 15px; color: #c9b8a6;">Open the map →</span>
+      </a>
+
+      <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; min-height: 340px; box-sizing: border-box; padding: 32px; background: #fecb7a; color: #000000;">
+        <span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em;">SEARCH EVERY EPISODE</span>
+        <span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 22px; font-weight: 800; line-height: 1.15;">Find the exact moment a guest talks about it</span>
+        <a href="{{lp}}Search.dc.html" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; box-sizing: border-box; padding: 0 16px; margin-top: 6px; background: #080403; color: #c9b8a6; text-decoration: none; font-size: 16px;">
+          <span>judging, injuries, partnerships…</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" style="flex: none;"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="#fecb7a" stroke-width="2"></circle><path d="M13 13 L18 18" stroke="#fecb7a" stroke-width="2"></path></svg>
+        </a>
+      </div>
+
+
+    </section>
+
+    <section aria-labelledby="playlist" style="background: #110906; border-top: 1px solid rgba(254,203,122,0.16); border-bottom: 1px solid rgba(254,203,122,0.16); margin-bottom: 88px;">
+      <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 80px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; gap: 40px 72px; align-items: flex-start;">
+        <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">THE PLAYLIST</p>
+          <h2 id="playlist" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(24px, 2.6vw, 38px); font-weight: 800; line-height: 1.1; text-wrap: balance;">Every guest leaves us a song</h2>
+          <p style="margin: 0; max-width: 460px; color: #c9b8a6;">The tracks our guests are dancing to right now, from cha cha classics to amapiano. A new one with every episode.</p>
+          <a href="https://open.spotify.com/playlist/75ezrU9QqXelJ7TwSuAT6f" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; margin-top: 8px; background: #fecb7a; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">
+            <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5 L15 9 L4 15.5 Z" fill="#000000"></path></svg>
+            LISTEN ON SPOTIFY
+          </a>
+        </div>
+        <ol aria-label="Tracks in the playlist" style="flex: 999 1 560px; min-width: 0; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 32px; border-top: 1px solid rgba(254,203,122,0.16);">
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">01</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Vivir Mi Vida</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Marc Anthony</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">02</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Two Kites</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Antônio Carlos Jobim</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">03</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Mil pasos</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Soha, Antoine Essertier</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">04</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Lolita (Cha Cha)</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Ross Mitchell, His Band &amp; Singers</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">05</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">NUEVAYoL</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Bad Bunny</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">06</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Chan Chan</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Buena Vista Social Club</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">07</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Dalie</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Kamo Mphela, Tyler ICU, Khalil Harrison, Baby S.O.N</span></span></li>
+          <li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(254,203,122,0.16);"><span style="font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; color: #fecb7a; font-variant-numeric: tabular-nums;">08</span><span style="min-width: 0;"><span style="display: block; font-weight: 600;">Manteca</span><span style="display: block; font-size: 14px; color: #c9b8a6;">Dizzy Gillespie</span></span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section aria-labelledby="host"style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 0 clamp(16px, 4vw, 56px) 96px; display: flex; flex-wrap: wrap; gap: 40px 64px; align-items: center;">
+      <div style="position: relative; flex: 1 1 520px; min-width: 0; aspect-ratio: 16 / 10; max-width: 100%; overflow: hidden;">
+        <img src="/_blob/639bcb5def2655892c2ad9725cd79114" alt="Marius Iepure seated in the amber armchair on the Break The Routine set" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% center;">
+        <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(199,171,88,0.35) 80%, rgba(223,191,100,0.7) 100%);"></div>
+      </div>
+      <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+        <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">YOUR HOST</p>
+        <h2 id="host" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(30px, 3.6vw, 52px); font-weight: 800; line-height: 1.1; color: #fcdf9a;">MARIUS<br>IEPURE</h2>
+        <p style="margin: 0; max-width: 560px; color: #e8ddd1;">Marius sits down with the judges, dancers and decision-makers of DanceSport for long, unfiltered conversations about what happens on and off the floor.</p>
+        <p style="margin: 0; max-width: 560px; color: #c9b8a6;">Romanian Latin dancer, former national team member, German Show Dance champion and World Latin runner-up with Oti Mabuse. Today he coaches at the Oti Marius Dance Studio in London.</p>
+        <a href="{{lp}}About.dc.html" style="align-self: flex-start; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; padding: 12px 0;">ABOUT THE SHOW →</a>
+      </div>
+    </section>
+
+    <section aria-label="Work with us" style="background: #fecb7a; color: #000000;">
+      <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 56px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px 48px;">
+        <p style="margin: 0; flex: 1 1 520px; min-width: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(20px, 2.2vw, 30px); font-weight: 800; line-height: 1.15; text-wrap: balance;">Put your brand in front of the DanceSport world</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <a href="{{lp}}About.dc.html" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: #080403; color: #ffffff; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">PARTNER WITH BTR</a>
+          <a href="{{lp}}About.dc.html" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 2px solid #080403; color: #000000; text-decoration: none; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;">BE A GUEST</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="background: #080403;">
+    <div style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 72px clamp(16px, 4vw, 56px) 40px; display: flex; flex-direction: column; gap: 56px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 40px 72px; justify-content: space-between;">
+        <img src="/_blob/11f81f408479a20d47ba1e740c14afea" alt="Break the Routine" style="width: min(360px, 100%); height: auto; align-self: flex-start;">
+        <div style="display: flex; flex-wrap: wrap; gap: 32px 72px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">LISTEN</p>
+            <a href="https://www.youtube.com/@BreakTheRoutinePodcast" style="color: #ffffff; text-decoration: none; padding: 6px 0;">YouTube</a>
+            <a href="https://open.spotify.com/playlist/75ezrU9QqXelJ7TwSuAT6f" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Spotify playlist</a>
+            <a href="https://podcasts.apple.com/us/podcast/break-the-routine/id6789345225" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Apple Podcasts</a>
+            <a href="https://www.instagram.com/breaktheroutinepodcast/" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Instagram</a>
+            <a href="https://www.tiktok.com/@breaktheroutinepodcast" style="color: #ffffff; text-decoration: none; padding: 6px 0;">TikTok</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">THE SHOW</p>
+            <a href="{{lp}}Episodes.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Episodes</a>
+            <a href="{{lp}}Chain.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">The Chain</a>
+            <a href="{{lp}}Atlas.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">World Atlas</a>
+            <a href="{{lp}}Search.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Search</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <p style="margin: 0 0 8px; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">WORK WITH US</p>
+            <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Be a guest</a>
+            <a href="{{lp}}About.dc.html" style="color: #ffffff; text-decoration: none; padding: 6px 0;">Partners</a>
+            <p style="margin: 0; padding: 6px 0; color: #c9b8a6;">breaktheroutine@protonmail.com</p>
+          </div>
+        </div>
+      </div>
+      <p style="margin: 0; padding-top: 24px; border-top: 1px solid rgba(254,203,122,0.16); font-size: 14px; color: #a8998b;">A Dance United &amp; Oti Marius Dance Studio Production · © 2026 Break The Routine</p>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4050}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { intro: 'on' };
+    this.timers = [];
+  }
+  componentDidMount() {
+    let seen = false;
+    try { seen = window.sessionStorage.getItem('btr-intro') === '1'; window.sessionStorage.setItem('btr-intro', '1'); } catch (e) {}
+    if (seen) { this.setState({ intro: 'off' }); return; }
+    this.timers.push(setTimeout(() => this.setState({ intro: 'leaving' }), 6500));
+    this.timers.push(setTimeout(() => this.setState({ intro: 'off' }), 7300));
+  }
+  componentWillUnmount() {
+    this.timers.forEach((t) => clearTimeout(t));
+  }
+  renderVals() {
+    const intro = this.state.intro;
+    const introStyle = 'position: fixed; inset: 0; z-index: 200; width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 24px; font: inherit; color: #ffffff; cursor: pointer; background: linear-gradient(180deg, rgba(8,4,3,0) 38%, rgba(159,137,69,0.22) 66%, rgba(223,191,100,0.62) 100%), radial-gradient(ellipse 70% 55% at 50% 42%, #1c110a 0%, #080403 72%); transition: opacity 800ms ease, transform 800ms cubic-bezier(0.65, 0, 0.35, 1); ' + (intro === 'leaving' ? 'opacity: 0; transform: translateY(-3%); pointer-events: none;' : 'opacity: 1;');
+    return { lp: this.props.lp ?? '',
+      introOn: intro !== 'off',
+      introStyle,
+      skipIntro: () => { this.timers.forEach((t) => clearTimeout(t)); this.setState({ intro: 'leaving' }); this.timers.push(setTimeout(() => this.setState({ intro: 'off' }), 800)); }
+    };
+  }
+}
+</script>
+</body>
+</html>
