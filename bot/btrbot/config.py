@@ -34,6 +34,8 @@ class Settings:
         self.youtube_token = Path(os.environ.get("YOUTUBE_TOKEN_FILE", ROOT / "secrets" / "youtube_token.json"))
         self.ytdlp_cookies = Path(os.environ.get("YTDLP_COOKIES", ROOT / "secrets" / "youtube_cookies.txt"))
         self.models_dir = Path(os.environ.get("MODELS_DIR", ROOT / "models"))
+        # shared Drive folder where the DaVinci SRTs are dropped (link-shared, read without login)
+        self.drive_srt_folder = os.environ.get("DRIVE_SRT_FOLDER", "1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-").strip()
         self.poll_minutes = int(os.environ.get("POLL_MINUTES", "15"))
         self.host_name = os.environ.get("HOST_NAME", "Marius Iepure")
 

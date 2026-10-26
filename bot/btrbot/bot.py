@@ -11,6 +11,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
                           filters)
 
+from . import drive
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
 from .state import Registry
@@ -20,7 +21,22 @@ cfg = Settings()
 reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
 LOCK = asyncio.Lock()
-PENDING_SRT = cfg.data_dir / "pending_davinci.srt"   # an SRT sent before its video shows up on YouTube
+PENDING = cfg.data_dir / "pending_srt"   # SRTs (Drive folder or chat) waiting for their video
+PENDING.mkdir(parents=True, exist_ok=True)
+
+
+def pick_pending(title: str):
+    """The waiting SRT for this video: one whose name matches the title, else the newest one (< 3 days)."""
+    import time
+    files = sorted(PENDING.glob("*.srt"), key=lambda p: -p.stat().st_mtime)
+    for p in files:
+        if drive.matches(p.name, title):
+            return p
+    # no name match: the newest recent one, unless it is clearly another part ("part2" vs "part 1")
+    fresh = [p for p in files if time.time() - p.stat().st_mtime < 3 * 86400
+             and not (drive.part_number(p.name) and drive.part_number(title)
+                      and drive.part_number(p.name) != drive.part_number(title))]
+    return fresh[0] if fresh else None
 
 
 def esc(s) -> str:
@@ -52,7 +68,31 @@ async def guarded(ctx, label: str, coro):
 
 
 # ---------------------------------------------------------------- jobs
+async def poll_drive(ctx):
+    """New SRTs in the shared Drive folder → attached to the right episode, or kept for the next video."""
+    if not cfg.drive_srt_folder:
+        return
+    try:
+        files = await run(drive.list_srt, cfg.drive_srt_folder)
+    except Exception as e:  # noqa: BLE001
+        log.warning("drive poll failed: %s", e)
+        return
+    seen = set(reg.data.setdefault("drive_seen", []))
+    for fid, name in files:
+        if fid in seen:
+            continue
+        try:
+            path = await run(drive.download, fid, PENDING / name)
+        except Exception as e:  # noqa: BLE001
+            log.warning("drive download %s failed: %s", name, e)
+            continue
+        reg.data["drive_seen"].append(fid)
+        reg.save()
+        await handle_new_srt(ctx, path, f"📂 Nouveau SRT dans le Drive : <code>{esc(name)}</code>")
+
+
 async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
+    await poll_drive(ctx)
     try:
         vids = await run(pipe.yt.unlisted_ready)
     except Exception as e:  # noqa: BLE001
@@ -71,10 +111,11 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
         ep.stage = "waiting_transcript"
         ep.save()
         reg.active = vid
-        if PENDING_SRT.exists():
-            PENDING_SRT.replace(ep.file("captions_davinci.srt"))
+        srt_file = pick_pending(ep["title"])
+        if srt_file:
+            srt_file.replace(ep.file("captions_davinci.srt"))
             await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\nhttps://youtu.be/{vid}\n"
-                           "J'utilise le SRT que tu m'avais envoyé, pas besoin d'attendre YouTube.")
+                           f"J'utilise ton SRT <code>{esc(srt_file.name)}</code>, pas besoin d'attendre YouTube.")
             await guarded(ctx, "Proposition des axes", propose_axes(ctx, ep))
             continue
         await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\n"
@@ -246,8 +287,10 @@ async def on_button(update: Update, ctx):
         await say(ctx, "OK, je le garde pour la prochaine vidéo non répertoriée.")
         return
     if q.data == "srt:active":
-        if reg.active and PENDING_SRT.exists():
-            await use_srt_for(ctx, reg.episode(reg.active))
+        from pathlib import Path
+        last = Path(reg.data.get("last_srt", ""))
+        if reg.active and last.is_file():
+            await use_srt_for(ctx, reg.episode(reg.active), last)
         return
     ep = reg.episode(reg.active) if reg.active else None
     if not ep:
@@ -299,7 +342,7 @@ async def on_text(update: Update, ctx):
         return
     if not reg.active or reg.episode(reg.active).stage in ("waiting_transcript", "done"):
         await update.message.reply_text("Pas d'épisode en discussion pour l'instant. Je te préviens dès qu'une vidéo non "
-                                        "répertoriée est prête. Tu peux déjà m'envoyer le SRT, je le garderai pour elle.")
+                                        "répertoriée est prête. Tu peux déjà m'envoyer le SRT (ou le mettre dans le dossier Drive), je le garderai pour elle.")
         return
     ep = reg.episode(reg.active)
     text = update.message.text.strip()
@@ -355,22 +398,29 @@ async def on_document(update: Update, ctx):
     doc = update.message.document
     if not doc.file_name.lower().endswith(".srt"):
         return
-    f = await doc.get_file()
-    await f.download_to_drive(str(PENDING_SRT))
+    path = PENDING / doc.file_name
+    await (await doc.get_file()).download_to_drive(str(path))
+    await handle_new_srt(ctx, path, "📥 SRT reçu")
+
+
+async def handle_new_srt(ctx, path, intro: str):
     ep = reg.episode(reg.active) if reg.active else None
+    reg.data["last_srt"] = str(path)
+    reg.save()
     if not ep or ep.stage == "done":
-        await say(ctx, "📥 SRT gardé de côté : je l'utiliserai pour la <b>prochaine vidéo non répertoriée</b> que je détecte, "
-                       "et je pourrai démarrer sans attendre les sous-titres YouTube.")
-    elif ep.stage == "waiting_transcript":
-        await use_srt_for(ctx, ep)
+        await say(ctx, f"{intro}. Je le garde pour la <b>prochaine vidéo non répertoriée</b>, et je pourrai démarrer "
+                       "sans attendre les sous-titres YouTube.")
+    elif ep.stage == "waiting_transcript" or drive.matches(path.name, ep.get("title", "")):
+        await say(ctx, intro + ".")
+        await use_srt_for(ctx, ep, path)
     else:
         kb = [[B("Cet épisode", callback_data="srt:active"), B("La prochaine vidéo", callback_data="srt:next")]]
-        await say(ctx, f"📥 SRT reçu. C'est pour <b>{esc(ep.get('title'))}</b> ou pour la prochaine vidéo ?", reply_markup=K(kb))
+        await say(ctx, f"{intro}. C'est pour <b>{esc(ep.get('title'))}</b> ou pour la prochaine vidéo ?", reply_markup=K(kb))
 
 
-async def use_srt_for(ctx, ep):
-    PENDING_SRT.replace(ep.file("captions_davinci.srt"))
-    await say(ctx, f"📥 SRT associé à <b>{esc(ep.get('title'))}</b>.")
+async def use_srt_for(ctx, ep, path):
+    path.replace(ep.file("captions_davinci.srt"))
+    await say(ctx, f"🔗 SRT associé à <b>{esc(ep.get('title'))}</b>.")
     if ep.stage in ("published", "chapters_proposed", "done"):
         await guarded(ctx, "Chapitrage", propose_chapters(ctx, ep, "ton SRT"))
     elif ep.stage == "waiting_transcript":

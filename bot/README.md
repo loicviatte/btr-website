@@ -62,6 +62,7 @@ Si ça ne suffit pas : proxy résidentiel, ou bot sur un Raspberry Pi chez toi (
 Pour voir les logs en direct (facultatif) : `ssh -i ~/.ssh/btr_bot root@IP journalctl -u btr-bot -f`.
 
 ## Notes
+- **SRT DaVinci :** dépose-le dans le dossier Drive « SRT » (partagé par lien ; dossier modifiable avec `DRIVE_SRT_FOLDER`) ou envoie-le dans le chat. Le bot le relève toutes les 15 min, l'associe à la vidéo dont le titre contient un mot du nom du fichier (`oti_Subtitle_part2.srt` → « Oti … part 2 »), sinon le garde pour la prochaine vidéo. Avec un SRT, il démarre sans attendre les sous-titres YouTube.
 - **Premier lancement :** les vidéos déjà non répertoriées sont ignorées. Pour en traiter une : `/episode <ID>`.
 - **Police :** les titres sont en Monument Extended **Heavy**. Pour l'Ultrabold, dépose `PPMonumentExtended-Ultrabold.woff2` dans `btrbot/assets/` et dis-le-moi, je le branche.
 - **Rendus :** chaque épisode est rangé dans `data/episodes/<ID>/` (frames, miniatures, transcript, état).

@@ -34,6 +34,10 @@ def main():
         if not step("Video download from this server (yt-dlp)", frame):
             print("   → add/refresh secrets/youtube_cookies.txt (see README), or use a residential proxy.")
 
+    if cfg.drive_srt_folder:
+        from . import drive
+        step("Drive SRT folder", lambda: (lambda f: f"{len(f)} SRT: " + ", ".join(n for _, n in f[:5]))(drive.list_srt(cfg.drive_srt_folder)))
+
     import anthropic
     step("Anthropic", lambda: anthropic.Anthropic(api_key=cfg.anthropic_key).messages.create(
         model=cfg.model, max_tokens=20, messages=[{"role": "user", "content": "Say OK"}]).content[0].text)
