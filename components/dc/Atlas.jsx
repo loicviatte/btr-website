@@ -75,7 +75,7 @@ class Component extends DCLogic {
     super(props);
     const mq = (typeof window !== 'undefined' && window.matchMedia) ? window.matchMedia('(max-width: 600px)') : null;
     this.mq = mq;
-    this.state = { picked: 0, slide: 0, view: null, dragging: false, narrow: !!(mq && mq.matches) };
+    this.state = { picked: 0, slide: 0, view: null, dragging: false, narrow: false };
     this.drag = null;
     this.track = null;
     const rows = [
@@ -142,6 +142,7 @@ class Component extends DCLogic {
     this.setState({ picked: i, slide: 0, view: null, autoFit: false });
     this.fitTimer = setTimeout(() => { if (!this.state.view) this.setState({ autoFit: true }); }, 650);
     if (!this.mq) return;
+    if (this.mq.matches !== this.state.narrow) this.setState({ narrow: this.mq.matches, view: null });
     this.onMq = () => { if (this.mq.matches !== this.state.narrow) this.setState({ narrow: this.mq.matches, view: null }); };
     if (this.mq.addEventListener) this.mq.addEventListener('change', this.onMq); else if (this.mq.addListener) this.mq.addListener(this.onMq);
   }
@@ -177,19 +178,19 @@ class Component extends DCLogic {
     const narrow = !!this.state.narrow;
     const A = narrow ? 1.43 : W / H;
     const VH = H, VW = narrow ? H * A : W;
-    const clampV = (v) => { const kk = Math.max(1, Math.min(8, v.k)); return { k: kk, tx: Math.min(0, Math.max(VW - W * kk, v.tx)), ty: Math.min(0, Math.max(VH - H * kk, v.ty)) }; };
+    const clampV = (v) => { const kk = Math.max(1, Math.min(40, v.k)); return { k: kk, tx: Math.min(0, Math.max(VW - W * kk, v.tx)), ty: Math.min(0, Math.max(VH - H * kk, v.ty)) }; };
     const home = () => narrow ? clampV({ k: 1, tx: VW / 2 - 520, ty: 0 }) : { k: 1, tx: 0, ty: 0 };
     const fit = (i) => {
       const bb = MAP[i].b;
       const bw = Math.max(bb[2] - bb[0], 4), bh = Math.max(bb[3] - bb[1], 4);
-      const kk = Math.max(narrow ? 1.6 : 2.2, Math.min(7, Math.min(VW * 0.42 / bw, VH * 0.55 / bh)));
+      const kk = Math.max(narrow ? 1.6 : 2.2, Math.min(36, Math.min(VW * 0.78 / bw, VH * 0.78 / bh)));
       const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
       return clampV({ k: kk, tx: VW / 2 - cx * kk, ty: VH / 2 - cy * kk });
     };
     const view = this.state.view || (this.state.autoFit ? fit(picked) : home());
     const k = view.k, tx = view.tx, ty = view.ty;
     const zoomed = k > 1.01;
-    const zoomBy = (f) => () => { const v = this.state.view || home(); const nk = Math.max(1, Math.min(8, v.k * f)); const cx = (VW / 2 - v.tx) / v.k, cy = (VH / 2 - v.ty) / v.k; this.setState({ view: clampV({ k: nk, tx: VW / 2 - cx * nk, ty: VH / 2 - cy * nk }) }); };
+    const zoomBy = (f) => () => { const v = this.state.view || home(); const nk = Math.max(1, Math.min(40, v.k * f)); const cx = (VW / 2 - v.tx) / v.k, cy = (VH / 2 - v.ty) / v.k; this.setState({ view: clampV({ k: nk, tx: VW / 2 - cx * nk, ty: VH / 2 - cy * nk }) }); };
     const onDown = (e) => { if (e.button !== undefined && e.button !== 0) return; this.drag = { x: e.clientX, y: e.clientY, v: this.state.view || home(), w: e.currentTarget.getBoundingClientRect().width, moved: false, id: e.pointerId, el: e.currentTarget }; };
     const onMove = (e) => {
       const d = this.drag; if (!d) return;
@@ -212,7 +213,7 @@ class Component extends DCLogic {
       const btn = 'position: absolute; left: ' + x.toFixed(3) + '%; top: ' + y.toFixed(3) + '%; width: 44px; height: 44px; margin: -22px 0 0 -22px; display: grid; place-items: center; padding: 0; background: transparent; border: 0; cursor: pointer; z-index: ' + (sel ? 3 : 2) + '; transform: scale(' + inv + '); transition: ' + (dragging ? 'none' : 'transform 900ms cubic-bezier(0.65, 0, 0.35, 1)') + ';';
       const dot = 'display: grid; place-items: center; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%; border: 2px solid #fecb7a; font-family: "PP Monument Extended", "Arial Black", sans-serif; font-size: 10px; font-weight: 800; line-height: 1; ' + (sel ? 'background: #fecb7a; color: #000000; box-shadow: 0 0 0 6px rgba(254,203,122,0.25);' : 'background: #080403; color: #fecb7a;');
       const sx = c.x * k + tx; const right = sx > VW * 0.62;
-      const label = 'position: absolute; left: ' + x.toFixed(3) + '%; top: ' + y.toFixed(3) + '%; z-index: 4; transform-origin: 0 0; transform: scale(' + inv + ') ' + (right ? 'translate(calc(-100% - 22px), -50%)' : 'translate(22px, -50%)') + '; transition: transform 900ms cubic-bezier(0.65, 0, 0.35, 1); padding: 6px 10px 5px; background: #080403; border: 1px solid #fecb7a; color: #fecb7a; white-space: nowrap; font-family: "PP Monument Extended", "Arial Black", sans-serif; font-size: 12px; font-weight: 800; pointer-events: none;';
+      const label = 'position: absolute; left: ' + x.toFixed(3) + '%; top: ' + y.toFixed(3) + '%; z-index: 4; transform-origin: 0 0; transform: scale(' + inv + ') ' + (narrow ? 'translate(-50%, 24px)' : (right ? 'translate(calc(-100% - 22px), -50%)' : 'translate(22px, -50%)')) + '; transition: transform 900ms cubic-bezier(0.65, 0, 0.35, 1); padding: 6px 10px 5px; background: #080403; border: 1px solid #fecb7a; color: #fecb7a; white-space: nowrap; font-family: "PP Monument Extended", "Arial Black", sans-serif; font-size: 12px; font-weight: 800; pointer-events: none;';
       const row = 'display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; gap: 2px; width: 100%; min-height: 48px; box-sizing: border-box; padding: 12px 4px; text-align: left; border: 0; border-bottom: 1px solid rgba(254,203,122,0.16); border-radius: 0; cursor: pointer; font: inherit; background: transparent; color: ' + (sel ? '#fecb7a' : '#ffffff') + ';' + (sel ? ' box-shadow: inset 3px 0 0 #fecb7a; padding-left: 14px;' : '');
       return {
         ...a,

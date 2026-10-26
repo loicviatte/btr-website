@@ -6,7 +6,8 @@ export const metadata = {
   title: 'Break The Routine · The DanceSport Podcast',
   description: 'Long conversations with the judges, dancers and decision-makers of DanceSport. New episode every Tuesday on YouTube, Spotify, Instagram and TikTok.',
   metadataBase: new URL(process.env.SITE_URL || 'https://breaktheroutine.vercel.app'),
-  openGraph: { siteName: 'Break The Routine', type: 'website', images: ['/assets/6704faaedd6251c16887bc9024d7381e.jpg'] },
+  openGraph: { siteName: 'Break The Routine', type: 'website', images: [{ url: '/og-btr.jpg', width: 1200, height: 630, alt: 'BTR, The Dancesport Podcast' }] },
+  twitter: { card: 'summary_large_image', images: ['/og-btr.jpg'] },
   icons: { icon: '/assets/745152d7135187f4378802fc563253b5.png' },
   // Hidden from Google until launch: set SITE_LIVE=1 in Vercel to open it up.
   robots: process.env.SITE_LIVE === '1' ? { index: true, follow: true } : { index: false, follow: false },
