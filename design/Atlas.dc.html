@@ -22,9 +22,30 @@ details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-clos
 .atl-map{scroll-margin-top:96px}
 @media (max-width: 600px){.atl-track{height:440px !important}.atl-card{padding:16px 18px !important}.atl-video{flex:1 1 100% !important;max-width:100% !important;min-width:0 !important}.atl-drawn{margin-top:12px !important}.atl-col{gap:12px !important}.atl-cover{gap:14px !important;padding-top:8px !important}.atl-body{padding:10px 0 !important;gap:12px !important}}
 @media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
+/* motion */
+html{scroll-behavior:smooth}
+[data-rv]{transition:opacity 900ms cubic-bezier(.16,1,.3,1),transform 900ms cubic-bezier(.16,1,.3,1),color .25s ease,background-color .25s ease,border-color .25s ease;transition-delay:var(--rvd,0ms)}
+[data-rv="0"]{opacity:0;transform:translateY(22px)}
+img[data-rv="0"]{transform:scale(1.045)}
+[data-zoom]{transition:transform 1100ms cubic-bezier(.16,1,.3,1) !important}
+a:hover [data-zoom]{transform:scale(1.045)}
+[data-btn]{transition:background-color .25s ease,border-color .25s ease,color .25s ease,transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s ease !important}
+[data-btn="gold"]:hover{background-color:#ffe0a6 !important;transform:translateY(-2px);box-shadow:0 10px 28px rgba(254,203,122,0.22)}
+[data-btn="line"]:hover{background-color:rgba(254,203,122,0.08) !important;border-color:#fecb7a !important;transform:translateY(-2px)}
+[data-btn]:active{transform:translateY(0) !important}
+.btr-links a{position:relative}
+.btr-links a::after{content:"";position:absolute;left:0;right:0;bottom:8px;height:2px;background:#fecb7a;transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.btr-links a:hover::after{transform:scaleX(1)}
+header{transition:box-shadow .4s ease,background-color .4s ease}
+header[data-scrolled="1"]{box-shadow:0 12px 32px rgba(0,0,0,0.45)}
+@keyframes btrMenu{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+details.btr-burger[open] > div{animation:btrMenu .38s cubic-bezier(.16,1,.3,1) both}
+details.btr-burger[open] > div > a{animation:btrMenu .45s cubic-bezier(.16,1,.3,1) both}
+details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr-burger[open] > div > a:nth-child(3){animation-delay:80ms}details.btr-burger[open] > div > a:nth-child(4){animation-delay:120ms}details.btr-burger[open] > div > a:nth-child(5){animation-delay:160ms}details.btr-burger[open] > div > a:nth-child(6){animation-delay:200ms}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}[data-rv]{transition:none !important;opacity:1 !important;transform:none !important}[data-zoom],[data-btn]{transition:none !important}}
 </style>
 </helmet>
-<div style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
+<div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
 
   <header style="position: sticky; top: 0; z-index: 50; background: rgba(8,4,3,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(254,203,122,0.16);">
     <nav aria-label="Main" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 16px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
@@ -212,6 +233,72 @@ details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-clos
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1450}}'>
+function btrMotion(root) {
+  if (!root || root.__btrMotion) return;
+  root.__btrMotion = true;
+  const doc = root.ownerDocument, win = doc.defaultView;
+  if (!win || !('IntersectionObserver' in win)) return;
+  const reduce = win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const gold = 'rgb(254, 203, 122)';
+  root.querySelectorAll('a, button, summary').forEach((el) => {
+    if (el.closest('header') && !el.closest('details')) { if (getComputedStyle(el).backgroundColor !== gold) return; }
+    const cs = getComputedStyle(el);
+    if (cs.position === 'absolute' && !el.closest('main')) return;
+    if (cs.backgroundColor === gold) el.dataset.btn = 'gold';
+    else if (parseFloat(cs.borderTopWidth) > 0 && cs.borderTopStyle === 'solid' && parseFloat(cs.minHeight) >= 40 && cs.display.indexOf('flex') >= 0) el.dataset.btn = 'line';
+  });
+  root.querySelectorAll('main a img').forEach((img) => {
+    const p = img.parentElement;
+    if (p && getComputedStyle(p).overflow === 'hidden') img.dataset.zoom = '1';
+  });
+  const header = root.querySelector('header');
+  const mainEl = root.querySelector('main');
+  if (header && mainEl && mainEl.firstElementChild) {
+    const hh = header.offsetHeight || 80;
+    const t = Array.from({ length: 21 }, (_, i) => i / 20);
+    const hio = new win.IntersectionObserver((es) => { es.forEach((e) => { header.dataset.scrolled = e.boundingClientRect.top < hh - 4 ? '1' : '0'; }); }, { threshold: t });
+    hio.observe(mainEl.firstElementChild);
+    root.__btrHio = hio;
+  }
+  if (reduce) return;
+  const SEL = 'main h1, main h2, main h3, main p, main img, main li, main article, main figure, main blockquote, main video, footer img, footer p';
+  const SKIP = '.atl-map, .atl-track, [role="dialog"], .btr-intro, header, details, form, [aria-live], button';
+  const all = Array.from(root.querySelectorAll(SEL)).filter((el) => {
+    if (el.closest(SKIP)) return false;
+    const cs = getComputedStyle(el);
+    if ((cs.position === 'absolute' || cs.position === 'fixed') && el.tagName !== 'IMG') return false;
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    return true;
+  });
+  const set = new Set(all);
+  const targets = all.filter((el) => { let a = el.parentElement; while (a && a !== root) { if (set.has(a)) return false; a = a.parentElement; } return true; });
+  const start = () => {
+    targets.forEach((el) => { el.dataset.rv = '0'; });
+    let queue = [], timer = null;
+    const flush = () => {
+      queue.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+      queue.forEach((el, i) => { el.style.setProperty('--rvd', Math.min(i * 70, 560) + 'ms'); el.dataset.rv = '1'; });
+      queue = []; timer = null;
+    };
+    const io = new win.IntersectionObserver((es) => {
+      es.forEach((e) => { if (e.isIntersecting) { queue.push(e.target); io.unobserve(e.target); } });
+      if (queue.length && !timer) timer = win.setTimeout(flush, 30);
+    }, { rootMargin: '0px', threshold: 0.06 });
+    targets.forEach((el) => io.observe(el));
+    root.__btrIo = io;
+  };
+  const intro = () => { const b = root.querySelector('.btr-intro'); return b && b.offsetParent !== null && getComputedStyle(b).display !== 'none'; };
+  if (!intro()) { start(); return; }
+  const wait = win.setInterval(() => { if (!intro()) { win.clearInterval(wait); start(); } }, 120);
+  root.__btrWait = wait;
+}
+function btrMotionStop(root) {
+  if (!root) return;
+  if (root.__btrIo) root.__btrIo.disconnect();
+  if (root.__btrHio) root.__btrHio.disconnect();
+  if (root.__btrWait) root.ownerDocument.defaultView.clearInterval(root.__btrWait);
+  root.__btrMotion = false;
+}
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -375,7 +462,7 @@ class Component extends DCLogic {
       current: k === cur ? 'true' : 'false',
       style: 'display: block; width: ' + (k === cur ? '22px' : '8px') + '; height: 8px; background: ' + (k === cur ? '#fecb7a' : 'rgba(254,203,122,0.35)') + ';'
     }));
-    return { lp: this.props.lp ?? '',
+    return { motionRef: this._motionRef || (this._motionRef = (el) => { if (el) { this._motionEl = el; btrMotion(el); } else { btrMotionStop(this._motionEl); } }), lp: this.props.lp ?? '',
       car: { name: cdata.name, map: cdata.map, cards: cdata.cards, guest: s.mentions[0].guest.toUpperCase(), url: s.mentions[0].url, time: s.mentions[0].time, title: s.city, thumb: '/_blob/' + THUMBS[s.mentions[0].url.split('v=')[1].split('&')[0]], playAria: 'Play the draw from ' + s.mentions[0].time + ' on YouTube' },
       trackRef: (el) => { this.track = el; },
       prevCard: () => goTo(this.state.slide - 1),

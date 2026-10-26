@@ -22,9 +22,30 @@ details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-clos
 @media (max-width: 900px){.ab-hero-img{left:0 !important;width:100% !important;height:min(62vw,460px) !important;object-position:65% 25% !important;-webkit-mask-image:linear-gradient(180deg,#000 50%,rgba(0,0,0,0) 100%) !important;mask-image:linear-gradient(180deg,#000 50%,rgba(0,0,0,0) 100%) !important}.ab-hero-in{padding-top:calc(min(62vw,460px) - 40px) !important;padding-bottom:72px !important}}
 @media (max-width: 600px){.btr-email{font-size:13px !important}}
 @media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
+/* motion */
+html{scroll-behavior:smooth}
+[data-rv]{transition:opacity 900ms cubic-bezier(.16,1,.3,1),transform 900ms cubic-bezier(.16,1,.3,1),color .25s ease,background-color .25s ease,border-color .25s ease;transition-delay:var(--rvd,0ms)}
+[data-rv="0"]{opacity:0;transform:translateY(22px)}
+img[data-rv="0"]{transform:scale(1.045)}
+[data-zoom]{transition:transform 1100ms cubic-bezier(.16,1,.3,1) !important}
+a:hover [data-zoom]{transform:scale(1.045)}
+[data-btn]{transition:background-color .25s ease,border-color .25s ease,color .25s ease,transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s ease !important}
+[data-btn="gold"]:hover{background-color:#ffe0a6 !important;transform:translateY(-2px);box-shadow:0 10px 28px rgba(254,203,122,0.22)}
+[data-btn="line"]:hover{background-color:rgba(254,203,122,0.08) !important;border-color:#fecb7a !important;transform:translateY(-2px)}
+[data-btn]:active{transform:translateY(0) !important}
+.btr-links a{position:relative}
+.btr-links a::after{content:"";position:absolute;left:0;right:0;bottom:8px;height:2px;background:#fecb7a;transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.btr-links a:hover::after{transform:scaleX(1)}
+header{transition:box-shadow .4s ease,background-color .4s ease}
+header[data-scrolled="1"]{box-shadow:0 12px 32px rgba(0,0,0,0.45)}
+@keyframes btrMenu{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+details.btr-burger[open] > div{animation:btrMenu .38s cubic-bezier(.16,1,.3,1) both}
+details.btr-burger[open] > div > a{animation:btrMenu .45s cubic-bezier(.16,1,.3,1) both}
+details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr-burger[open] > div > a:nth-child(3){animation-delay:80ms}details.btr-burger[open] > div > a:nth-child(4){animation-delay:120ms}details.btr-burger[open] > div > a:nth-child(5){animation-delay:160ms}details.btr-burger[open] > div > a:nth-child(6){animation-delay:200ms}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}[data-rv]{transition:none !important;opacity:1 !important;transform:none !important}[data-zoom],[data-btn]{transition:none !important}}
 </style>
 </helmet>
-<div style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
+<div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
 
   <header style="position: sticky; top: 0; z-index: 50; background: rgba(8,4,3,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(254,203,122,0.16);">
     <nav aria-label="Main" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 16px clamp(16px, 4vw, 56px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px;">
@@ -95,11 +116,56 @@ details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-clos
           <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(223,191,100,0.6) 100%);"></div>
         </div>
         <div style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
-          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">YOUR HOST</p>
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">HOST &amp; CO-FOUNDER</p>
           <h2 id="marius" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(30px, 3.6vw, 52px); font-weight: 800; line-height: 1.1; color: #fcdf9a;">MARIUS<br>IEPURE</h2>
           <p style="margin: 0; max-width: 560px; color: #e8ddd1;">Marius grew up dancing in Romania and competed in Latin for the Romanian national team on the international circuit. In Germany he partnered Oti Mabuse: together they won the German national Show Dance title and finished second at the World Latin Championships. After more than 20 years on the floor, he co-runs the Oti Marius Dance Studio in Park Royal, London, opened in 2020, and leads workshops for dancers of every level across the UK.</p>
           <p style="margin: 0; max-width: 560px; color: #c9b8a6;">He started Break The Routine because DanceSport rarely talks about itself in the open. He wants marking that dancers can understand and trust, safer rooms for young dancers, a sport that is easier to enter and to afford, and federations that work together instead of against each other. Each guest leaves a question for the next, so the conversation never stops at one episode.</p>
         </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="team" style="max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 96px clamp(16px, 4vw, 56px); display: flex; flex-direction: column; gap: 40px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px 64px; align-items: flex-end; justify-content: space-between;">
+        <div style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+          <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">THE TEAM</p>
+          <h2 id="team" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(26px, 3vw, 42px); font-weight: 800; line-height: 1.08; text-wrap: balance;">The people behind the show</h2>
+        </div>
+        <p style="margin: 0; flex: 0 1 420px; min-width: 0; color: #c9b8a6;">Break The Routine was founded by Marius, Alexandra and Loïc, three people who live DanceSport from different sides of the floor.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px 28px;">
+        <article style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+          <div role="img" aria-label="Alexandra, co-founder of Break The Routine" style="position: relative; aspect-ratio: 1 / 1; max-width: 100%; overflow: hidden; background: repeating-linear-gradient(90deg, #0e0705 0px, #0e0705 14px, #140b07 14px, #140b07 18px); border: 1px solid rgba(254,203,122,0.18);">
+            <span aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(72px, 9vw, 120px); font-weight: 800; line-height: 1; color: rgba(254,203,122,0.16);">A</span>
+            <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(223,191,100,0.45) 100%);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">CO-FOUNDER</p>
+            <h3 style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 24px; font-weight: 800; line-height: 1.1; color: #ffffff;">Alexandra</h3>
+            <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #c9b8a6;">Alexandra dances herself, and a show where DanceSport talks about itself in the open was close to her heart from day one. Alongside Break The Routine she is co-founding InBetween, the app that turns what your coach says in a lesson into focus points you keep working on between lessons.</p>
+          </div>
+        </article>
+        <article style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+          <div role="img" aria-label="Loïc Viatte, co-founder of Break The Routine" style="position: relative; aspect-ratio: 1 / 1; max-width: 100%; overflow: hidden; background: repeating-linear-gradient(90deg, #0e0705 0px, #0e0705 14px, #140b07 14px, #140b07 18px); border: 1px solid rgba(254,203,122,0.18);">
+            <span aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(72px, 9vw, 120px); font-weight: 800; line-height: 1; color: rgba(254,203,122,0.16);">L</span>
+            <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(223,191,100,0.45) 100%);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">CO-FOUNDER · PRODUCTION</p>
+            <h3 style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 24px; font-weight: 800; line-height: 1.1; color: #ffffff;">Loïc Viatte</h3>
+            <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #c9b8a6;">A Swiss filmmaker based in London and co-founder of Waview Production, Loïc films, edits and publishes every episode, and builds the tools behind the show, from the clips to the World Atlas. He is also co-founding InBetween with Alexandra.</p>
+          </div>
+        </article>
+        <article style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+          <div role="img" aria-label="Georgia, Break The Routine team" style="position: relative; aspect-ratio: 1 / 1; max-width: 100%; overflow: hidden; background: repeating-linear-gradient(90deg, #0e0705 0px, #0e0705 14px, #140b07 14px, #140b07 18px); border: 1px solid rgba(254,203,122,0.18);">
+            <span aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: clamp(72px, 9vw, 120px); font-weight: 800; line-height: 1; color: rgba(254,203,122,0.16);">G</span>
+            <div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(223,191,100,0.45) 100%);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <p style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">[ROLE]</p>
+            <h3 style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 24px; font-weight: 800; line-height: 1.1; color: #ffffff;">Georgia</h3>
+            <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #c9b8a6;">[Georgia’s introduction is coming soon.]</p>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -242,9 +308,75 @@ details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-clos
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2700}}'>
+function btrMotion(root) {
+  if (!root || root.__btrMotion) return;
+  root.__btrMotion = true;
+  const doc = root.ownerDocument, win = doc.defaultView;
+  if (!win || !('IntersectionObserver' in win)) return;
+  const reduce = win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const gold = 'rgb(254, 203, 122)';
+  root.querySelectorAll('a, button, summary').forEach((el) => {
+    if (el.closest('header') && !el.closest('details')) { if (getComputedStyle(el).backgroundColor !== gold) return; }
+    const cs = getComputedStyle(el);
+    if (cs.position === 'absolute' && !el.closest('main')) return;
+    if (cs.backgroundColor === gold) el.dataset.btn = 'gold';
+    else if (parseFloat(cs.borderTopWidth) > 0 && cs.borderTopStyle === 'solid' && parseFloat(cs.minHeight) >= 40 && cs.display.indexOf('flex') >= 0) el.dataset.btn = 'line';
+  });
+  root.querySelectorAll('main a img').forEach((img) => {
+    const p = img.parentElement;
+    if (p && getComputedStyle(p).overflow === 'hidden') img.dataset.zoom = '1';
+  });
+  const header = root.querySelector('header');
+  const mainEl = root.querySelector('main');
+  if (header && mainEl && mainEl.firstElementChild) {
+    const hh = header.offsetHeight || 80;
+    const t = Array.from({ length: 21 }, (_, i) => i / 20);
+    const hio = new win.IntersectionObserver((es) => { es.forEach((e) => { header.dataset.scrolled = e.boundingClientRect.top < hh - 4 ? '1' : '0'; }); }, { threshold: t });
+    hio.observe(mainEl.firstElementChild);
+    root.__btrHio = hio;
+  }
+  if (reduce) return;
+  const SEL = 'main h1, main h2, main h3, main p, main img, main li, main article, main figure, main blockquote, main video, footer img, footer p';
+  const SKIP = '.atl-map, .atl-track, [role="dialog"], .btr-intro, header, details, form, [aria-live], button';
+  const all = Array.from(root.querySelectorAll(SEL)).filter((el) => {
+    if (el.closest(SKIP)) return false;
+    const cs = getComputedStyle(el);
+    if ((cs.position === 'absolute' || cs.position === 'fixed') && el.tagName !== 'IMG') return false;
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    return true;
+  });
+  const set = new Set(all);
+  const targets = all.filter((el) => { let a = el.parentElement; while (a && a !== root) { if (set.has(a)) return false; a = a.parentElement; } return true; });
+  const start = () => {
+    targets.forEach((el) => { el.dataset.rv = '0'; });
+    let queue = [], timer = null;
+    const flush = () => {
+      queue.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+      queue.forEach((el, i) => { el.style.setProperty('--rvd', Math.min(i * 70, 560) + 'ms'); el.dataset.rv = '1'; });
+      queue = []; timer = null;
+    };
+    const io = new win.IntersectionObserver((es) => {
+      es.forEach((e) => { if (e.isIntersecting) { queue.push(e.target); io.unobserve(e.target); } });
+      if (queue.length && !timer) timer = win.setTimeout(flush, 30);
+    }, { rootMargin: '0px', threshold: 0.06 });
+    targets.forEach((el) => io.observe(el));
+    root.__btrIo = io;
+  };
+  const intro = () => { const b = root.querySelector('.btr-intro'); return b && b.offsetParent !== null && getComputedStyle(b).display !== 'none'; };
+  if (!intro()) { start(); return; }
+  const wait = win.setInterval(() => { if (!intro()) { win.clearInterval(wait); start(); } }, 120);
+  root.__btrWait = wait;
+}
+function btrMotionStop(root) {
+  if (!root) return;
+  if (root.__btrIo) root.__btrIo.disconnect();
+  if (root.__btrHio) root.__btrHio.disconnect();
+  if (root.__btrWait) root.ownerDocument.defaultView.clearInterval(root.__btrWait);
+  root.__btrMotion = false;
+}
 class Component extends DCLogic {
   renderVals() {
-    return { lp: this.props.lp ?? '' };
+    return { motionRef: this._motionRef || (this._motionRef = (el) => { if (el) { this._motionEl = el; btrMotion(el); } else { btrMotionStop(this._motionEl); } }), lp: this.props.lp ?? '' };
   }
 }
 </script>
