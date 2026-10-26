@@ -55,15 +55,17 @@ def known_vids():
 
 def uploads():
     if token():
-        ch = api('channels', part='contentDetails', mine='true')
+        ch = api('channels', part='contentDetails,snippet', mine='true')
     else:
-        ch = api('channels', part='contentDetails', id=os.environ['YT_CHANNEL_ID'])
+        ch = api('channels', part='contentDetails,snippet', id=os.environ['YT_CHANNEL_ID'])
+    print('Channel:', ch['items'][0]['snippet']['title'])
     pl = ch['items'][0]['contentDetails']['relatedPlaylists']['uploads']
     items = api('playlistItems', part='contentDetails', playlistId=pl, maxResults=50)['items']
     ids = [i['contentDetails']['videoId'] for i in items]
     out = []
     for k in range(0, len(ids), 50):
         out += api('videos', part='snippet,contentDetails,status', id=','.join(ids[k:k + 50]))['items']
+    print(f'{len(out)} uploads checked (latest: ' + (out[0]['snippet']['title'] if out else '—') + ')')
     return out
 
 def captions_oauth(vid, dest):
