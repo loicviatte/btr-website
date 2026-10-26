@@ -43,7 +43,8 @@ details.chain-all summary::-webkit-details-marker{display:none}
 details.chain-all[open] summary span:last-child{transform:rotate(45deg)}
 details.chain-all summary span:last-child{transition:transform .3s ease}
 @media (max-width: 900px){.ep-guest-img{aspect-ratio:16/9 !important}.ep-guest-img img{object-position:center !important}}
-@media (max-width: 600px){.ep-trow{grid-template-columns:52px 1fr !important;gap:12px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
+@media (max-width: 600px){.ep-trow{grid-template-columns:1fr !important;gap:2px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
+@keyframes btrTIn{from{opacity:0}to{opacity:1}}
 html.btr-seen .btr-intro{display:none !important}
 @keyframes btrIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}@keyframes btrRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .btr-in-logo{animation:btrIn 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-rule{animation:btrRule 700ms 600ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l1{animation:btrIn 800ms 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l2{animation:btrIn 700ms 1700ms cubic-bezier(.2,.7,.2,1) both}.btr-in-cta{animation:btrIn 700ms 2300ms cubic-bezier(.2,.7,.2,1) both}

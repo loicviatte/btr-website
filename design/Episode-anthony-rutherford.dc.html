@@ -19,7 +19,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{
 summary.btr-burger-btn{list-style:none}summary.btr-burger-btn::-webkit-details-marker{display:none}
 details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-close{display:none}
 @media (max-width: 900px){.ep-guest-img{aspect-ratio:16/9 !important}.ep-guest-img img{object-position:center !important}}
-@media (max-width: 600px){.ep-trow{grid-template-columns:52px 1fr !important;gap:12px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
+@media (max-width: 600px){.ep-trow{grid-template-columns:1fr !important;gap:2px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
 @media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
 /* motion */
 html{scroll-behavior:smooth}
@@ -44,6 +44,7 @@ details.btr-burger[open] > div{animation:btrMenu .38s cubic-bezier(.16,1,.3,1) b
 details.btr-burger[open] > div > a{animation:btrMenu .45s cubic-bezier(.16,1,.3,1) both}
 details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr-burger[open] > div > a:nth-child(3){animation-delay:80ms}details.btr-burger[open] > div > a:nth-child(4){animation-delay:120ms}details.btr-burger[open] > div > a:nth-child(5){animation-delay:160ms}details.btr-burger[open] > div > a:nth-child(6){animation-delay:200ms}
 @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}[data-rv]{transition:none !important;opacity:1 !important;transform:none !important}[data-zoom],[data-btn]{transition:none !important}}
+@keyframes btrTIn{from{opacity:0}to{opacity:1}}
 </style>
 </helmet>
 <div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
@@ -193,10 +194,31 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
               </div>
             </sc-for>
             <sc-if value="{{tCanToggle}}" hint-placeholder-val="{{true}}">
-              <button type="button" onClick="{{tToggle}}" aria-expanded="{{tExpanded}}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">{{tToggleLabel}}</button>
+              <button type="button" onClick="{{tToggle}}" aria-haspopup="dialog" aria-expanded="{{tExpanded}}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">{{tToggleLabel}}</button>
             </sc-if>
           </div>
-          <p style="margin: 0; font-size: 13px; color: #a8998b;">Transcribed automatically from the episode audio, so some names may be misspelled. Tap a time to play that moment on YouTube.</p>
+          <p style="margin: 0; font-size: 13px; color: #a8998b;">Transcribed automatically from the episode audio, so some names may be misspelled. Tap a time to play that moment.</p>
+          <sc-if value="{{tModal}}" hint-placeholder-val="{{false}}">
+            <div role="dialog" aria-modal="true" aria-labelledby="tmodal-title" onClick="{{tBackdrop}}" style="position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px)); background: rgba(8,4,3,0.84); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: btrTIn .3s cubic-bezier(.16,1,.3,1) both;">
+              <div style="width: 100%; max-width: 880px; max-height: 100%; display: flex; flex-direction: column; background: #0e0705; border: 1px solid rgba(254,203,122,0.3); box-shadow: 0 30px 80px rgba(0,0,0,0.6);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 16px 16px 24px; border-bottom: 1px solid rgba(254,203,122,0.16);">
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                    <p id="tmodal-title" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">FULL TRANSCRIPT</p>
+                    <p style="margin: 0; font-size: 14px; color: #c9b8a6;">{{tModalSub}}</p>
+                  </div>
+                  <button type="button" onClick="{{tClose}}" aria-label="Close the transcript" style="flex: none; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M4 4l12 12M16 4L4 16"></path></svg></button>
+                </div>
+                <div onClick="{{tPick}}" style="overflow-y: auto; overscroll-behavior: contain; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+                  <sc-for list="{{tAllRows}}" as="p" hint-placeholder-count="6">
+                  <div class="ep-trow" style="display: grid; grid-template-columns: 92px 1fr; gap: 16px;">
+                    <a href="{{p.url}}" aria-label="{{p.aria}}" style="align-self: start; padding: 2px 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">{{p.time}}</a>
+                    <p style="margin: 0; color: #e8ddd1;">{{p.before}}</p>
+                  </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
         </section>
       </div>
 
@@ -242,6 +264,13 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
           <a href="https://www.youtube.com/watch?v=8tsAnwQanY0&amp;t=6334s" style="align-self: flex-start; padding: 4px 0; font-size: 14px;">Why he picked it, at 1:45:34</a>
           <a href="https://open.spotify.com/playlist/75ezrU9QqXelJ7TwSuAT6f" style="align-self: flex-start; padding: 4px 0; font-size: 15px;">Break The Routine curated on Spotify →</a>
         </div>
+
+        <div data-polaroid="" style="padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; border: 1px solid rgba(254,203,122,0.2); background: repeating-linear-gradient(90deg, #0c0604 0px, #0c0604 30px, #120a06 30px, #120a06 38px);">
+          <p style="align-self: flex-start; margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">HALL OF FAME</p>
+          <img src="/_blob/a9a52f1fcd4a3830f6284d1f209b72eb" alt="Signed polaroid of Anthony Rutherford with Marius Iepure on the Break The Routine set" style="display: block; width: 100%; max-width: 240px; height: auto; transform: rotate(-2deg); box-shadow: 0 14px 30px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);">
+          <a href="{{lp}}Episodes.dc.html#hof" style="align-self: flex-start; padding: 4px 0; font-size: 14px;">Every signed polaroid</a>
+        </div>
+
       </aside>
     </div>
 
@@ -355,9 +384,21 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { on: -1, tq: '', tAll: false, chAll: false };
+    this.state = { on: -1, tq: '', tAll: false, chAll: false, tModal: false };
     this.vids = {};
   }
+  openT() {
+    this.setState({ tModal: true });
+    try { this._tOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = 'hidden'; } catch (e) {}
+    this._tKey = (e) => { if (e.key === 'Escape') this.closeT(); };
+    document.addEventListener('keydown', this._tKey);
+  }
+  closeT() {
+    this.setState({ tModal: false });
+    try { document.documentElement.style.overflow = this._tOverflow || ''; } catch (e) {}
+    if (this._tKey) document.removeEventListener('keydown', this._tKey);
+  }
+  componentWillUnmount() { if (this.state.tModal) this.closeT(); }
   renderVals() {
     const R = [{"code": "DcWrS9gItox", "hook": "Why dancers make the best employees", "views": "8.7k", "poster": "/_blob/c40e58a8fe9f201cf885b3fbf86b3885", "src": ""}, {"code": "DcRkY0QtUNe", "hook": "The government still treats dance like a hobby", "views": "8.4k", "poster": "/_blob/770d13d728b37c504b05fd36c363626c", "src": ""}, {"code": "DcO4ZEvIN3r", "hook": "Everything is too perfect now", "views": "4k", "poster": "/_blob/5e80c985012d4cc53209dfc82909c0b0", "src": ""}, {"code": "DcMGYKTg16_", "hook": "When your identity outgrows the box", "views": "4k", "poster": "/_blob/32ac9ec259b38aae1ed64adb19926853", "src": ""}, {"code": "DcZTLikohMo", "hook": "Stop hating your job and change it", "views": "2.7k", "poster": "/_blob/33ed8c189ce9bca59c2155733c39e37b", "src": ""}];
     const on = this.state.on;
@@ -414,10 +455,10 @@ class Component extends DCLogic {
       tRows = hits.slice(0, 80);
       tSummary = hits.length ? hits.length + (hits.length === 1 ? ' moment mentions “' : ' moments mention “') + tq + '”' + (hits.length > 80 ? ', first 80 shown' : '') : 'Nothing about “' + tq + '” in this episode. Try another word.';
     } else {
-      tRows = (this.state.tAll ? T : T.slice(0, 8)).map((r) => mk(r, -1));
+      tRows = T.slice(0, 8).map((r) => mk(r, -1));
       tSummary = 'The full conversation, ' + T.length + ' passages';
-      tCanToggle = true;
-      tToggleLabel = this.state.tAll ? 'SHOW LESS' : 'READ THE FULL TRANSCRIPT';
+      tCanToggle = T.length > 8;
+      tToggleLabel = 'READ THE FULL TRANSCRIPT';
     }
     const CH = [{"time": "00:00", "label": "Intro", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0", "tags": []}, {"time": "00:51", "label": "Meeting Anthony From Newcastle", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=51s", "tags": []}, {"time": "01:35", "label": "Newcastle Versus London Energy", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=95s", "tags": []}, {"time": "03:51", "label": "Dance Numbers In Germany And The UK", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=231s", "tags": []}, {"time": "04:52", "label": "Musical Theatre Auditions And Accessibility", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=292s", "tags": []}, {"time": "06:25", "label": "The Old Oliver Audition Queues", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=385s", "tags": []}, {"time": "07:43", "label": "Grateful For Technology And YouTube", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=463s", "tags": []}, {"time": "08:06", "label": "Learning From VHS Dance Tapes", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=486s", "tags": []}, {"time": "09:03", "label": "Training In Germany With The Best", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=543s", "tags": []}, {"time": "10:44", "label": "Meeting Idols In Football And Dance", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=644s", "tags": []}, {"time": "11:44", "label": "Why Feeling Matters More Than Perfection", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=704s", "tags": []}, {"time": "13:11", "label": "Strong Feet Make Champions", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=791s", "tags": []}, {"time": "13:49", "label": "Connecting The Dots As Entrepreneurs", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=829s", "tags": []}, {"time": "14:32", "label": "Football On The Council Estate", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=872s", "tags": []}, {"time": "16:03", "label": "Almost Joining A Boy Band", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=963s", "tags": []}, {"time": "17:17", "label": "Dragged To Dance By His Cousin", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1037s", "tags": []}, {"time": "18:22", "label": "Finding Passion Over Talent", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1102s", "tags": []}, {"time": "19:04", "label": "Following The Spark Despite Doubt", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1144s", "tags": []}, {"time": "19:45", "label": "AI Versus Human Art", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1185s", "tags": []}, {"time": "21:05", "label": "Dyslexia, ADHD And AI As A Helper", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1265s", "tags": []}, {"time": "22:46", "label": "A Life Built Across Different Worlds", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1366s", "tags": []}, {"time": "24:23", "label": "Knocking On The TV Station Door", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1463s", "tags": []}, {"time": "26:04", "label": "Asking The BBC For A Radio Show", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1564s", "tags": []}, {"time": "27:11", "label": "Dancing Is A Superpower", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1631s", "tags": []}, {"time": "28:02", "label": "Blackpool Posture And Confidence", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1682s", "tags": []}, {"time": "29:38", "label": "Discipline From The Dance Floor", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1778s", "tags": []}, {"time": "31:07", "label": "The Legendary Leek Show Story", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=1867s", "tags": []}, {"time": "34:01", "label": "Bullying And Growing Up Dancing", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2041s", "tags": []}, {"time": "35:36", "label": "A Hard Man Father In A Pit Town", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2136s", "tags": []}, {"time": "37:39", "label": "Family Time As A Modern Dad", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2259s", "tags": []}, {"time": "39:05", "label": "Prouder Of Students Than Titles", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2345s", "tags": []}, {"time": "40:23", "label": "Why Coaching Frustrates Him", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2423s", "tags": []}, {"time": "42:12", "label": "Dance Gives A Winning Mentality", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2532s", "tags": []}, {"time": "44:36", "label": "Criticism Builds Thick Skin", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2676s", "tags": []}, {"time": "45:46", "label": "Please Do Not Hit The Kids", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2746s", "tags": []}, {"time": "47:12", "label": "Protecting Kids In Performance Careers", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=2832s", "tags": []}, {"time": "50:12", "label": "Bringing Back Healthy Conflict", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3012s", "tags": []}, {"time": "52:31", "label": "Finding The Right School For Your Kid", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3151s", "tags": []}, {"time": "55:03", "label": "Free Will Over Money", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3303s", "tags": []}, {"time": "56:02", "label": "Plastering Walls Between Dance Tours", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3362s", "tags": []}, {"time": "57:06", "label": "Government Treats Dance As A Hobby", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3426s", "tags": []}, {"time": "58:20", "label": "Dancing Two Minutes For Shoppers", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3500s", "tags": []}, {"time": "59:02", "label": "World Champions Living In Cars", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3542s", "tags": []}, {"time": "1:00:01", "label": "Sport Teaches You To Lose And Win", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3601s", "tags": []}, {"time": "1:01:41", "label": "It Is The Heel, Not The Dress", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3701s", "tags": []}, {"time": "1:02:45", "label": "Auntie Lisa And Blood Cancer", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3765s", "tags": []}, {"time": "1:05:10", "label": "Shaving Her Head And Living Fully", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=3910s", "tags": []}, {"time": "1:06:43", "label": "The Will Smith Skydive Lesson", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4003s", "tags": []}, {"time": "1:07:49", "label": "Cherishing Time With India", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4069s", "tags": []}, {"time": "1:08:56", "label": "Laughing Through Grief", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4136s", "tags": []}, {"time": "1:10:24", "label": "Joining The Strictly Team In 2014", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4224s", "tags": []}, {"time": "1:12:13", "label": "How He Met Kevin Clifton", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4333s", "tags": []}, {"time": "1:12:52", "label": "20 Rapid Fire Questions", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4372s", "tags": []}, {"time": "1:16:30", "label": "World Atlas Recap: Chad", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4590s", "tags": []}, {"time": "1:18:09", "label": "World Atlas Picks Laos", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4689s", "tags": ["On the map"]}, {"time": "1:19:55", "label": "Football And Dance Identities", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4795s", "tags": []}, {"time": "1:22:01", "label": "Boxing Is Like Dance Training", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=4921s", "tags": []}, {"time": "1:24:22", "label": "What Football And Dance Teach Each Other", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5062s", "tags": []}, {"time": "1:26:13", "label": "Standards, Access And Foundations For Dancers", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5173s", "tags": []}, {"time": "1:29:59", "label": "The Financial Trap Of DanceSport", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5399s", "tags": []}, {"time": "1:31:58", "label": "Simple Over Exaggerated On The Floor", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5518s", "tags": []}, {"time": "1:34:11", "label": "Dancers Make The Best Salespeople", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5651s", "tags": []}, {"time": "1:36:01", "label": "Changes In DanceSport And Boys Dancing", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5761s", "tags": []}, {"time": "1:38:06", "label": "Building A Future For India", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5886s", "tags": []}, {"time": "1:39:49", "label": "Struggle, Rejection And Mary Poppins", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=5989s", "tags": []}, {"time": "1:42:31", "label": "Breaking The Routine: Just Say I Can", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=6151s", "tags": []}, {"time": "1:45:34", "label": "BTR Playlist: Buena Vista Social Club", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=6334s", "tags": ["Playlist"]}, {"time": "1:47:01", "label": "James Wilson Leaves A Question", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=6421s", "tags": ["The Chain"]}, {"time": "1:50:51", "label": "A Question For The Next Guest", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=6651s", "tags": []}, {"time": "1:53:13", "label": "Final Thanks And Goodbye", "url": "https://www.youtube.com/watch?v=8tsAnwQanY0&t=6793s", "tags": []}];
     let shown = 0;
@@ -433,8 +474,14 @@ class Component extends DCLogic {
       tq: this.state.tq,
       onTq: (e) => this.setState({ tq: e.target.value }),
       tRows, tSummary, tCanToggle, tToggleLabel,
-      tExpanded: this.state.tAll ? 'true' : 'false',
-      tToggle: () => this.setState({ tAll: !this.state.tAll }),
+      tExpanded: this.state.tModal ? 'true' : 'false',
+      tToggle: () => this.openT(),
+      tModal: this.state.tModal,
+      tModalSub: T.length + ' passages · tap a time to play that moment',
+      tAllRows: this.state.tModal ? T.map((r) => mk(r, -1)) : [],
+      tClose: () => this.closeT(),
+      tBackdrop: (e) => { if (e.target === e.currentTarget) this.closeT(); },
+      tPick: (e) => { if (e.target && e.target.closest && e.target.closest('a[href]')) this.closeT(); },
       chRows, chCanToggle: CH.filter((r) => !r.head).length > 20,
       chToggleLabel: this.state.chAll ? 'SHOW FEWER CHAPTERS' : 'SHOW ALL ' + CH.filter((r) => !r.head).length + ' CHAPTERS',
       chExpanded: this.state.chAll ? 'true' : 'false',

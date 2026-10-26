@@ -19,7 +19,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{
 summary.btr-burger-btn{list-style:none}summary.btr-burger-btn::-webkit-details-marker{display:none}
 details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-close{display:none}
 @media (max-width: 900px){.ep-guest-img{aspect-ratio:16/9 !important}.ep-guest-img img{object-position:center !important}}
-@media (max-width: 600px){.ep-trow{grid-template-columns:52px 1fr !important;gap:12px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
+@media (max-width: 600px){.ep-trow{grid-template-columns:1fr !important;gap:2px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
 @media (max-width: 900px){.btr-links,.btr-sub{display:none !important}.btr-burger{display:block !important}.btr-chain-row{flex-wrap:nowrap !important;overflow-x:auto;padding-bottom:20px !important}}
 /* motion */
 html{scroll-behavior:smooth}
@@ -44,6 +44,7 @@ details.btr-burger[open] > div{animation:btrMenu .38s cubic-bezier(.16,1,.3,1) b
 details.btr-burger[open] > div > a{animation:btrMenu .45s cubic-bezier(.16,1,.3,1) both}
 details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr-burger[open] > div > a:nth-child(3){animation-delay:80ms}details.btr-burger[open] > div > a:nth-child(4){animation-delay:120ms}details.btr-burger[open] > div > a:nth-child(5){animation-delay:160ms}details.btr-burger[open] > div > a:nth-child(6){animation-delay:200ms}
 @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}[data-rv]{transition:none !important;opacity:1 !important;transform:none !important}[data-zoom],[data-btn]{transition:none !important}}
+@keyframes btrTIn{from{opacity:0}to{opacity:1}}
 </style>
 </helmet>
 <div ref="{{motionRef}}" style="background: #080403; color: #ffffff; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; font-stretch: 108%; font-size: 17px; line-height: 1.55;">
@@ -193,10 +194,31 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
               </div>
             </sc-for>
             <sc-if value="{{tCanToggle}}" hint-placeholder-val="{{true}}">
-              <button type="button" onClick="{{tToggle}}" aria-expanded="{{tExpanded}}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">{{tToggleLabel}}</button>
+              <button type="button" onClick="{{tToggle}}" aria-haspopup="dialog" aria-expanded="{{tExpanded}}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;">{{tToggleLabel}}</button>
             </sc-if>
           </div>
-          <p style="margin: 0; font-size: 13px; color: #a8998b;">Transcribed automatically from the episode audio, so some names may be misspelled. Tap a time to play that moment on YouTube.</p>
+          <p style="margin: 0; font-size: 13px; color: #a8998b;">Transcribed automatically from the episode audio, so some names may be misspelled. Tap a time to play that moment.</p>
+          <sc-if value="{{tModal}}" hint-placeholder-val="{{false}}">
+            <div role="dialog" aria-modal="true" aria-labelledby="tmodal-title" onClick="{{tBackdrop}}" style="position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px)); background: rgba(8,4,3,0.84); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: btrTIn .3s cubic-bezier(.16,1,.3,1) both;">
+              <div style="width: 100%; max-width: 880px; max-height: 100%; display: flex; flex-direction: column; background: #0e0705; border: 1px solid rgba(254,203,122,0.3); box-shadow: 0 30px 80px rgba(0,0,0,0.6);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 16px 16px 24px; border-bottom: 1px solid rgba(254,203,122,0.16);">
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                    <p id="tmodal-title" style="margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">FULL TRANSCRIPT</p>
+                    <p style="margin: 0; font-size: 14px; color: #c9b8a6;">{{tModalSub}}</p>
+                  </div>
+                  <button type="button" onClick="{{tClose}}" aria-label="Close the transcript" style="flex: none; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; background: transparent; border: 1px solid rgba(254,203,122,0.55); border-radius: 0; color: #ffffff; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M4 4l12 12M16 4L4 16"></path></svg></button>
+                </div>
+                <div onClick="{{tPick}}" style="overflow-y: auto; overscroll-behavior: contain; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+                  <sc-for list="{{tAllRows}}" as="p" hint-placeholder-count="6">
+                  <div class="ep-trow" style="display: grid; grid-template-columns: 92px 1fr; gap: 16px;">
+                    <a href="{{p.url}}" aria-label="{{p.aria}}" style="align-self: start; padding: 2px 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">{{p.time}}</a>
+                    <p style="margin: 0; color: #e8ddd1;">{{p.before}}</p>
+                  </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
         </section>
       </div>
 
@@ -242,6 +264,13 @@ details.btr-burger[open] > div > a:nth-child(2){animation-delay:40ms}details.btr
           <a href="https://www.youtube.com/watch?v=o3Daq6WSuzs&amp;t=3409s" style="align-self: flex-start; padding: 4px 0; font-size: 14px;">Why he picked it, at 56:49</a>
           <a href="https://open.spotify.com/playlist/75ezrU9QqXelJ7TwSuAT6f" style="align-self: flex-start; padding: 4px 0; font-size: 15px;">Break The Routine curated on Spotify →</a>
         </div>
+
+        <div data-polaroid="" style="padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; border: 1px solid rgba(254,203,122,0.2); background: repeating-linear-gradient(90deg, #0c0604 0px, #0c0604 30px, #120a06 30px, #120a06 38px);">
+          <p style="align-self: flex-start; margin: 0; font-family: 'PP Monument Extended', 'Arial Black', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #fecb7a;">HALL OF FAME</p>
+          <img src="/_blob/d7595019870c2c6d6217037c1284057a" alt="Signed polaroid of Oskar Odiakosa with Marius Iepure on the Break The Routine set" style="display: block; width: 100%; max-width: 240px; height: auto; transform: rotate(-2deg); box-shadow: 0 14px 30px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);">
+          <a href="{{lp}}Episodes.dc.html#hof" style="align-self: flex-start; padding: 4px 0; font-size: 14px;">Every signed polaroid</a>
+        </div>
+
       </aside>
     </div>
 
@@ -355,9 +384,21 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { on: -1, tq: '', tAll: false, chAll: false };
+    this.state = { on: -1, tq: '', tAll: false, chAll: false, tModal: false };
     this.vids = {};
   }
+  openT() {
+    this.setState({ tModal: true });
+    try { this._tOverflow = document.documentElement.style.overflow; document.documentElement.style.overflow = 'hidden'; } catch (e) {}
+    this._tKey = (e) => { if (e.key === 'Escape') this.closeT(); };
+    document.addEventListener('keydown', this._tKey);
+  }
+  closeT() {
+    this.setState({ tModal: false });
+    try { document.documentElement.style.overflow = this._tOverflow || ''; } catch (e) {}
+    if (this._tKey) document.removeEventListener('keydown', this._tKey);
+  }
+  componentWillUnmount() { if (this.state.tModal) this.closeT(); }
   renderVals() {
     const R = [{"code": "DdWxaY0Nck-", "hook": "We need electric scooters", "views": "7.9k", "poster": "", "src": ""}, {"code": "DdUhKico5ZZ", "hook": "Part 2 with Oskar is out now", "views": "7.1k", "poster": "", "src": ""}, {"code": "DdKJxo7o2FR", "hook": "Would you trust your younger self as a partner?", "views": "7k", "poster": "", "src": ""}, {"code": "Ddb0HbTtLe4", "hook": "The imposter syndrome confession", "views": "6.3k", "poster": "/_blob/59d1fc3b3167f469a6bd18755bc09414", "src": ""}, {"code": "DdEM3AoIjZR", "hook": "How far would you go for the thing you love?", "views": "6.2k", "poster": "", "src": ""}];
     const on = this.state.on;
@@ -414,10 +455,10 @@ class Component extends DCLogic {
       tRows = hits.slice(0, 80);
       tSummary = hits.length ? hits.length + (hits.length === 1 ? ' moment mentions “' : ' moments mention “') + tq + '”' + (hits.length > 80 ? ', first 80 shown' : '') : 'Nothing about “' + tq + '” in this episode. Try another word.';
     } else {
-      tRows = (this.state.tAll ? T : T.slice(0, 8)).map((r) => mk(r, -1));
+      tRows = T.slice(0, 8).map((r) => mk(r, -1));
       tSummary = 'The full conversation, ' + T.length + ' passages';
-      tCanToggle = true;
-      tToggleLabel = this.state.tAll ? 'SHOW LESS' : 'READ THE FULL TRANSCRIPT';
+      tCanToggle = T.length > 8;
+      tToggleLabel = 'READ THE FULL TRANSCRIPT';
     }
     const CH = [{"head": "PART 1"}, {"time": "00:00", "label": "Intro", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw", "tags": []}, {"time": "00:52", "label": "Welcome Oskar Odiakosa", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=52s", "tags": []}, {"time": "02:21", "label": "Judging Blackpool and a Second Career", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=141s", "tags": []}, {"time": "03:09", "label": "An Accountant Who Counts Past Eight", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=189s", "tags": []}, {"time": "04:07", "label": "Why Every Dancer Should Volunteer", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=247s", "tags": []}, {"time": "05:32", "label": "Too Many Divided Directions in Britain", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=332s", "tags": []}, {"time": "07:09", "label": "Teaching Associations and Freedom of Choice", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=429s", "tags": []}, {"time": "09:35", "label": "Barriers to Entry in Ballroom", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=575s", "tags": []}, {"time": "10:30", "label": "Strictly Versus Real Competition Technique", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=630s", "tags": []}, {"time": "11:21", "label": "Why the Public Stays Away", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=681s", "tags": []}, {"time": "13:07", "label": "Marketing DanceSport to New Audiences", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=787s", "tags": []}, {"time": "14:33", "label": "Getting Into a Position of Power", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=873s", "tags": []}, {"time": "16:22", "label": "Black in The Ballroom and WDSF Access", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=982s", "tags": []}, {"time": "17:20", "label": "Staying Neutral in the Blackpool Split", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1040s", "tags": []}, {"time": "19:11", "label": "Speaking Out to Spread Awareness", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1151s", "tags": []}, {"time": "21:13", "label": "Technique Is a Guide Not Gospel", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1273s", "tags": []}, {"time": "23:36", "label": "Malitovsky Versus Ricardo Debate", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1416s", "tags": []}, {"time": "26:03", "label": "UK Panels Lack International Voices", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1563s", "tags": []}, {"time": "29:03", "label": "If I Don't Judge I Don't Teach", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1743s", "tags": []}, {"time": "30:52", "label": "The Training Camp and Panel Problem", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1852s", "tags": []}, {"time": "32:58", "label": "Randomizing Numbers to Force Focus", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=1978s", "tags": []}, {"time": "34:14", "label": "Dancing Beside the World Finalists", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2054s", "tags": []}, {"time": "35:20", "label": "Judging Strong Heats Fairly", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2120s", "tags": []}, {"time": "36:34", "label": "Too Many Couples on the Floor", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2194s", "tags": []}, {"time": "40:02", "label": "Squeezed Timetables and Lost Dancers", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2402s", "tags": []}, {"time": "42:29", "label": "Scooters and Breaking the Routine", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2549s", "tags": []}, {"time": "43:02", "label": "Why Oskar Still Keeps a Job", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2582s", "tags": []}, {"time": "45:00", "label": "Getting Rich During Covid", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2700s", "tags": []}, {"time": "47:47", "label": "Outside Perspective Builds Better Leaders", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2867s", "tags": []}, {"time": "48:40", "label": "Should Top Dancers Lead Federations", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=2920s", "tags": []}, {"time": "50:03", "label": "Business Minds Run the Biggest Clubs", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3003s", "tags": []}, {"time": "52:31", "label": "Are Dance Teachers Too Intimidating", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3151s", "tags": []}, {"time": "54:31", "label": "Life on the Viva Carnival Tour", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3271s", "tags": []}, {"time": "57:21", "label": "Feeling Free on Stage Again", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3441s", "tags": []}, {"time": "58:41", "label": "Dancing for Love Not Trophies", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3521s", "tags": []}, {"time": "59:19", "label": "Subscribe and Goodbye", "url": "https://www.youtube.com/watch?v=-DigDTAnOfw&t=3559s", "tags": []}, {"head": "PART 2"}, {"time": "00:00", "label": "The Red Flame Shirt and Making the Final", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs", "tags": []}, {"time": "07:13", "label": "Belonging and Imposter Syndrome in Ballroom", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=433s", "tags": []}, {"time": "13:12", "label": "Why No Teacher Should Own a Student", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=792s", "tags": []}, {"time": "19:11", "label": "The True Value of Dance Lessons", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=1151s", "tags": []}, {"time": "26:01", "label": "Building Black in the Ballroom and Real Allies", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=1561s", "tags": []}, {"time": "34:43", "label": "Rapid Fire Questions", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=2083s", "tags": []}, {"time": "40:08", "label": "World Atlas: Malawi and Japan", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=2408s", "tags": ["On the map"]}, {"time": "43:37", "label": "Where DanceSport Is Headed", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=2617s", "tags": []}, {"time": "46:29", "label": "Blackpool as Competitor Versus Judge", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=2789s", "tags": []}, {"time": "48:44", "label": "Camps Versus the Competition Floor", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=2924s", "tags": []}, {"time": "51:05", "label": "Vision for Black in the Ballroom", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=3065s", "tags": []}, {"time": "56:49", "label": "Breaking the Routine and Manteca", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=3409s", "tags": ["Playlist"]}, {"time": "59:42", "label": "The One Thing Every Student Needs", "url": "https://www.youtube.com/watch?v=o3Daq6WSuzs&t=3582s", "tags": ["The Chain"]}];
     let shown = 0;
@@ -433,8 +474,14 @@ class Component extends DCLogic {
       tq: this.state.tq,
       onTq: (e) => this.setState({ tq: e.target.value }),
       tRows, tSummary, tCanToggle, tToggleLabel,
-      tExpanded: this.state.tAll ? 'true' : 'false',
-      tToggle: () => this.setState({ tAll: !this.state.tAll }),
+      tExpanded: this.state.tModal ? 'true' : 'false',
+      tToggle: () => this.openT(),
+      tModal: this.state.tModal,
+      tModalSub: T.length + ' passages · tap a time to play that moment',
+      tAllRows: this.state.tModal ? T.map((r) => mk(r, -1)) : [],
+      tClose: () => this.closeT(),
+      tBackdrop: (e) => { if (e.target === e.currentTarget) this.closeT(); },
+      tPick: (e) => { if (e.target && e.target.closest && e.target.closest('a[href]')) this.closeT(); },
       chRows, chCanToggle: CH.filter((r) => !r.head).length > 20,
       chToggleLabel: this.state.chAll ? 'SHOW FEWER CHAPTERS' : 'SHOW ALL ' + CH.filter((r) => !r.head).length + ' CHAPTERS',
       chExpanded: this.state.chAll ? 'true' : 'false',
