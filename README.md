@@ -20,7 +20,7 @@ Le design vient du canvas Claude Design « BTR Website » ; chaque page du canva
 
 1. vercel.com → **Add New… → Project** → importer `loicviatte/btr-website`.
 2. Laisser les réglages par défaut (Next.js détecté automatiquement) → **Deploy**.
-3. Tant que la variable `SITE_LIVE` n'est pas réglée, le site est invisible pour Google (noindex). Au lancement : ajouter `SITE_LIVE` = `1` dans *Settings → Environment Variables* puis redéployer.
+3. Le site est public et indexé par Google (sitemap : /sitemap.xml ; /ask est exclu). Pour le cacher à nouveau : `SITE_LIVE` = `0` dans Vercel, puis Redeploy.
 4. Optionnel : variable d'environnement `SITE_URL` = l'URL finale (ex. `https://breaktheroutine.com`), puis brancher le domaine dans *Settings → Domains*.
 
 Chaque push sur `main` redéploie le site automatiquement.

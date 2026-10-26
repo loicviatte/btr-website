@@ -9,8 +9,8 @@ export const metadata = {
   openGraph: { siteName: 'Break The Routine', type: 'website', images: [{ url: '/og-btr.jpg', width: 1200, height: 630, alt: 'BTR, The Dancesport Podcast' }] },
   twitter: { card: 'summary_large_image', images: ['/og-btr.jpg'] },
   icons: { icon: '/assets/745152d7135187f4378802fc563253b5.png' },
-  // Hidden from Google until launch: set SITE_LIVE=1 in Vercel to open it up.
-  robots: process.env.SITE_LIVE === '1' ? { index: true, follow: true } : { index: false, follow: false },
+  // Indexed by Google. Set SITE_LIVE=0 in Vercel to hide it again.
+  robots: process.env.SITE_LIVE === '0' ? { index: false, follow: false } : { index: true, follow: true },
 };
 
 export const viewport = { themeColor: '#080403', width: 'device-width', initialScale: 1 };
