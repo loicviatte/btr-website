@@ -12,6 +12,20 @@ for x in range(480,600): m[:,x]=int(255*(600-x)/120)
 plate.paste(L,(0,0),Image.fromarray(m)); plate=plate.filter(F.GaussianBlur(9))
 ph=Image.open(src_photo).convert('RGB')
 cut=remove(ph,session=new_session(model)).convert('RGBA')
+from scipy import ndimage
+A=np.array(cut.split()[3]).astype(np.float32)
+A[A<70]=0
+lab,n=ndimage.label(A>128)
+if n>1:
+    sizes=ndimage.sum(np.ones_like(A),lab,range(1,n+1)); keep=1+int(np.argmax(sizes))
+    region=ndimage.binary_dilation(lab==keep,iterations=6)
+    A[~region]=0
+HS=np.array(remove(ph,session=new_session('u2net_human_seg'),only_mask=True)).astype(np.float32)
+hsb=ndimage.binary_erosion(HS>128,iterations=int(sys.argv[8]) if len(sys.argv)>8 else 10)
+hsa=np.array(Image.fromarray((hsb*255).astype(np.uint8)).filter(F.GaussianBlur(3))).astype(np.float32)
+ycut=int(sys.argv[7]) if len(sys.argv)>7 else 0
+A[:ycut]=np.minimum(A[:ycut],hsa[:ycut])
+cut.putalpha(Image.fromarray(A.astype(np.uint8)))
 cut.save(out+'.cut.png')
 W,H=cut.size; cw,ch=int(W*scale),int(H*scale)
 c=cut.resize((cw,ch),Image.LANCZOS)
