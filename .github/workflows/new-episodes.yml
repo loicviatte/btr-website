@@ -1,0 +1,37 @@
+# Every 2 hours: look for new public episodes (> 15 min) on the YouTube channel and download
+# their thumbnail, captions (SRT) and description into data/incoming/<videoId>/.
+# The scheduled Claude task then turns them into pages (tools/auto/RUNBOOK.md).
+name: New episodes
+on:
+  schedule:
+    - cron: '17 */2 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: new-episodes
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install yt-dlp
+      - name: Look for new episodes
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          YT_CHANNEL_ID: ${{ secrets.YT_CHANNEL_ID }}
+        run: python3 tools/auto/yt_fetch.py
+      - name: Save what was found
+        run: |
+          git config user.name "btr-bot"
+          git config user.email "btr-bot@users.noreply.github.com"
+          git add data/incoming
+          if git diff --cached --quiet; then echo "Nothing new"; exit 0; fi
+          git commit -m "Incoming episode data from YouTube"
+          git pull --rebase
+          git push
