@@ -7,6 +7,8 @@ export const metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://breaktheroutine.vercel.app'),
   openGraph: { siteName: 'Break The Routine', type: 'website', images: ['/assets/6704faaedd6251c16887bc9024d7381e.jpg'] },
   icons: { icon: '/assets/745152d7135187f4378802fc563253b5.png' },
+  // Hidden from Google until launch: set SITE_LIVE=1 in Vercel to open it up.
+  robots: process.env.SITE_LIVE === '1' ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 export const viewport = { themeColor: '#080403', width: 'device-width', initialScale: 1 };
