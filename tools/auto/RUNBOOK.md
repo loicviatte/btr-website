@@ -10,8 +10,15 @@ Loïc chose **direct publishing**: no review step, so check carefully before pus
 cd btr-website && git pull
 ls data/incoming/*/captions.srt   # a folder WITH captions.srt and WITHOUT a "done" file = to process
 ```
-Nothing to process → stop, say nothing. A folder without `captions.srt` is not ready yet (YouTube is still
-making the captions): leave it, the Action retries.
+A folder without `captions.srt` is not ready yet (YouTube is still making the captions): leave it, the Action retries.
+
+Also, on every run, fill Atlas cards that still say "coming soon" once the Instagram carousel research exists:
+```
+git clone -q https://github.com/loicviatte/btr-media.git ../btr-media   # public repo, read only
+python3 tools/auto/btr_auto.py atlas-sync ../btr-media
+```
+If it filled something: compile, build, smoke test (any existing slug), commit "Atlas: <country> cards", push.
+Nothing to process and nothing synced → stop, say nothing.
 
 Process folders in publishing order (oldest `publishedAt` first), one at a time, steps 1 to 6 each.
 
@@ -41,11 +48,8 @@ Format: see the docstring at the top of `tools/auto/btr_auto.py`. Rules:
 - `chain.leaves`: the question this guest records for the next guest (text + `sec`). Null if not in this part.
 - `atlas`: the country the guest lands on when opening the World Atlas (`country`, `slug`, `sec` = the draw).
   Null if there is no draw. If the map uses another name (e.g. "Dem. Rep. Congo"), add `mapName`.
-- `atlasCards` (when there is an atlas pick): 6 slides like the existing countries in design/Atlas.dc.html:
-  "Latin & Ballroom?" verdict, a big number fact, typical dances (2), a person or event, a year fact.
-  Research with web search; every fact must be checkable (keep the sources for the commit message).
-  Format: see `atlas_cards()` in `tools/auto/btr_pages.py`. If research isn't solid, leave `atlasCards` out:
-  a "coming soon" card is shown instead.
+- `atlasCards`: leave it out. The site shows a "coming soon" card for the new country; the Instagram carousel task
+  (step 6) does the researched, fact-checked slides, and `atlas-sync` copies them to the site.
 - Part 2: `"addPartTo": "<existing slug>"`, `parts` = only the new part; give `chain`/`atlas` found in this part.
 
 ## 3. Apply
@@ -54,6 +58,8 @@ python3 tools/auto/btr_auto.py apply data/episodes/<slug>.json
 ```
 This creates/updates: the episode page, Episodes list, Search index, previous guest's links, home page (hero,
 previous episodes, chain teaser, World Atlas card), The Chain and the World Atlas.
+
+Then `python3 tools/auto/btr_auto.py atlas-sync ../btr-media` (in case the carousel already exists).
 
 ## 4. Check
 ```
@@ -71,7 +77,21 @@ git add -A && git commit -m "New episode: <Name> — <title>" && git push
 ```
 Pushing to `main` deploys the site (Vercel). Footer credit, the Ask page (never linked) and fonts are untouched.
 
-## 6. Tell Loïc (in French, short)
+## 6. Hand the country to the Instagram carousel task
+Only when the episode has a World Atlas draw (and it is a new country for this guest):
+1. Upload the captions to the Drive folder the carousel task watches (Google Drive connector, `create_file`):
+   title `<YYYY-MM-DD> <Guest> - <episode title>.srt`, `parentId` `1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-`
+   (BREAKTHEROUTINE/SRT), `textContent` = the captions.srt text, `contentMimeType` `text/plain`,
+   `disableConversionToGoogleType` true. Keep the returned file id.
+2. Start the carousel task now (`fire_trigger`, trigger `trig_0151tdHEtCDERz4pbqP4nJDi`, "BTR World Atlas auto-carousel")
+   with text: `Signal du site BTR : nouvel épisode « <title> », guest <Name>, publié le <date>. Pays tiré (vu par
+   le site) : <country>, à <m:ss> dans la vidéo <url>. SRT dans Google Drive BREAKTHEROUTINE/SRT, file id <id>.`
+   It researches and verifies the 8 slides, adds them to the BTR Designs canvas, schedules Instagram/TikTok in Metricool
+   (notification mode) and messages Loïc. Its verified research then fills the site's Atlas cards through atlas-sync
+   on a later run of this task.
+If uploading or firing fails, say so in the message to Loïc (the carousel task also checks Drive on Tue/Wed 13:59).
+
+## 7. Tell Loïc (in French, short)
 What went online (guest, episode page link `https://www.breaktheroutinepodcast.com/episodes/<slug>`), the chain
 question and the country picked, and anything uncertain (e.g. "pas trouvé la question de la Chain").
 

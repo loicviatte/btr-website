@@ -229,3 +229,80 @@ def update_atlas(spec):
     h = re.sub(r'\d+ countries from the World Atlas game', f'{len(MAP)} countries from the World Atlas game', h, count=1)
     write('Main.dc.html', h)
     return c['name']
+
+
+# ---------------------------------------------------------------- Atlas cards from the Instagram carousel research
+
+def _segs_md(text):
+    """'**bold**' and '==gold==' markup -> segments (same as the carousel content files)."""
+    out = []
+    for part in re.split(r'(\*\*.+?\*\*|==.+?==)', text):
+        if not part: continue
+        if part.startswith('**'): out.append({'t': part[2:-2], 'st': 'font-weight: 700;'})
+        elif part.startswith('=='): out.append({'t': part[2:-2], 'st': 'font-weight: 700; color: #fecb7a;'})
+        else: out.append({'t': part, 'st': ''})
+    return out
+
+
+def _bigpx(t, cap, k=300):
+    w = sum(0.4 if ch in '.,’\'' else 1 for ch in t)
+    return max(24, min(cap, int(k / max(w, 1))))
+
+
+def _big(t, cap, color='#fecb7a', k=300):
+    return {'st': f"margin: 8px 0 4px; {MONO} font-size: clamp(30px, 5vw, {_bigpx(t, cap, k)}px); font-weight: 800; line-height: 1; color: {color}; overflow-wrap: anywhere;", 'segs': [{'t': t, 'st': ''}]}
+
+
+def _line(t, color='#ffffff', right=False, segs=None):
+    st = f"margin: 4px 0 0; {MONO} font-size: clamp(18px, 2vw, 26px); font-weight: 800; line-height: 1.08; color: {color};" + (' text-align: right;' if right else '')
+    return {'st': st, 'segs': segs or [{'t': t, 'st': ''}]}
+
+
+def _paras(ps):
+    return [{'st': PARA0 if i == 0 else PARA, 'segs': _segs_md(p)} for i, p in enumerate(ps) if p]
+
+
+def content_to_cards(c):
+    """A carousel content file (btr-media/pipeline/content/<slug>.json) -> the 6 cards of the site's Atlas."""
+    q = {'t': '“', 'st': 'color: #fecb7a;'}; qe = {'t': '”', 'st': 'color: #fecb7a;'}
+    col = 'display: flex; flex-direction: column;'
+    grid = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px 36px;'
+    s2, s3, s4, s6, s7 = c['s2'], c['s3'], c['s4'], c['s6'], c['s7']
+    cards = [
+        {'left': [_line('Latin &'), _line('Ballroom?'), _big(s2['answer'], 48)], 'groups': [{'blocks': _paras([s2.get('p1'), s2.get('p2')])}], 'rightStyle': col},
+        {'left': [_big(s3['number'], 66, k=200), _line(s3['line1']), _line(s3['line2'])], 'groups': [{'blocks': _paras([s3['p']])}], 'rightStyle': col},
+        {'left': [_line('', segs=[q, {'t': s4['top'], 'st': ''}]), _big(s4['key'], 47, '#ffffff'), _line('', '#fecb7a', True, [{'t': s4['bottom'], 'st': ''}, qe])],
+         'groups': [{'blocks': _paras([s4.get('p1'), s4.get('p2')])}], 'rightStyle': col},
+        {'left': [_line('Typical dances')], 'groups': [{'blocks': [_big(d['name'], 33, '#ffffff'), {'st': TAG_ST, 'segs': [{'t': d['meta'], 'st': ''}]}] + _paras([d['p']])} for d in c['s5']], 'rightStyle': grid},
+        {'left': [_line('', segs=[q, {'t': s6['top'], 'st': ''}]), _big(s6['key'], 47, '#ffffff'), _line('', '#ffffff', True, [{'t': s6['bottom'], 'st': ''}, qe])],
+         'groups': [{'blocks': _paras([s6['p']])}], 'rightStyle': col},
+        {'left': [_big(s7['year'], 60, k=220), _line(s7['line1']), _line(s7['line2'])],
+         'groups': [{'blocks': _paras([s7['p']]) + ([{'st': 'margin: 14px 0 4px; height: 2px; background: #fecb7a;', 'segs': []}, {'st': TAG_ST, 'segs': [{'t': s7['tag'], 'st': ''}]},
+                                                    {'st': PARA, 'segs': _segs_md(s7['p2'])}] if s7.get('tag') and s7.get('p2') else [])}], 'rightStyle': col},
+    ]
+    for i, card in enumerate(cards):
+        card['n'] = f'{i + 2:02d} / 07'
+        cards[i] = {'n': card['n'], 'left': card['left'], 'groups': card['groups'], 'rightStyle': card['rightStyle']}
+    return cards
+
+
+def atlas_sync(media_dir):
+    """Fill 'coming soon' Atlas cards with the verified research of the Instagram carousel, once it exists.
+    Returns the countries updated."""
+    s = read('Atlas.dc.html')
+    CAR = js_array(s, 'CAR')
+    m = re.search(r'    const raw = \[\n(.*?)\n    \];', s, re.S)
+    guests = [re.search(r"m: \[\['((?:[^'\\]|\\.)*)'", line).group(1).replace("\\'", "'") for line in m.group(1).split('\n') if 'm: [[' in line]
+    reg = json.load(open(os.path.join(media_dir, 'pipeline', 'countries.json'), encoding='utf-8'))
+    done = []
+    for i, entry in enumerate(CAR):
+        flat = json.dumps(entry['cards'])
+        if len(entry['cards']) > 1 or 'SOON' not in flat or i >= len(guests): continue
+        slug = next((k for k, v in reg.items() if v.get('guest') == guests[i]), None)
+        path = slug and os.path.join(media_dir, 'pipeline', 'content', slug + '.json')
+        if not path or not os.path.exists(path): continue
+        entry['cards'] = content_to_cards(json.load(open(path, encoding='utf-8')))
+        done.append(entry['name'])
+    if done:
+        write('Atlas.dc.html', set_js_array(s, 'CAR', CAR))
+    return done

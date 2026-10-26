@@ -12,6 +12,8 @@ Commands
   apply <spec.json>                       create/update the episode page, Episodes list, Search index,
                                           previous episode's links. Prints what is left to do by hand.
   country "<Country name>"                print the World Atlas map entry for a country (needs node deps)
+  atlas-sync <btr-media dir>              fill "coming soon" Atlas cards from the Instagram carousel research
+                                          (btr-media/pipeline/content/<slug>.json, matched by guest name)
 
 Extra spec keys: "teaser" (one sentence under the home page hero), "atlasCards" (carousel slides, see btr_pages.atlas_cards),
 "atlas.mapName" (the map's own country name when it differs, e.g. "Dem. Rep. Congo").
@@ -525,4 +527,8 @@ if __name__ == '__main__':
     elif cmd == 'thumb': print(add_thumb(sys.argv[2]))
     elif cmd == 'apply': apply(sys.argv[2])
     elif cmd == 'country': country(sys.argv[2])
+    elif cmd == 'atlas-sync':
+        import btr_pages as BP
+        done = BP.atlas_sync(sys.argv[2])
+        print('Atlas cards filled from the carousel research: ' + (', '.join(done) if done else 'none'))
     else: print(__doc__)
