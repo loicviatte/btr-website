@@ -5,14 +5,18 @@ Runs in GitHub Actions (YouTube can't be reached from Claude's workspace). For e
 PUBLIC and longer than 15 minutes and not on the site yet, it writes data/incoming/<videoId>/:
   meta.json     title, description, publishedAt, durationSec, url
   thumb.jpg     the YouTube thumbnail (largest available)
-  captions.srt  the captions (manual track if there is one, else YouTube's automatic one)
+  captions.srt  Loïc's DaVinci SRT from the shared Drive folder when one matches the title
+                (oti_Subtitle_part2.srt → "Oti … Part 2"), else YouTube's captions (manual, then automatic)
 A folder without captions.srt is retried on the next run (YouTube needs a while to make auto captions).
+A folder with YouTube captions is upgraded to the Drive SRT if it shows up before the page is made.
+Drive folder (shared by link, no login): DRIVE_SRT_FOLDER, default BREAKTHEROUTINE/SRT. Matching rules are
+the Telegram bot's (bot/btrbot/drive.py), so both read the same file the same way.
 
 Credentials (GitHub → Settings → Secrets and variables → Actions):
   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN   (OAuth of the channel owner; see tools/auto/get_token.py)
 Fallback without OAuth: YT_API_KEY + YT_CHANNEL_ID for the list, yt-dlp for the captions (less reliable).
 """
-import json, os, re, subprocess, sys, urllib.parse, urllib.request
+import importlib.util, json, os, re, subprocess, sys, urllib.parse, urllib.request
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 INCOMING = os.path.join(ROOT, 'data', 'incoming')
@@ -100,9 +104,54 @@ def captions_ytdlp(vid, dest):
     os.replace(os.path.join(os.path.dirname(dest), got[0]), dest)
     return True
 
+DRIVE_FOLDER = os.environ.get('DRIVE_SRT_FOLDER') or '1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-'
+
+def drive_mod():
+    spec = importlib.util.spec_from_file_location('btr_drive', os.path.join(ROOT, 'bot', 'btrbot', 'drive.py'))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+def drive_srts():
+    try:
+        files = drive_mod().list_srt(DRIVE_FOLDER)
+        print(f'Drive SRT folder: {len(files)} file(s) · ' + ', '.join(n for _, n in files))
+        return files
+    except Exception as e:
+        print('Drive SRT folder not readable (YouTube captions only):', e)
+        return []
+
+def used_drive_ids():
+    ids = set()
+    for d in os.listdir(INCOMING):
+        try: ids.add(json.load(open(os.path.join(INCOMING, d, 'meta.json'))).get('srtDriveId'))
+        except Exception: pass
+    return ids
+
+def captions_drive(title, files, dest, meta):
+    """Loïc's SRT for this video, if one in the Drive folder matches its title (and isn't used by another video)."""
+    if not files: return False
+    dm = drive_mod()
+    used = used_drive_ids() - {meta.get('srtDriveId')}
+    hits = [(fid, n) for fid, n in files if fid not in used and dm.matches(n, title)]
+    # same part number on both sides beats "no part number" on one side
+    hits.sort(key=lambda h: not (dm.part_number(h[1]) and dm.part_number(h[1]) == dm.part_number(title)))
+    for fid, name in hits:
+        try:
+            dm.download(fid, __import__('pathlib').Path(dest + '.tmp'))
+            if os.path.getsize(dest + '.tmp') < 200 or '-->' not in open(dest + '.tmp', encoding='utf-8', errors='ignore').read(4000):
+                os.remove(dest + '.tmp'); continue
+            os.replace(dest + '.tmp', dest)
+            meta.update(captionsSource='drive', srtDriveId=fid, srtName=name)
+            return True
+        except Exception as e:
+            print('  Drive download failed for', name, e)
+    return False
+
 def main():
     os.makedirs(INCOMING, exist_ok=True)
     known = known_vids()
+    files = drive_srts()
     found = 0
     for v in uploads():
         vid = v['id']
@@ -110,24 +159,36 @@ def main():
         if v['status'].get('privacyStatus') != 'public' or secs < MIN_SECS or vid in known:
             continue
         d = os.path.join(INCOMING, vid)
-        if os.path.exists(os.path.join(d, 'captions.srt')) or os.path.exists(os.path.join(d, 'done')):
+        cap, mp = os.path.join(d, 'captions.srt'), os.path.join(d, 'meta.json')
+        if os.path.exists(os.path.join(d, 'done')):
+            continue
+        sn = v['snippet']
+        old = json.load(open(mp)) if os.path.exists(mp) else {}
+        if os.path.exists(cap):
+            # already has captions: only upgrade YouTube's to Loïc's SRT if it has appeared in Drive since
+            if old.get('captionsSource') != 'drive' and captions_drive(sn['title'], files, cap, old):
+                json.dump(old, open(mp, 'w'), ensure_ascii=False, indent=1)
+                print('DRIVE SRT ' + vid + ' · ' + old['srtName'] + ' replaces the YouTube captions')
+                found += 1
             continue
         os.makedirs(d, exist_ok=True)
-        sn = v['snippet']
         meta = {'id': vid, 'url': 'https://www.youtube.com/watch?v=' + vid, 'title': sn['title'], 'description': sn.get('description', ''),
                 'publishedAt': sn['publishedAt'], 'durationSec': secs}
-        json.dump(meta, open(os.path.join(d, 'meta.json'), 'w'), ensure_ascii=False, indent=1)
         th = sn.get('thumbnails', {})
         best = next((th[k]['url'] for k in ('maxres', 'standard', 'high', 'medium', 'default') if k in th), None)
         if best and not os.path.exists(os.path.join(d, 'thumb.jpg')):
             open(os.path.join(d, 'thumb.jpg'), 'wb').write(http(best, raw=True))
-        ok = False
-        if token():
-            try: ok = captions_oauth(vid, os.path.join(d, 'captions.srt'))
+        ok = captions_drive(sn['title'], files, cap, meta)
+        if not ok and token():
+            try: ok = captions_oauth(vid, cap)
             except Exception as e: print('  captions API failed:', e)
+            if ok: meta['captionsSource'] = 'youtube'
         if not ok:
-            ok = captions_ytdlp(vid, os.path.join(d, 'captions.srt'))
-        print(('NEW ' if ok else 'WAITING FOR CAPTIONS ') + vid + ' · ' + sn['title'] + f' · {secs // 60} min')
+            ok = captions_ytdlp(vid, cap)
+            if ok: meta['captionsSource'] = 'youtube'
+        json.dump(meta, open(mp, 'w'), ensure_ascii=False, indent=1)
+        src = (' · SRT ' + meta['srtName']) if meta.get('captionsSource') == 'drive' else (' · YouTube captions' if ok else '')
+        print(('NEW ' if ok else 'WAITING FOR CAPTIONS ') + vid + ' · ' + sn['title'] + f' · {secs // 60} min' + src)
         found += 1
     print(f'{found} new video(s)')
 

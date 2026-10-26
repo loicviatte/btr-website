@@ -10,7 +10,9 @@ Loïc chose **direct publishing**: no review step, so check carefully before pus
 cd btr-website && git pull
 ls data/incoming/*/captions.srt   # a folder WITH captions.srt and WITHOUT a "done" file = to process
 ```
-A folder without `captions.srt` is not ready yet (YouTube is still making the captions): leave it, the Action retries.
+A folder without `captions.srt` is not ready yet (no SRT in Drive and YouTube is still making the captions): leave it,
+the Action retries. `meta.json` → `captionsSource`: `drive` = Loïc's DaVinci SRT from the shared Drive folder
+BREAKTHEROUTINE/SRT (best quality, names spelled right; `srtDriveId`/`srtName` say which file), `youtube` = YouTube's.
 
 Also, on every run, fill Atlas cards that still say "coming soon" once the Instagram carousel research exists:
 ```
@@ -79,7 +81,8 @@ Pushing to `main` deploys the site (Vercel). Footer credit, the Ask page (never 
 
 ## 6. Hand the country to the Instagram carousel task
 Only when the episode has a World Atlas draw (and it is a new country for this guest):
-1. Upload the captions to the Drive folder the carousel task watches (Google Drive connector, `create_file`):
+1. If `meta.json` says `captionsSource: drive`, the SRT is already in that Drive folder: use `srtDriveId`, don't upload.
+   Otherwise upload the captions to the Drive folder the carousel task watches (Google Drive connector, `create_file`):
    title `<YYYY-MM-DD> <Guest> - <episode title>.srt`, `parentId` `1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-`
    (BREAKTHEROUTINE/SRT), `textContent` = the captions.srt text, `contentMimeType` `text/plain`,
    `disableConversionToGoogleType` true. Keep the returned file id.
