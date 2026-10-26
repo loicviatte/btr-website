@@ -1,5 +1,6 @@
 import './globals.css';
 import './dc.generated.css';
+import MediaLightbox from '../components/MediaLightbox';
 
 export const metadata = {
   title: 'Break The Routine · The DanceSport Podcast',
@@ -26,7 +27,10 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <MediaLightbox />
+      </body>
     </html>
   );
 }

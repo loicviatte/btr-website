@@ -109,6 +109,7 @@ function attrsToJsx(el, scope) {
     }
     if (val === '' && BOOL.has(name.toLowerCase())) { out.push(`${attrName(name.toLowerCase())}={true}`); continue; }
     let expr = interp(val, scope);
+    if (name === 'href' && el.name === 'a') out.push(`{...dcExt(${expr})}`);
     if (name === 'href' || name === 'src' || name === 'poster') expr = `dcUrl(${expr})`;
     const n = ATTR_MAP[name.toLowerCase()] ?? jsxName;
     // controlled inputs keep value/checked; textarea value too
@@ -196,7 +197,7 @@ function compileFile(file) {
   const out = `'use client';
 // GENERATED from design/${name}.dc.html by tools/compile.mjs. Edit the design file, then run npm run compile.
 import React from 'react';
-import { DCLogic, css, dcUrl } from '../../lib/dc';
+import { DCLogic, css, dcUrl, dcExt } from '../../lib/dc';
 ${imports}
 
 ${code.trim()}

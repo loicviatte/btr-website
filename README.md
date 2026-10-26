@@ -44,5 +44,5 @@ Prévu : détection automatique des épisodes publics sur YouTube, page créée 
 ## Pas encore branché
 
 - Le formulaire **Ask** n'envoie rien pour l'instant (à relier à un stockage, ex. Vercel KV ou un Google Sheet).
-- Les vidéos YouTube s'ouvrent sur YouTube au bon timecode ; on pourra les intégrer en lecteur directement sur la page.
+- Les moments (réponses de la Chain, tirage de l.Atlas, chapitres, transcript, reels) se lisent dans un lecteur intégré ; les boutons « Watch » ouvrent YouTube dans un nouvel onglet.
 - Les reels s'affichent avec leur couverture ; la lecture vidéo viendra de l'API Instagram.
