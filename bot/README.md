@@ -9,7 +9,7 @@ Ce bot surveille la chaîne YouTube Break The Routine. Dès qu'une vidéo passe 
 5. après ta validation, met **le titre, la description (structure actuelle de la chaîne) et la miniature** sur YouTube ;
 6. fait le **chapitrage** (règles BTR : anglais, 3 à 8 mots, sans tiret) avec les sous-titres YouTube, ou avec ton SRT DaVinci si tu l'envoies dans le chat, puis l'ajoute à la description.
 
-Commandes Telegram : `/status`, `/scan` (vérifier YouTube tout de suite) et `/episode <lien ou ID>` (traiter une vidéo précise).
+Commandes Telegram : `/status`, `/scan` (vérifier YouTube tout de suite), `/check` (tester toute l'installation) et `/episode <lien ou ID>` (traiter une vidéo précise).
 Dans le chat, à l'étape des miniatures : `titre: …`, `citation: haut | MOT | bas`, `description: <consigne>`. Tout autre message relance la discussion sur l'axe.
 
 ---

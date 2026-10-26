@@ -169,11 +169,11 @@ async def start(update: Update, ctx):
         cfg.chat_file.write_text(str(cid))
         start_polling(ctx.application)
         await update.message.reply_text("C'est noté, ce chat est le tien ✅ Je surveille YouTube toutes les "
-                                        f"{cfg.poll_minutes} min.\n/status · /scan · /episode <id>")
+                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id>")
         return
     if not allowed(update):
         return
-    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /episode <id>")
+    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id>")
 
 
 async def status(update: Update, ctx):
@@ -185,6 +185,24 @@ async def status(update: Update, ctx):
         return
     ep = reg.episode(vid)
     await update.message.reply_text(f"Épisode actif : {ep.get('title')} ({vid})\nÉtape : {ep.stage}")
+
+
+async def check_cmd(update: Update, ctx):
+    if not allowed(update):
+        return
+    await update.message.reply_text("🩺 Je teste tout (YouTube, téléchargement, Claude, modèles)… ~1 min")
+
+    def run_check():
+        import contextlib
+        import io
+
+        from . import check
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            check.main()
+        return buf.getvalue()
+    out = await run(run_check)
+    await update.message.reply_text(out[-3800:] or "(rien)")
 
 
 async def scan_cmd(update: Update, ctx):
@@ -367,6 +385,7 @@ def main():
     app = Application.builder().token(cfg.telegram_token).post_init(on_boot).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("check", check_cmd))
     app.add_handler(CommandHandler("scan", scan_cmd))
     app.add_handler(CommandHandler("episode", episode_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
