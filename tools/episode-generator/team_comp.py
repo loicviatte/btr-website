@@ -34,7 +34,9 @@ rgb=ImageEnhance.Brightness(rgb).enhance(0.9)
 rgb=Image.blend(rgb,ImageChops.multiply(rgb,Image.new('RGB',rgb.size,(255,188,105))),0.3)
 rgb=ImageEnhance.Contrast(rgb).enhance(1.07)
 a=a.filter(F.GaussianBlur(1.0)); c=Image.merge('RGBA',(*rgb.split(),a))
-pos=(x0,y0); stroke=8
+PAD=40
+padded=Image.new('RGBA',(c.size[0]+2*PAD,c.size[1]+2*PAD),(0,0,0,0)); padded.paste(c,(PAD,PAD)); c=padded
+pos=(x0-PAD,y0-PAD); stroke=8
 al=c.split()[3]; hard=al.point(lambda v:255 if v>110 else 0)
 from scipy import ndimage
 hn=np.array(hard)>0
