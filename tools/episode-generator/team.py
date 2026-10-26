@@ -10,13 +10,13 @@ s = s.replace(f'<p style="margin: 0; {MONO} font-size: 12px; font-weight: 800; l
 assert 'HOST &amp; CO-FOUNDER' in s
 
 PEOPLE = [
-    ('A', 'Alexandra', 'CO-FOUNDER',
+    ('A', 'Alexandra Lukey', 'CO-FOUNDER',
      'Alexandra dances herself, and a show where DanceSport talks about itself in the open was close to her heart from day one. Alongside Break The Routine she is co-founding InBetween, the app that turns what your coach says in a lesson into focus points you keep working on between lessons.',
      'Alexandra, co-founder of Break The Routine'),
-    ('L', 'Loïc Viatte', 'CO-FOUNDER · PRODUCTION',
-     'A Swiss filmmaker based in London and co-founder of Waview Production, Loïc films, edits and publishes every episode, and builds the tools behind the show, from the clips to the World Atlas. He is also co-founding InBetween with Alexandra.',
+    ('L', 'Loïc Viatte', 'CO-FOUNDER',
+     'For Loïc, Break The Routine is a free-expression project close to his heart: a place where DanceSport can speak openly about itself. Alongside the show he is co-founding InBetween with Alexandra.',
      'Loïc Viatte, co-founder of Break The Routine'),
-    ('G', 'Georgia', '[ROLE]',
+    ('G', 'Georgia', 'TEAM',
      '[Georgia’s introduction is coming soon.]',
      'Georgia, Break The Routine team'),
 ]
