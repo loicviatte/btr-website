@@ -84,7 +84,10 @@ class Pipeline:
 
     def refine(self, ep: Episode, message: str) -> dict:
         timed = srt.timed_text(self.cues(ep), 30)
-        res = self.llm.refine(ep["title"], ep.get("guest_name", ""), ep.get("axes", []), timed, message)
+        history = ep.get("chat") or []
+        res = self.llm.refine(ep["title"], ep.get("guest_name", ""), ep.get("axes", []), timed, message, history)
+        ep["chat"] = (history + [{"who": "Loïc", "text": message},
+                                 {"who": "Bot", "text": str(res.get("reply") or "")[:1500]}])[-40:]
         if res.get("axes"):
             ep["axes"] = self._verify(ep, res["axes"])
         if res.get("final"):

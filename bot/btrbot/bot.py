@@ -20,6 +20,7 @@ cfg = Settings()
 reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
 LOCK = asyncio.Lock()
+PENDING_SRT = cfg.data_dir / "pending_davinci.srt"   # an SRT sent before its video shows up on YouTube
 
 
 def esc(s) -> str:
@@ -70,6 +71,12 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
         ep.stage = "waiting_transcript"
         ep.save()
         reg.active = vid
+        if PENDING_SRT.exists():
+            PENDING_SRT.replace(ep.file("captions_davinci.srt"))
+            await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\nhttps://youtu.be/{vid}\n"
+                           "J'utilise le SRT que tu m'avais envoyé, pas besoin d'attendre YouTube.")
+            await guarded(ctx, "Proposition des axes", propose_axes(ctx, ep))
+            continue
         await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\n"
                        f"https://youtu.be/{vid}\nJe récupère le transcript dès que YouTube l'a généré.")
     if first_run:
@@ -235,6 +242,13 @@ async def on_button(update: Update, ctx):
         return
     q = update.callback_query
     await q.answer()
+    if q.data == "srt:next":
+        await say(ctx, "OK, je le garde pour la prochaine vidéo non répertoriée.")
+        return
+    if q.data == "srt:active":
+        if reg.active and PENDING_SRT.exists():
+            await use_srt_for(ctx, reg.episode(reg.active))
+        return
     ep = reg.episode(reg.active) if reg.active else None
     if not ep:
         return
@@ -281,7 +295,11 @@ async def on_button(update: Update, ctx):
 
 
 async def on_text(update: Update, ctx):
-    if not allowed(update) or not reg.active:
+    if not allowed(update):
+        return
+    if not reg.active or reg.episode(reg.active).stage in ("waiting_transcript", "done"):
+        await update.message.reply_text("Pas d'épisode en discussion pour l'instant. Je te préviens dès qu'une vidéo non "
+                                        "répertoriée est prête. Tu peux déjà m'envoyer le SRT, je le garderai pour elle.")
         return
     ep = reg.episode(reg.active)
     text = update.message.text.strip()
@@ -331,20 +349,34 @@ async def on_text(update: Update, ctx):
 
 
 async def on_document(update: Update, ctx):
-    """An .srt sent in the chat = the DaVinci SRT for the active episode."""
-    if not allowed(update) or not reg.active:
+    """An .srt sent in the chat = a DaVinci SRT, for the current episode or the next video."""
+    if not allowed(update):
         return
     doc = update.message.document
     if not doc.file_name.lower().endswith(".srt"):
         return
-    ep = reg.episode(reg.active)
     f = await doc.get_file()
-    await f.download_to_drive(str(ep.file("captions_davinci.srt")))
-    await say(ctx, "📥 SRT reçu, je m'en sers pour le chapitrage.")
+    await f.download_to_drive(str(PENDING_SRT))
+    ep = reg.episode(reg.active) if reg.active else None
+    if not ep or ep.stage == "done":
+        await say(ctx, "📥 SRT gardé de côté : je l'utiliserai pour la <b>prochaine vidéo non répertoriée</b> que je détecte, "
+                       "et je pourrai démarrer sans attendre les sous-titres YouTube.")
+    elif ep.stage == "waiting_transcript":
+        await use_srt_for(ctx, ep)
+    else:
+        kb = [[B("Cet épisode", callback_data="srt:active"), B("La prochaine vidéo", callback_data="srt:next")]]
+        await say(ctx, f"📥 SRT reçu. C'est pour <b>{esc(ep.get('title'))}</b> ou pour la prochaine vidéo ?", reply_markup=K(kb))
+
+
+async def use_srt_for(ctx, ep):
+    PENDING_SRT.replace(ep.file("captions_davinci.srt"))
+    await say(ctx, f"📥 SRT associé à <b>{esc(ep.get('title'))}</b>.")
     if ep.stage in ("published", "chapters_proposed", "done"):
         await guarded(ctx, "Chapitrage", propose_chapters(ctx, ep, "ton SRT"))
     elif ep.stage == "waiting_transcript":
         await guarded(ctx, "Proposition des axes", propose_axes(ctx, ep))
+    else:
+        await say(ctx, "Je m'en servirai pour le chapitrage, après la publication.")
 
 
 async def on_photo(update: Update, ctx):

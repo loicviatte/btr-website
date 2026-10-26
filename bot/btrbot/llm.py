@@ -37,10 +37,12 @@ class LLM:
             ref_titles="\n".join(f"- {t}" for t in ref_titles) or "- (none yet)",
             transcript=transcript[:180_000]))
 
-    def refine(self, video_title: str, guest_name: str, axes: list, transcript: str, message: str) -> dict:
+    def refine(self, video_title: str, guest_name: str, axes: list, transcript: str, message: str,
+               history: list | None = None) -> dict:
+        hist = "\n".join(f"{h['who']}: {h['text']}" for h in (history or [])[-20:]) or "(nothing yet)"
         return self._json(prompts.REFINE.format(
             video_title=video_title, guest_name=guest_name, axes=json.dumps(axes, ensure_ascii=False),
-            transcript=transcript[:180_000], message=message))
+            transcript=transcript[:180_000], message=message, history=hist))
 
     def pick_frames(self, sheet: Path, who: str, quote: str, n: int = 4) -> dict:
         img = base64.standard_b64encode(sheet.read_bytes()).decode()

@@ -41,7 +41,10 @@ Transcript with [mm:ss] markers:
 {transcript}
 </transcript>
 
-Loïc writes: "{message}"
+Conversation so far about this episode (oldest first):
+{history}
+
+Loïc now writes: "{message}"
 
 Answer him in French. If he asks for changes or new options, propose them (always verbatim guest quotes). If he clearly picks or validates one, set "final".
 Return ONLY JSON:
