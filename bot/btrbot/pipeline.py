@@ -26,6 +26,23 @@ def mmss(t: str) -> float:
     return float(sec)
 
 
+def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None) -> dict[str, Path]:
+    """Render the 3 thumbnails from the picked frames, or just one ("youtube" | "instagram" | "square")."""
+    g, m = ep["pick_guest"], ep["pick_marius"]
+    q = clean_quote(ep["final"])
+    name = ep.get("guest_name", "")
+    work = ep.dir / "render"
+    out: dict[str, Path] = {}
+    # the square reuses the frames/cut-outs made by the YouTube render
+    if only in (None, "youtube") or (only == "square" and not (work / "yt_marius_cut.png").exists()):
+        out["youtube"] = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
+    if only in (None, "square"):
+        out["square"] = render.square(work, g["cx"], m["cx"], q, name)
+    if only in (None, "instagram"):
+        out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name)
+    return {k: v for k, v in out.items() if only in (None, k)}
+
+
 class DryRun(Exception):
     """Raised instead of writing to a video that is already public."""
 
@@ -142,15 +159,8 @@ class Pipeline:
         return chosen
 
     # ---- 3. thumbnails ------------------------------------------------------
-    def thumbnails(self, ep: Episode) -> tuple[Path, Path, Path]:
-        g, m = ep["pick_guest"], ep["pick_marius"]
-        q = clean_quote(ep["final"])
-        name = ep.get("guest_name", "")
-        work = ep.dir / "render"
-        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
-        sq = render.square(work, g["cx"], m["cx"], q, name)
-        ig = render.instagram(work, self.cfg.models_dir, Path(g["hires"]), g, q, name)
-        return yt, ig, sq
+    def thumbnails(self, ep: Episode, only: str | None = None) -> dict[str, Path]:
+        return render_thumbs(ep, self.cfg.models_dir, only)
 
     def description(self, ep: Episode) -> str:
         refs = ep.get("refs") or self.yt.public_references(4)

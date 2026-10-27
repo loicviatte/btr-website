@@ -2,6 +2,7 @@
 import asyncio
 import html
 import logging
+import re
 import traceback
 
 from telegram import InlineKeyboardButton as B
@@ -79,7 +80,7 @@ async def plain(ctx, text: str, **kw):
         await ctx.bot.send_message(cfg.chat_id, c, disable_web_page_preview=True, **(kw if n == len(chunks) - 1 else {}))
 
 
-async def talk_to_agent(ctx, text: str, strong: bool = False):
+async def talk_to_agent(ctx, text: str, strong: bool = False, thumb_ep=None):
     if not text:
         return
     if not AGENT.available():
@@ -100,7 +101,15 @@ async def talk_to_agent(ctx, text: str, strong: bool = False):
             await say(ctx, f"⚠️ Le mode dev a planté : <code>{esc(str(e)[-600:])}</code>")
             return
         cost = f"\n\n(≈ {res['cost']:.2f} $)" if isinstance(res.get("cost"), (int, float)) else ""
-        await plain(ctx, res["text"] + cost)
+        answer = res["text"]
+        if thumb_ep is not None:   # the agent re-rendered some designs with its modified templates: show them
+            m = re.search(r"^DESIGNS:\s*(.*)$", answer, re.M)
+            answer = re.sub(r"^DESIGNS:.*$", "", answer, flags=re.M).strip()
+            await plain(ctx, answer + cost)
+            for d in [x.strip() for x in (m.group(1) if m else "").split(",") if x.strip() in THUMB_LABELS]:
+                await send_thumb(ctx, thumb_ep, d)
+        else:
+            await plain(ctx, answer + cost)
         if res["files"]:
             stat = await run(AGENT.diff_summary)
             kb = [[B("🚀 Déployer", callback_data="dev:deploy"), B("❌ Annuler", callback_data="dev:discard")]]
@@ -259,25 +268,94 @@ async def propose_frames(ctx, ep, who: str, more=False):
     await say(ctx, f"Quelle image de <b>{esc(label)}</b> ?", reply_markup=K(kb))
 
 
-async def make_thumbs(ctx, ep):
-    await say(ctx, "🎨 Je fabrique les 3 miniatures : YouTube, Instagram vertical et carré (détourage, extension, voile or)… ~4 min")
-    yt, ig, sq = await run(pipe.thumbnails, ep)
+THUMB_LABELS = {"youtube": "YouTube", "instagram": "Instagram vertical", "square": "carrée"}
+
+
+async def send_thumb(ctx, ep, design: str):
+    path = ep.file(f"render/thumb_{design}.jpg")
+    with open(path, "rb") as f:
+        if design == "youtube":
+            await ctx.bot.send_photo(cfg.chat_id, f, caption="Miniature YouTube")
+        elif design == "instagram":
+            await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
+        else:
+            await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
+
+
+async def make_thumbs(ctx, ep, only: str | None = None):
+    if only:
+        await say(ctx, f"🎨 Je refais uniquement la miniature {THUMB_LABELS[only]} (les autres ne changent pas)…")
+    else:
+        await say(ctx, "🎨 Je fabrique les 3 miniatures : YouTube, Instagram vertical et carré (détourage, extension, voile or)… ~4 min")
+    thumbs = await run(pipe.thumbnails, ep, only)
     if not ep.get("description"):
         ep["description"] = await run(pipe.description, ep)
     ep.stage = "thumbs_proposed"
     ep.save()
-    with open(yt, "rb") as f:
-        await ctx.bot.send_photo(cfg.chat_id, f, caption="Miniature YouTube")
-    with open(ig, "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
-    with open(sq, "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
+    for d in ("youtube", "instagram", "square"):
+        if d in thumbs:
+            await send_thumb(ctx, ep, d)
+    if only:
+        kb = [[B("✅ Publier sur YouTube", callback_data="publish")],
+              [B("🔁 Refaire YouTube", callback_data="thumb:youtube"), B("🔁 Instagram", callback_data="thumb:instagram"),
+               B("🔁 Carré", callback_data="thumb:square")]]
+        await say(ctx, "Prêt à publier ?", reply_markup=K(kb))
+        return
     desc = ep["description"].replace("{{CHAPTERS}}", "[chapitres ajoutés quand le SRT est prêt]").replace("{CHAPTERS}", "[chapitres]")
     await say(ctx, f"<b>Titre :</b> {esc(ep['final']['title'])}\n\n<b>Description :</b>\n{esc(desc)[:3300]}")
     kb = [[B("✅ Publier sur YouTube", callback_data="publish")],
-          [B("🔁 Autre image guest", callback_data="more:guest"), B("🔁 Autre image Marius", callback_data="more:marius")]]
+          [B("🔁 Autre image guest", callback_data="more:guest"), B("🔁 Autre image Marius", callback_data="more:marius")],
+          [B("🔁 Refaire YouTube", callback_data="thumb:youtube"), B("🔁 Instagram", callback_data="thumb:instagram"),
+           B("🔁 Carré", callback_data="thumb:square")]]
     await say(ctx, "Je publie titre + description + miniature ?\nPour changer : <code>titre: …</code>, "
                    "<code>citation: haut | MOT | bas</code> ou <code>description: …</code> (tes consignes).", reply_markup=K(kb))
+
+
+FB = {"images": [], "text": [], "task": None}
+DESIGN_WORDS = re.compile(r"miniature|thumbnail|youtube|insta|carr[ée]|square|design|template|police|texte|taille|logo|halo|"
+                          r"voile|d[ée]tour|d[ée]coup|cadr|zoom|flou|couleur|ombre|marge|align|bord|coup[ée]|trop (haut|bas|grand|petit)",
+                          re.I)
+
+
+def queue_feedback(ctx, ep, text: str | None = None, image=None):
+    """Feedback on the thumbnails = text and/or screenshots showing the problem. Grouped for a few seconds, then
+    handed to dev mode with the CURRENT picked frames (the screenshots are not new frames)."""
+    if text:
+        FB["text"].append(text)
+    if image:
+        FB["images"].append(str(image))
+    if FB["task"]:
+        FB["task"].cancel()
+    if not FB["text"]:
+        return   # screenshots only: wait for his explanation
+
+    async def later():
+        await asyncio.sleep(4)
+        txt, imgs = "\n".join(FB["text"]), list(FB["images"])
+        FB.update(text=[], images=[], task=None)
+        await guarded(ctx, "Retour miniatures", thumb_feedback(ctx, ep, txt, imgs))
+    FB["task"] = asyncio.create_task(later())
+
+
+async def thumb_feedback(ctx, ep, text: str, images: list[str]):
+    g, m = ep["pick_guest"], ep["pick_marius"]
+    imgs = "\n".join(f"- {p}" for p in images) or "(aucune)"
+    msg = f"""Retour de Loïc sur les miniatures de l'épisode {ep.video_id} ({ep.get('guest_name', '')}) :
+« {text} »
+
+Captures jointes par Loïc (à regarder avec Read) : elles MONTRENT OÙ EST LE PROBLÈME (annotations, comparaisons). Ce ne sont PAS de nouvelles images à mettre dans les miniatures : garde les images déjà choisies par le bot.
+{imgs}
+
+Miniatures actuelles : {ep.dir}/render/thumb_youtube.jpg, thumb_instagram.jpg, thumb_square.jpg (regarde-les avec Read).
+Images choisies (inchangées) : guest {g.get('hires')}, Marius {m.get('hires')}.
+
+À faire :
+1. Comprends de QUELLE miniature il parle (youtube = 1920x1080, instagram = vertical 1080x1920, square = 1080x1080) ; s'il ne précise pas, déduis-le des captures, sinon de ce qui est visiblement faux.
+2. Corrige uniquement ce qui concerne cette/ces miniature(s) (btrbot/templates/*.html ou btrbot/render.py). Les autres designs doivent rester identiques ; si une règle de marque est en jeu (voir CLAUDE.md), respecte-la.
+3. Re-rends SEULEMENT les designs concernés avec le code modifié : `/opt/btr-bot/.venv/bin/python -m btrbot.rerender {ep.video_id} <youtube|instagram|square>` (depuis le dossier courant), regarde le résultat avec Read et itère jusqu'à ce que ce soit bon.
+4. Dernière ligne de ta réponse, exactement : DESIGNS: <liste séparée par des virgules des designs re-rendus>"""
+    await say(ctx, "🧠 Je regarde ton retour et je reprends seulement la/les miniature(s) concernée(s), avec les mêmes images…")
+    await talk_to_agent(ctx, msg, thumb_ep=ep)
 
 
 async def propose_chapters(ctx, ep, source: str):
@@ -396,6 +474,8 @@ async def on_button(update: Update, ctx):
             await guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, "marius"))
         else:
             await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
+    elif d.startswith("thumb:"):
+        await guarded(ctx, "Miniature", make_thumbs(ctx, ep, d.split(":")[1]))
     elif d == "publish":
         async def go():
             try:
@@ -449,6 +529,9 @@ async def on_text(update: Update, ctx):
             ep.save()
             await say(ctx, f"<b>Nouvelle description :</b>\n{esc(ep['description'])[:3500]}", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
         await guarded(ctx, "Description", go())
+        return
+    if ep.stage == "thumbs_proposed" and (FB["images"] or DESIGN_WORDS.search(low)):
+        queue_feedback(ctx, ep, text=text)
         return
     if ep.stage in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
         async def go():
@@ -517,6 +600,15 @@ async def on_photo(update: Update, ctx):
     if not allowed(update) or not reg.active:
         return
     ep = reg.episode(reg.active)
+    if ep.stage == "thumbs_proposed" and ep.get("pick_guest") and ep.get("pick_marius"):
+        # a screenshot with feedback: it shows the problem, it does not replace the picked frames
+        path = ep.file(f"feedback/{update.message.message_id}.jpg")
+        path.parent.mkdir(exist_ok=True)
+        await (await update.message.photo[-1].get_file()).download_to_drive(str(path))
+        if not FB["text"] and not update.message.caption:
+            await say(ctx, "📎 Capture reçue. Dis-moi ce qui ne va pas dessus (tu peux en envoyer d'autres) et je reprends la miniature concernée.")
+        queue_feedback(ctx, ep, text=update.message.caption, image=path)
+        return
     who = "guest" if not ep.get("pick_guest") else "marius"
     ph = update.message.photo[-1]
     path = ep.file(f"{who}_manual.jpg")
