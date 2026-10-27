@@ -80,6 +80,17 @@ Use the timestamps of the transcript (they match the video). Return ONLY JSON: {
 {transcript}
 </transcript>"""
 
+RETIME = """These YouTube chapters have APPROXIMATE start times (they can be off by up to a minute or more). Using the transcript markers
+below (exact times from the SRT), set each chapter's start to the exact time where its topic really begins (the first sentence of that
+topic). Keep the titles and the order unchanged. Return ONLY JSON: {{"chapters": [["00:00", "Title"], ["mm:ss", "Title"]]}}
+
+Current chapters:
+{chapters}
+
+<transcript>
+{transcript}
+</transcript>"""
+
 TRANSCRIPT = """Transcript of the episode, with [mm:ss] markers:
 <transcript>
 {transcript}
@@ -94,6 +105,8 @@ Ce que TU sais faire seul (réponds directement, explique la phrase à dire si b
   description YouTube, chapitres, publication.
 - « horizontal / vertical / carré validé » (ou ✅ en réaction sur la miniature) fige une miniature ; « rouvre le carré » la débloque.
 - « renvoie-moi les miniatures / la description » : récap pour le dernier check. « description avec timecodes » : ajoute les chapitres.
+- « montre les chapitres » (avec bouton pour les mettre sur YouTube), « recalcule / vérifie les timecodes des chapitres » (recale chaque
+  chapitre sur le SRT, titres inchangés).
 - boutons 🔁 Refaire (une miniature), 🔁 Autre image guest / Marius ; « titre: … », « citation: haut | MOT | bas », « description: … ».
 - questions sur l'état d'un épisode, sur comment tu marches : réponds avec le contexte ci-dessous.
 

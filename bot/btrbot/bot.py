@@ -409,7 +409,7 @@ def design_context() -> str:
         "\n".join(design.describe(cfg.data_dir, f) for f in design.PARAMS)
 
 
-async def chat_with_bot(ctx, text: str, ep=None):
+async def chat_with_bot(ctx, text: str, ep=None, images: list | None = None):
     """Normal conversation. Claude Code (dev mode) only runs when Loïc says yes to « Demander à Claude ? »."""
     if not (cfg.anthropic_key and text):
         return
@@ -417,7 +417,7 @@ async def chat_with_bot(ctx, text: str, ep=None):
     while hist and hist[0]["role"] != "user":
         hist = hist[1:]
     try:
-        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=chat_context(ep)), hist, text))
+        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=chat_context(ep)), hist, text, images))
     except Exception as e:  # noqa: BLE001
         log.exception("chat")
         await say(ctx, f"⚠️ Je n'arrive pas à te répondre : <code>{esc(str(e)[-300:])}</code>")
@@ -525,6 +525,25 @@ Images choisies (inchangées) : guest {g.get('hires')}, Marius {m.get('hires')}.
 4. Dernière ligne de ta réponse, exactement : DESIGNS: <liste séparée par des virgules des designs re-rendus>"""
     await say(ctx, "🧠 Je regarde ton retour et je reprends seulement la/les miniature(s) concernée(s), avec les mêmes images…")
     await talk_to_agent(ctx, msg, thumb_ep=ep)
+
+
+async def show_chapters(ctx, ep, intro: str = "Chapitres actuels"):
+    ch = ep.get("chapters") or []
+    body = "\n".join(f"{esc(t)} {esc(title)}" for t, title in ch)
+    kb = [[B("✅ Mettre à jour sur YouTube", callback_data="chapters_ok"), B("🔁 Recalculer depuis le SRT", callback_data="chapters_retime")]]
+    ep.stage = "chapters_proposed"
+    ep.save()
+    await say(ctx, f"📑 <b>{esc(intro)}</b>\n<pre>{body}</pre>", reply_markup=K(kb))
+
+
+async def retime_chapters(ctx, ep):
+    await say(ctx, "⏱ Je recale chaque chapitre sur ton SRT (mêmes titres, timecodes relus un par un)…")
+    await run(pipe.retime_chapters, ep)
+    await show_chapters(ctx, ep, "Chapitres recalés sur le SRT")
+
+
+CHAPTERS_WORDS = re.compile(r"chapitr|timecode|time code", re.I)
+RETIME_WORDS = re.compile(r"recalcul|recal|v[ée]rifi|check|corrig|refais|refait|r[ée]g[ée]n|pas bon|faux|d[ée]cal|pas (?:à|a) ", re.I)
 
 
 async def propose_chapters(ctx, ep, source: str):
@@ -673,12 +692,22 @@ async def on_button(update: Update, ctx):
             ep.save()
             await say(ctx, "✅ Chapitres ajoutés à la description. Si tu m'envoies ton SRT DaVinci plus tard, je refais un chapitrage plus précis.")
         await guarded(ctx, "Chapitrage", go())
+    elif d == "chapters_retime":
+        await guarded(ctx, "Chapitrage", retime_chapters(ctx, ep))
     elif d == "chapters_redo":
         await guarded(ctx, "Chapitrage", propose_chapters(ctx, ep, "nouvel essai"))
 
 
 async def on_text(update: Update, ctx):
     if not allowed(update):
+        return
+    if reg.active and CHAPTERS_WORDS.search(update.message.text) and not re.search(r"descr", update.message.text, re.I) \
+            and reg.episode(reg.active).get("chapters"):
+        ep = reg.episode(reg.active)
+        if RETIME_WORDS.search(update.message.text):
+            await guarded(ctx, "Chapitrage", retime_chapters(ctx, ep))
+        else:
+            await show_chapters(ctx, ep)
         return
     if not reg.active or reg.episode(reg.active).stage not in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
         await chat_with_bot(ctx, update.message.text.strip(), reg.episode(reg.active) if reg.active else None)
@@ -827,6 +856,13 @@ async def on_photo(update: Update, ctx):
         if not FB["text"] and not update.message.caption:
             await say(ctx, "📎 Capture reçue. Dis-moi ce qui ne va pas dessus (tu peux en envoyer d'autres) et je reprends la miniature concernée.")
         queue_feedback(ctx, ep, text=update.message.caption, image=path)
+        return
+    if ep.stage != "frames_proposed":
+        # not waiting for a frame: the photo is just something he shows me (never a replacement of the picked frames)
+        path = ep.file(f"feedback/{update.message.message_id}.jpg")
+        path.parent.mkdir(exist_ok=True)
+        await (await update.message.photo[-1].get_file()).download_to_drive(str(path))
+        await chat_with_bot(ctx, update.message.caption or "(capture d'écran jointe, sans texte)", ep, [path])
         return
     who = "guest" if not ep.get("pick_guest") else "marius"
     ph = update.message.photo[-1]

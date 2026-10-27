@@ -210,6 +210,31 @@ class Pipeline:
             ch = [["00:00", "Intro"]] + (ch or [])
         return ch
 
+    def retime_chapters(self, ep: Episode) -> list[list[str]]:
+        """Same chapters and titles, start times re-read from the SRT (snapped to real subtitle starts)."""
+        cues = self.cues(ep)
+        old = ep.get("chapters") or []
+        if not old:
+            raise RuntimeError("Pas encore de chapitres à recaler.")
+        new = self.llm.retime_chapters(srt.timed_text(cues, 6), old)
+        starts = sorted(c.start for c in cues)
+        out, last = [], -1.0
+        for t, title in new:
+            sec = mmss(t)
+            snapped = min(starts, key=lambda x: abs(x - sec)) if starts and abs(min(starts, key=lambda x: abs(x - sec)) - sec) <= 4 else sec
+            if snapped <= last:
+                snapped = last + 10
+            out.append([srt.fmt(0 if not out else snapped), title])
+            last = 0 if not out else snapped
+        # keep the description in sync with the chapters
+        block_old = "\n".join(f"{t} {title}" for t, title in old)
+        block_new = "\n".join(f"{t} {title}" for t, title in out)
+        if ep.get("description") and block_old in ep["description"]:
+            ep["description"] = ep["description"].replace(block_old, block_new)
+        ep["chapters"] = out
+        ep.save()
+        return out
+
     def description_with_chapters(self, ep: Episode) -> str:
         """Put the chapters (timecodes) into the description now, before publishing."""
         ep["chapters_in_description"] = False

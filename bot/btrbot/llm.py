@@ -71,9 +71,16 @@ class LLM:
         ], max_tokens=300)
         return [int(i) for i in r.get("open", [])]
 
-    def chat(self, model: str, system: str, history: list[dict], message: str) -> dict:
+    def retime_chapters(self, timed: str, chapters: list[list[str]]) -> list[list[str]]:
+        lines = "\n".join(f"{t} {title}" for t, title in chapters)
+        return self._json(prompts.RETIME.format(chapters=lines, transcript=timed[:180_000]), 4000)["chapters"]
+
+    def chat(self, model: str, system: str, history: list[dict], message: str, images: list[Path] | None = None) -> dict:
+        content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                "data": base64.standard_b64encode(p.read_bytes()).decode()}}
+                   for p in (images or [])] + [{"type": "text", "text": message}]
         msg = self.client.messages.create(model=model, max_tokens=1200, system=system,
-                                          messages=history + [{"role": "user", "content": message}])
+                                          messages=history + [{"role": "user", "content": content}])
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
         m = re.search(r"\{.*\}", text, re.S)
         try:
