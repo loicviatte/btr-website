@@ -71,6 +71,16 @@ class LLM:
         ], max_tokens=300)
         return [int(i) for i in r.get("open", [])]
 
+    def chat(self, model: str, system: str, history: list[dict], message: str) -> dict:
+        msg = self.client.messages.create(model=model, max_tokens=1200, system=system,
+                                          messages=history + [{"role": "user", "content": message}])
+        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
+        m = re.search(r"\{.*\}", text, re.S)
+        try:
+            return json.loads(m.group(0)) if m else {"reply": text}
+        except ValueError:
+            return {"reply": text}
+
     def description(self, title: str, guest_name: str, refs: list[dict], transcript: str) -> str:
         ref_txt = "\n\n".join(f"--- {r['title']} ---\n{r['description']}" for r in refs[:3]) or "(none)"
         return self._ask(prompts.DESCRIPTION.format(

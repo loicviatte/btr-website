@@ -2,6 +2,7 @@
 import asyncio
 import html
 import logging
+import os
 import re
 import traceback
 
@@ -12,7 +13,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
                           MessageReactionHandler, filters)
 
-from . import drive
+from . import drive, prompts
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -372,6 +373,81 @@ async def make_thumbs(ctx, ep, only: str | None = None):
               reply_markup=kb)
 
 
+RECAP = re.compile(r"(renvoi|renvoie|redonne|envoie|montre|r[ée]cap).{0,40}(miniature|photo|image|titre)|dernier check", re.I)
+
+
+async def send_recap(ctx, ep):
+    """Last check before publishing: the 3 thumbnails as they are now (nothing is re-rendered), title and description."""
+    for d in THUMB_LABELS:
+        await send_thumb(ctx, ep, d)
+    desc = (ep.get("description") or "").replace("{{CHAPTERS}}", "[chapitres]").replace("{CHAPTERS}", "[chapitres]")
+    await say(ctx, f"<b>Titre YouTube :</b>\n{esc(ep['final']['title'])}")
+    await plain(ctx, "Description YouTube :\n\n" + desc)
+    await say(ctx, "Dernier check : " + valid_status(ep) + "\nTout est bon ?", reply_markup=thumb_kb(ep))
+
+
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "claude-sonnet-5-5")   # the chat itself is cheap; Claude Code only on request
+
+
+def chat_context(ep) -> str:
+    if not ep:
+        return "Aucun épisode en cours."
+    f = ep.get("final") or {}
+    return (f"Épisode {ep.video_id} « {ep.get('title', '')} » (invité : {ep.get('guest_name', '?')}). Étape : {ep.stage}.\n"
+            f"Titre retenu : {f.get('title', '-')}. Citation : {f.get('top', '')} {f.get('key', '')} {f.get('bottom', '')}.\n"
+            f"Miniatures validées : {', '.join(THUMB_NAMES[d] for d in validated(ep)) or 'aucune'}. "
+            f"Description : {'oui' if ep.get('description') else 'non'}"
+            f"{', avec chapitres' if ep.get('chapters_in_description') else ''}.")
+
+
+async def chat_with_bot(ctx, text: str, ep=None):
+    """Normal conversation. Claude Code (dev mode) only runs when Loïc says yes to « Demander à Claude ? »."""
+    if not (cfg.anthropic_key and text):
+        return
+    hist = reg.data.get("chat_hist", [])[-10:]
+    while hist and hist[0]["role"] != "user":
+        hist = hist[1:]
+    try:
+        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=chat_context(ep)), hist, text))
+    except Exception as e:  # noqa: BLE001
+        log.exception("chat")
+        await say(ctx, f"⚠️ Je n'arrive pas à te répondre : <code>{esc(str(e)[-300:])}</code>")
+        return
+    reply = str(res.get("reply") or "").strip() or "👍"
+    reg.data["chat_hist"] = (hist + [{"role": "user", "content": text}, {"role": "assistant", "content": reply}])[-12:]
+    ask = res.get("ask_claude")
+    if ask:
+        reg.data["pending_ask"] = {"text": str(ask), "thumbs": bool(res.get("thumbs")) and bool(ep), "images": []}
+        reg.save()
+        await say(ctx, esc(reply) + "\n\n🧠 Demander à Claude ?",
+                  reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
+    else:
+        reg.save()
+        await say(ctx, esc(reply))
+
+
+async def propose_ask(ctx, ep, text: str, images: list[str]):
+    """Screenshots + feedback on a thumbnail: needs Claude, but only after Loïc's yes."""
+    reg.data["pending_ask"] = {"text": text, "thumbs": True, "images": images}
+    reg.save()
+    await say(ctx, "Je peux transmettre ton retour (et tes captures) à Claude pour reprendre la miniature concernée, "
+                   "sans toucher aux miniatures validées. Demander à Claude ?",
+              reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
+
+
+async def on_ask_button(ctx, data: str):
+    pend = reg.data.pop("pending_ask", None)
+    reg.save()
+    if data == "ask:no" or not pend:
+        await say(ctx, "OK, je ne change rien. On continue à discuter." if pend else "Cette demande n'est plus d'actualité.")
+        return
+    ep = reg.episode(reg.active) if reg.active else None
+    if pend.get("thumbs") and ep and ep.get("pick_guest") and ep.get("pick_marius"):
+        await thumb_feedback(ctx, ep, pend["text"], pend.get("images") or [])
+    else:
+        await talk_to_agent(ctx, pend["text"])
+
+
 FB = {"images": [], "text": [], "task": None}
 DESIGN_WORDS = re.compile(r"chaise|on (ne )?voit|cach[ée]|devant|derri[èe]re|visage|t[êe]te|corps|marius|oti |miniature|thumbnail|youtube|insta|carr[ée]|square|design|template|police|texte|taille|logo|halo|"
                           r"voile|d[ée]tour|d[ée]coup|cadr|zoom|flou|couleur|ombre|marge|align|bord|coup[ée]|trop (haut|bas|grand|petit)",
@@ -394,7 +470,7 @@ def queue_feedback(ctx, ep, text: str | None = None, image=None):
         await asyncio.sleep(4)
         txt, imgs = "\n".join(FB["text"]), list(FB["images"])
         FB.update(text=[], images=[], task=None)
-        await guarded(ctx, "Retour miniatures", thumb_feedback(ctx, ep, txt, imgs))
+        await propose_ask(ctx, ep, txt, imgs)
     FB["task"] = asyncio.create_task(later())
 
 
@@ -506,6 +582,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("dev:"):
         await on_dev_button(ctx, q.data)
         return
+    if q.data.startswith("ask:"):
+        await guarded(ctx, "Demande à Claude", on_ask_button(ctx, q.data))
+        return
     if q.data == "srt:next":
         await say(ctx, "OK, je le garde pour la prochaine vidéo non répertoriée.")
         return
@@ -573,7 +652,7 @@ async def on_text(update: Update, ctx):
     if not allowed(update):
         return
     if not reg.active or reg.episode(reg.active).stage not in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
-        await talk_to_agent(ctx, update.message.text.strip())
+        await chat_with_bot(ctx, update.message.text.strip(), reg.episode(reg.active) if reg.active else None)
         return
     ep = reg.episode(reg.active)
     text = update.message.text.strip()
@@ -601,6 +680,9 @@ async def on_text(update: Update, ctx):
             ep.save()
             await say(ctx, f"<b>Nouvelle description :</b>\n{esc(ep['description'])[:3500]}", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
         await guarded(ctx, "Description", go())
+        return
+    if ep.stage == "thumbs_proposed" and RECAP.search(low) and ep.file("render/thumb_youtube.jpg").exists():
+        await guarded(ctx, "Récap", send_recap(ctx, ep))
         return
     if ep.stage == "thumbs_proposed" and re.search(r"descr.*(timecode|chapitr)|(timecode|chapitr).*descr", low):
         async def go():
@@ -633,15 +715,18 @@ async def on_text(update: Update, ctx):
         await say(ctx, "↩️ Je peux de nouveau modifier : " + ", ".join(THUMB_NAMES[d] for d in back) + ". " + valid_status(ep),
                   reply_markup=thumb_kb(ep))
         return
-    if ep.stage == "thumbs_proposed" and (FB["images"] or DESIGN_WORDS.search(low)):
-        queue_feedback(ctx, ep, text=text)
+    if ep.stage == "thumbs_proposed" and FB["images"]:
+        queue_feedback(ctx, ep, text=text)   # his explanation of the screenshots just sent
+        return
+    if ep.stage == "thumbs_proposed":
+        await chat_with_bot(ctx, text, ep)
         return
     if ep.stage in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
         async def go():
             res = await run(pipe.refine, ep, text)
             ep.save()
             if res.get("route") == "agent":
-                asyncio.create_task(talk_to_agent(ctx, text))
+                asyncio.create_task(chat_with_bot(ctx, text, ep))
                 return
             if res.get("final"):
                 ep.stage = "frames_proposed"
