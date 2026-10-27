@@ -63,4 +63,11 @@ def extend_top(models_dir: Path, img: Image.Image, ext: int, scale: float = 0.5)
     w, h = int(W * scale) // 8 * 8, int((H + ext) * scale) // 8 * 8
     gen = _inpaint(models_dir, canvas.resize((w, h), Image.LANCZOS), mask.resize((w, h), Image.NEAREST))
     gen = gen.resize((W, H + ext), Image.LANCZOS)
-    return Image.composite(gen, canvas, mask.filter(ImageFilter.GaussianBlur(10)))
+    # long feather INTO the real image: no visible line where the generated set meets the frame
+    fade = max(40, W // 6)
+    ramp = np.zeros(H + ext, np.float32)
+    ramp[:ext] = 1
+    t = np.clip(1 - np.arange(fade) / fade, 0, 1)
+    ramp[ext:ext + fade] = (t * t * (3 - 2 * t))[: len(ramp[ext:ext + fade])]
+    blend = Image.fromarray((np.repeat(ramp[:, None], W, axis=1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(6))
+    return Image.composite(gen, canvas, blend)

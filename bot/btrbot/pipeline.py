@@ -202,17 +202,35 @@ class Pipeline:
 
     # ---- 4. chapters --------------------------------------------------------
     def chapters(self, ep: Episode) -> list[list[str]]:
+        if ep.get("chapters_in_description") and ep.get("chapters"):   # already written into the description
+            return ep["chapters"]
         ch = self.llm.chapters(srt.timed_text(self.cues(ep), 20))
         if not ch or ch[0][0] not in ("00:00", "0:00"):
             ch = [["00:00", "Intro"]] + (ch or [])
         return ch
+
+    def description_with_chapters(self, ep: Episode) -> str:
+        """Put the chapters (timecodes) into the description now, before publishing."""
+        ep["chapters_in_description"] = False
+        ch = self.chapters(ep)
+        block = "\n".join(f"{t} {title}" for t, title in ch)
+        base = ep["description"]
+        if "{CHAPTERS}" in base or "{{CHAPTERS}}" in base:
+            base = base.replace("{{CHAPTERS}}", block).replace("{CHAPTERS}", block)
+        elif block not in base:
+            base = base.rstrip() + "\n\n" + block
+        ep["chapters"], ep["description"], ep["chapters_in_description"] = ch, base, True
+        ep.save()
+        return base
 
     def publish_chapters(self, ep: Episode, chapters: list[list[str]]) -> str:
         self._guard(ep)
         block = "\n".join(f"{t} {title}" for t, title in chapters)
         cur = self.yt.video(ep.video_id)["snippet"].get("description", "")
         base = ep.get("description") or cur
-        if "{CHAPTERS}" in base or "{{CHAPTERS}}" in base:
+        if block in base:   # timecodes were already added before publishing
+            desc = base
+        elif "{CHAPTERS}" in base or "{{CHAPTERS}}" in base:
             desc = base.replace("{{CHAPTERS}}", block).replace("{CHAPTERS}", block)
         else:
             desc = cur.rstrip() + "\n\n" + block

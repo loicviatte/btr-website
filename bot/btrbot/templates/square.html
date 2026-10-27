@@ -24,8 +24,9 @@ html,body{margin:0;background:#080403}
   <img class="abs" src="{{ guest_bg }}" style="left:{{ guest_left }}px">
   <img class="abs mask" src="{{ marius_bg }}" style="left:{{ marius_left }}px">
   <div class="haze"></div>
+  {% if marius_front %}<img class="abs" src="{{ guest_cut }}" style="left:{{ guest_left }}px">{% endif %}
   <img class="abs" src="{{ marius_cut }}" style="left:{{ marius_left }}px">
-  <img class="abs" src="{{ guest_cut }}" style="left:{{ guest_left }}px">
+  {% if not marius_front %}<img class="abs" src="{{ guest_cut }}" style="left:{{ guest_left }}px">{% endif %}
   <div id="q">
     <p class="s" id="top" style="text-align:left"><span class="g">“</span>{{ top }}</p>
     <p id="key">{{ key }}</p>

@@ -602,6 +602,15 @@ async def on_text(update: Update, ctx):
             await say(ctx, f"<b>Nouvelle description :</b>\n{esc(ep['description'])[:3500]}", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
         await guarded(ctx, "Description", go())
         return
+    if ep.stage == "thumbs_proposed" and re.search(r"descr.*(timecode|chapitr)|(timecode|chapitr).*descr", low):
+        async def go():
+            await say(ctx, "⏱ Je génère les chapitres avec timecodes et je les mets dans la description…")
+            desc = await run(pipe.description_with_chapters, ep)
+            await plain(ctx, desc)
+            await say(ctx, "Voilà la description avec les timecodes (elle sera publiée telle quelle).",
+                      reply_markup=thumb_kb(ep))
+        await guarded(ctx, "Chapitres", go())
+        return
     if ep.stage == "thumbs_proposed" and not UNVALIDATE.search(low) and VALIDATE.search(low):
         # "horizontal validé", "vertical et carré validés", "tout validé": freeze those designs
         found = []

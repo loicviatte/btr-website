@@ -93,7 +93,7 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     return jpg
 
 
-def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str) -> Path:
+def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str, marius_front: bool = True) -> Path:
     """1080x1080 post, guest left / Marius right. Reuses the 1920x1080 frames and cutouts made by youtube()."""
     k = 1.1                                   # frames shown at 2112x1188, as in the validated canvas board
     w, h = round(1920 * k), round(1080 * k)
@@ -103,7 +103,7 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
     html = env.get_template("square.html").render(
         assets=ASSETS.as_uri(), guest_bg="yt_guest_bg.jpg", marius_bg="yt_marius_bg.jpg",
         guest_cut="yt_guest_cut.png", marius_cut="yt_marius_cut.png", guest_left=gl, marius_left=ml,
-        img_w=w, img_h=h, img_top=-10, fade_a=max(0, 438 - ml), fade_b=max(1, 658 - ml),
+        img_w=w, img_h=h, img_top=-10, marius_front=marius_front, fade_a=max(0, 438 - ml), fade_b=max(1, 658 - ml),
         top=quote["top"], key=quote["key"], bottom=quote["bottom"], name1=n1, name2=n2, max_w=960)
     page = work / "square.html"
     page.write_text(html)
