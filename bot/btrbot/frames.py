@@ -50,7 +50,8 @@ def sample(video: Path, out_dir: Path, every: float = 2.0) -> list[tuple[float, 
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-vf",
                         f"fps=1/{every},scale=1280:-2", "-q:v", "3", str(out_dir / "f_%05d.jpg")], check=True)
     files = sorted(out_dir.glob("f_*.jpg"))
-    return [((int(p.stem[2:]) - 1) * every, p) for p in files]
+    # ffmpeg's fps filter takes frame n at the MIDDLE of its window: (n-1)*every + every/2
+    return [((int(p.stem[2:]) - 1) * every + every / 2, p) for p in files]
 
 
 def scan(frames: list[tuple[float, Path]], faces: Faces, cache: Path) -> list[dict]:

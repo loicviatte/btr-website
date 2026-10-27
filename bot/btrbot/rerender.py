@@ -21,6 +21,8 @@ def main() -> None:
     ep = Episode(data, vid)
     if not (ep.get("pick_guest") and ep.get("pick_marius") and ep.get("final")):
         raise SystemExit("this episode has no picked frames / quote yet")
+    if design in (ep.get("validated") or []):
+        raise SystemExit(f"{design} is VALIDATED by Loïc: do not change or re-render it")
     print(render_thumbs(ep, models, design)[design])
 
 

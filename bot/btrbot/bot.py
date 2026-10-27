@@ -10,7 +10,7 @@ from telegram import InlineKeyboardMarkup as K
 from telegram import InputMediaPhoto, Update
 from telegram.constants import ParseMode
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
-                          filters)
+                          MessageReactionHandler, filters)
 
 from . import drive
 from .agent import Agent
@@ -106,7 +106,7 @@ async def talk_to_agent(ctx, text: str, strong: bool = False, thumb_ep=None):
             m = re.search(r"^DESIGNS:\s*(.*)$", answer, re.M)
             answer = re.sub(r"^DESIGNS:.*$", "", answer, flags=re.M).strip()
             await plain(ctx, answer + cost)
-            for d in [x.strip() for x in (m.group(1) if m else "").split(",") if x.strip() in THUMB_LABELS]:
+            for d in [x.strip() for x in (m.group(1) if m else "").split(",") if x.strip() in THUMB_LABELS and x.strip() not in validated(thumb_ep)]:
                 await send_thumb(ctx, thumb_ep, d)
         else:
             await plain(ctx, answer + cost)
@@ -269,22 +269,85 @@ async def propose_frames(ctx, ep, who: str, more=False):
 
 
 THUMB_LABELS = {"youtube": "YouTube", "instagram": "Instagram vertical", "square": "carrée"}
+THUMB_NAMES = {"youtube": "horizontal", "instagram": "vertical", "square": "carré"}   # how Loïc calls them
+_ALIAS = r"horizontal(?:e|es|s)?|youtube|vertical(?:e|es|s)?|instagram|insta|carr[ée]s?|toutes?|tout"
+VALIDATE = re.compile(rf"((?:(?:{_ALIAS})\s*(?:,|et|&|\+)?\s*)+?)\s*(?:est\s+|sont\s+)?(?:d[ée])?valid[ée]e?s?", re.I)
+UNVALIDATE = re.compile(r"(r[ée]ouvr|d[ée]valid|plus valid|pas (?:encore )?valid)", re.I)
+
+
+def design_of(word: str) -> list[str]:
+    w = word.lower()
+    if w.startswith("tout"):
+        return list(THUMB_LABELS)
+    if w.startswith("horizontal") or w == "youtube":
+        return ["youtube"]
+    if w.startswith("vertical") or w.startswith("insta"):
+        return ["instagram"]
+    return ["square"]
+
+
+def validated(ep) -> list[str]:
+    return [d for d in THUMB_LABELS if d in (ep.get("validated") or [])]
+
+
+def valid_status(ep) -> str:
+    v = validated(ep)
+    left = [THUMB_NAMES[d] for d in THUMB_LABELS if d not in v]
+    return (("✅ Validées : " + ", ".join(THUMB_NAMES[d] for d in v) + ". ") if v else "") + \
+           (("À valider : " + ", ".join(left) + ".") if left else "Les 3 sont validées.")
+
+
+def thumb_kb(ep, first_row=None):
+    v = validated(ep)
+    todo = [d for d in THUMB_LABELS if d not in v]
+    kb = [[B("✅ Publier sur YouTube", callback_data="publish")]] + (first_row or [])
+    if todo:
+        kb.append([B(f"👍 {THUMB_NAMES[d].capitalize()} validé", callback_data=f"val:{d}") for d in todo])
+        kb.append([B(f"🔁 Refaire {THUMB_NAMES[d]}", callback_data=f"thumb:{d}") for d in todo])
+    return K(kb)
 
 
 async def send_thumb(ctx, ep, design: str):
     path = ep.file(f"render/thumb_{design}.jpg")
     with open(path, "rb") as f:
         if design == "youtube":
-            await ctx.bot.send_photo(cfg.chat_id, f, caption="Miniature YouTube")
+            msg = await ctx.bot.send_photo(cfg.chat_id, f, caption="Miniature YouTube")
         elif design == "instagram":
-            await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
+            msg = await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
         else:
-            await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
+            msg = await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
+    ep["thumb_msgs"] = {**(ep.get("thumb_msgs") or {}), design: msg.message_id}   # to read his reactions on them
+    ep.save()
+
+
+OK_EMOJIS = {"✅", "✔️", "✔", "👍", "👌", "💯", "🔥", "❤", "❤️", "🏆"}
+
+
+async def on_reaction(update: Update, ctx):
+    """✅ (or 👍…) as a reaction on a thumbnail = validated; removing it re-opens the design."""
+    r = update.message_reaction
+    if not r or not cfg.chat_id or r.chat.id != cfg.chat_id or not reg.active:
+        return
+    ep = reg.episode(reg.active)
+    design = next((d for d, mid in (ep.get("thumb_msgs") or {}).items() if mid == r.message_id), None)
+    if not design or ep.stage != "thumbs_proposed":
+        return
+    emo = lambda rs: {getattr(x, "emoji", None) for x in rs} & OK_EMOJIS   # noqa: E731
+    if emo(r.new_reaction) and design not in validated(ep):
+        ep["validated"] = validated(ep) + [design]
+        ep.save()
+        await say(ctx, f"👍 {THUMB_NAMES[design].capitalize()} validé, je n'y touche plus. " + valid_status(ep), reply_markup=thumb_kb(ep))
+    elif emo(r.old_reaction) and not emo(r.new_reaction) and design in validated(ep):
+        ep["validated"] = [d for d in validated(ep) if d != design]
+        ep.save()
+        await say(ctx, f"↩️ {THUMB_NAMES[design].capitalize()} n'est plus validé. " + valid_status(ep), reply_markup=thumb_kb(ep))
 
 
 async def make_thumbs(ctx, ep, only: str | None = None):
     if only:
         await say(ctx, f"🎨 Je refais uniquement la miniature {THUMB_LABELS[only]} (les autres ne changent pas)…")
+    elif validated(ep):
+        await say(ctx, "🎨 Je refais les miniatures non validées. " + valid_status(ep))
     else:
         await say(ctx, "🎨 Je fabrique les 3 miniatures : YouTube, Instagram vertical et carré (détourage, extension, voile or)… ~4 min")
     thumbs = await run(pipe.thumbnails, ep, only)
@@ -296,19 +359,15 @@ async def make_thumbs(ctx, ep, only: str | None = None):
         if d in thumbs:
             await send_thumb(ctx, ep, d)
     if only:
-        kb = [[B("✅ Publier sur YouTube", callback_data="publish")],
-              [B("🔁 Refaire YouTube", callback_data="thumb:youtube"), B("🔁 Instagram", callback_data="thumb:instagram"),
-               B("🔁 Carré", callback_data="thumb:square")]]
-        await say(ctx, "Prêt à publier ?", reply_markup=K(kb))
+        await say(ctx, "Prêt à publier ? " + valid_status(ep), reply_markup=thumb_kb(ep))
         return
     desc = ep["description"].replace("{{CHAPTERS}}", "[chapitres ajoutés quand le SRT est prêt]").replace("{CHAPTERS}", "[chapitres]")
     await say(ctx, f"<b>Titre :</b> {esc(ep['final']['title'])}\n\n<b>Description :</b>\n{esc(desc)[:3300]}")
-    kb = [[B("✅ Publier sur YouTube", callback_data="publish")],
-          [B("🔁 Autre image guest", callback_data="more:guest"), B("🔁 Autre image Marius", callback_data="more:marius")],
-          [B("🔁 Refaire YouTube", callback_data="thumb:youtube"), B("🔁 Instagram", callback_data="thumb:instagram"),
-           B("🔁 Carré", callback_data="thumb:square")]]
-    await say(ctx, "Je publie titre + description + miniature ?\nPour changer : <code>titre: …</code>, "
-                   "<code>citation: haut | MOT | bas</code> ou <code>description: …</code> (tes consignes).", reply_markup=K(kb))
+    kb = thumb_kb(ep, [[B("🔁 Autre image guest", callback_data="more:guest"), B("🔁 Autre image Marius", callback_data="more:marius")]])
+    await say(ctx, "Je publie titre + description + miniature ?\nDis « horizontal / vertical / carré validé » pour figer une miniature, "
+                   "le reste de tes retours la modifie.\nPour changer : <code>titre: …</code>, "
+                   "<code>citation: haut | MOT | bas</code> ou <code>description: …</code> (tes consignes).\n" + valid_status(ep),
+              reply_markup=kb)
 
 
 FB = {"images": [], "text": [], "task": None}
@@ -345,6 +404,9 @@ async def thumb_feedback(ctx, ep, text: str, images: list[str]):
 
 Captures jointes par Loïc (à regarder avec Read) : elles MONTRENT OÙ EST LE PROBLÈME (annotations, comparaisons). Ce ne sont PAS de nouvelles images à mettre dans les miniatures : garde les images déjà choisies par le bot.
 {imgs}
+
+DÉJÀ VALIDÉES par Loïc (INTOUCHABLES : ne modifie rien qui les change, ne les re-rends pas) : {', '.join(validated(ep)) or 'aucune'}.
+Loïc les appelle : horizontal = youtube, vertical = instagram, carré = square.
 
 Miniatures actuelles : {ep.dir}/render/thumb_youtube.jpg, thumb_instagram.jpg, thumb_square.jpg (regarde-les avec Read).
 Images choisies (inchangées) : guest {g.get('hires')}, Marius {m.get('hires')}.
@@ -458,7 +520,7 @@ async def on_button(update: Update, ctx):
     if d.startswith("axis:"):
         a = ep["axes"][int(d.split(":")[1])]
         ep["final"] = {**a, "guest_name": ep.get("guest_name")}
-        for k in ("pick_guest", "pick_marius", "shown_guest", "shown_marius"):
+        for k in ("pick_guest", "pick_marius", "shown_guest", "shown_marius", "validated"):
             ep.data.pop(k, None)
         ep.stage = "frames_proposed"
         ep.save()
@@ -469,12 +531,19 @@ async def on_button(update: Update, ctx):
     elif d.startswith("pick:"):
         _, who, i = d.split(":")
         ep[f"pick_{who}"] = ep[f"cand_{who}"][int(i)]
+        ep.data.pop("validated", None)
         ep.save()
         if who == "guest" and not ep.get("pick_marius"):
             await guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, "marius"))
         else:
             await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
+    elif d.startswith("val:"):
+        ep["validated"] = validated(ep) + [d.split(":")[1]]
+        ep.save()
+        await say(ctx, f"👍 {THUMB_NAMES[d.split(':')[1]].capitalize()} validé, je n'y touche plus. " + valid_status(ep), reply_markup=thumb_kb(ep))
     elif d.startswith("thumb:"):
+        ep["validated"] = [x for x in validated(ep) if x != d.split(":")[1]]   # asking to redo it re-opens it
+        ep.save()
         await guarded(ctx, "Miniature", make_thumbs(ctx, ep, d.split(":")[1]))
     elif d == "publish":
         async def go():
@@ -516,6 +585,7 @@ async def on_text(update: Update, ctx):
         parts = [p.strip() for p in text.split(":", 1)[1].split("|")]
         if len(parts) == 3:
             ep["final"].update({"top": parts[0], "key": parts[1], "bottom": parts[2]})
+            ep.data.pop("validated", None)   # the quote is on every design
             ep.save()
             await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
         else:
@@ -530,6 +600,28 @@ async def on_text(update: Update, ctx):
             await say(ctx, f"<b>Nouvelle description :</b>\n{esc(ep['description'])[:3500]}", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
         await guarded(ctx, "Description", go())
         return
+    if ep.stage == "thumbs_proposed" and not UNVALIDATE.search(low) and VALIDATE.search(low):
+        # "horizontal validé", "vertical et carré validés", "tout validé": freeze those designs
+        found = []
+        for mt in VALIDATE.finditer(low):
+            for w in re.findall(_ALIAS, mt.group(1), re.I):
+                found += design_of(w)
+        ep["validated"] = validated(ep) + [d for d in dict.fromkeys(found) if d not in validated(ep)]
+        ep.save()
+        rest = VALIDATE.sub(" ", text)
+        rest = re.sub(r"[\s,.;:!?&+]+|\b(et|mais|donc|ensuite|le|la|les)\b", " ", rest, flags=re.I).strip()
+        await say(ctx, "👍 " + ", ".join(THUMB_NAMES[d] for d in dict.fromkeys(found)).capitalize()
+                  + " validé(e)(s), je n'y touche plus. " + valid_status(ep), reply_markup=thumb_kb(ep))
+        if len(rest) > 6:   # the rest of his message is feedback on the other designs
+            queue_feedback(ctx, ep, text=VALIDATE.sub(" ", text).strip())
+        return
+    if ep.stage == "thumbs_proposed" and validated(ep) and UNVALIDATE.search(low) and re.search(_ALIAS, low, re.I):
+        back = [d for w in re.findall(_ALIAS, low, re.I) for d in design_of(w)]
+        ep["validated"] = [d for d in validated(ep) if d not in back]
+        ep.save()
+        await say(ctx, "↩️ Je peux de nouveau modifier : " + ", ".join(THUMB_NAMES[d] for d in back) + ". " + valid_status(ep),
+                  reply_markup=thumb_kb(ep))
+        return
     if ep.stage == "thumbs_proposed" and (FB["images"] or DESIGN_WORDS.search(low)):
         queue_feedback(ctx, ep, text=text)
         return
@@ -542,7 +634,7 @@ async def on_text(update: Update, ctx):
                 return
             if res.get("final"):
                 ep.stage = "frames_proposed"
-                for k in ("pick_guest", "pick_marius"):
+                for k in ("pick_guest", "pick_marius", "validated"):
                     ep.data.pop(k, None)
                 ep.save()
                 f = clean_quote(res["final"])
@@ -664,6 +756,7 @@ def main():
     app.add_handler(CommandHandler("opus", claude_strong_cmd))
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
+    app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))

@@ -1,4 +1,5 @@
 """The heavy, blocking steps. The Telegram bot calls these in a worker thread."""
+import json
 import re
 from pathlib import Path
 
@@ -26,21 +27,25 @@ def mmss(t: str) -> float:
     return float(sec)
 
 
-def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None) -> dict[str, Path]:
-    """Render the 3 thumbnails from the picked frames, or just one ("youtube" | "instagram" | "square")."""
+def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=()) -> dict[str, Path]:
+    """Render the 3 thumbnails from the picked frames, or just one ("youtube" | "instagram" | "square").
+    Designs in `skip` (validated by Loïc) are left untouched."""
     g, m = ep["pick_guest"], ep["pick_marius"]
     q = clean_quote(ep["final"])
     name = ep.get("guest_name", "")
     work = ep.dir / "render"
+    want = [d for d in ("youtube", "square", "instagram") if only in (None, d) and d not in skip]
     out: dict[str, Path] = {}
     # the square reuses the frames/cut-outs made by the YouTube render
-    if only in (None, "youtube") or (only == "square" and not (work / "yt_marius_cut.png").exists()):
-        out["youtube"] = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
-    if only in (None, "square"):
+    if "youtube" in want or ("square" in want and not (work / "yt_marius_cut.png").exists()):
+        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
+        if "youtube" in want:
+            out["youtube"] = yt
+    if "square" in want:
         out["square"] = render.square(work, g["cx"], m["cx"], q, name)
-    if only in (None, "instagram"):
+    if "instagram" in want:
         out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name)
-    return {k: v for k, v in out.items() if only in (None, k)}
+    return out
 
 
 class DryRun(Exception):
@@ -117,7 +122,20 @@ class Pipeline:
     def scan(self, ep: Episode) -> list[dict]:
         video = frames.download_scan_copy(ep.video_id, ep.file("scan.mp4"), self.cfg.ytdlp_cookies)
         fr = frames.sample(video, ep.dir / "frames", 2.0)
-        return frames.scan(fr, self.faces, ep.file("scan.json"))
+        cache, marker = ep.file("scan.json"), ep.file("scan.v2")
+        had_cache = cache.exists()
+        cands = frames.scan(fr, self.faces, cache)
+        if had_cache and not marker.exists():
+            # scans made before the timestamp fix are 1 s early: shift them (and what was already shown)
+            for c in cands:
+                c["t"] += 1.0
+            cache.write_text(json.dumps(cands))
+            for who in ("guest", "marius"):
+                if ep.get(f"shown_{who}"):
+                    ep[f"shown_{who}"] = [t + 1.0 for t in ep[f"shown_{who}"]]
+            ep.save()
+        marker.touch()
+        return cands
 
     def propose_frames(self, ep: Episode, who: str, exclude=()) -> list[dict]:
         cands = self.scan(ep)
@@ -160,7 +178,8 @@ class Pipeline:
 
     # ---- 3. thumbnails ------------------------------------------------------
     def thumbnails(self, ep: Episode, only: str | None = None) -> dict[str, Path]:
-        return render_thumbs(ep, self.cfg.models_dir, only)
+        # a design asked for by name is re-opened; "all" never touches the validated ones
+        return render_thumbs(ep, self.cfg.models_dir, only, () if only else tuple(ep.get("validated") or ()))
 
     def description(self, ep: Episode) -> str:
         refs = ep.get("refs") or self.yt.public_references(4)
