@@ -161,8 +161,13 @@ def save_stats(videos):
     # full episodes = the videos in the site's Episodes list (design/Episodes.dc.html, `const list`, 5th value)
     lst = re.search(r'const list = \[\n(.*?)\n    \];', open(os.path.join(ROOT, 'design', 'Episodes.dc.html'), encoding='utf-8').read(), re.S)
     on_site = {vals[4] for vals in (re.findall(r"'((?:[^'\\]|\\.)*)'", l) for l in lst.group(1).split('\n')) if len(vals) == 7}
-    eps = [{'id': v['id'], 'title': v['snippet']['title'], 'views': int(v.get('statistics', {}).get('viewCount', 0))}
-           for v in videos if v['id'] in on_site]
+    # counted in the average: full episodes (> 15 min, on the site) out for at least 7 days, so a video that has just
+    # come out with 10 views doesn't pull the average down
+    week_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    eps = [{'id': v['id'], 'title': v['snippet']['title'], 'publishedAt': v['snippet']['publishedAt'],
+            'views': int(v.get('statistics', {}).get('viewCount', 0))}
+           for v in videos if v['id'] in on_site and iso_secs(v['contentDetails']['duration']) >= MIN_SECS
+           and v['status'].get('privacyStatus') == 'public' and v['snippet']['publishedAt'] <= week_ago]
     if not CHANNEL.get('viewCount') or not eps: return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     json.dump({'date': today, 'subscribers': int(CHANNEL.get('subscriberCount', 0)), 'channelViews': int(CHANNEL['viewCount']),

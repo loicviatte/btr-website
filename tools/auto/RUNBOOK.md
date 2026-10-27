@@ -22,6 +22,7 @@ python3 tools/auto/btr_auto.py atlas-sync ../btr-media
 If it filled something: compile, build, smoke test (any existing slug), commit "Atlas: <country> cards", push.
 Also, once a day (when `data/stats/metricool.json` has an older `date` than today), refresh the About > Partners
 figures. Metricool (brandId `7665642`, `getAnalyticsDataByMetrics`, `to` = now):
+- (YouTube: `data/stats/youtube.json`; the average counts only full episodes out for 7+ days.)
 - `IGEV01`, `TKEV07`, `YTEV01` from 7 days ago → the latest non-null value of each = Instagram followers, TikTok
   followers, YouTube subscribers;
 - `IGRE01`, `IGRE06`, `IGRE23` from `2024-01-01` → one row per reel `[date, url, views]`;

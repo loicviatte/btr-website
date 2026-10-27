@@ -62,7 +62,7 @@ def figures():
     if num(yt.get('channelViews')) >= base['youtube']['channelViews']:
         y['channelViews'] = num(yt['channelViews'])
     eps = yt.get('episodes') or []
-    if len(eps) >= base['youtube']['episodes']:
+    if len(eps) >= 10:      # episodes > 15 min out for 7+ days (yt_fetch.py); fewer = incomplete answer
         y['episodes'] = len(eps)
         y['episodeViews'] = sum(num(e.get('views')) for e in eps)
         dates.append(yt.get('date', ''))
