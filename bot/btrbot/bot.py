@@ -13,7 +13,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
                           MessageReactionHandler, filters)
 
-from . import drive, prompts
+from . import design, drive, prompts
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -390,6 +390,10 @@ CHAT_MODEL = os.environ.get("CHAT_MODEL", "claude-sonnet-5-5")   # the chat itse
 
 
 def chat_context(ep) -> str:
+    return (_ep_context(ep) + "\n\n" + design_context())
+
+
+def _ep_context(ep) -> str:
     if not ep:
         return "Aucun épisode en cours."
     f = ep.get("final") or {}
@@ -398,6 +402,11 @@ def chat_context(ep) -> str:
             f"Miniatures validées : {', '.join(THUMB_NAMES[d] for d in validated(ep)) or 'aucune'}. "
             f"Description : {'oui' if ep.get('description') else 'non'}"
             f"{', avec chapitres' if ep.get('chapters_in_description') else ''}.")
+
+
+def design_context() -> str:
+    return "Réglages des miniatures (formats : youtube = horizontal, instagram = vertical, square = carré) :\n" + \
+        "\n".join(design.describe(cfg.data_dir, f) for f in design.PARAMS)
 
 
 async def chat_with_bot(ctx, text: str, ep=None):
@@ -415,6 +424,26 @@ async def chat_with_bot(ctx, text: str, ep=None):
         return
     reply = str(res.get("reply") or "").strip() or "👍"
     reg.data["chat_hist"] = (hist + [{"role": "user", "content": text}, {"role": "assistant", "content": reply}])[-12:]
+    dz = res.get("design")
+    redo = None
+    if isinstance(dz, dict) and dz.get("format") in design.PARAMS:
+        fmt, notes = dz["format"], []
+        if dz.get("reset"):
+            design.reset(cfg.data_dir, fmt)
+            notes.append("réglages remis par défaut")
+        for name, val in (dz.get("set") or {}).items():
+            try:
+                notes.append(f"{name} → {design.set_value(cfg.data_dir, fmt, name, val)}")
+            except (KeyError, ValueError, TypeError):
+                notes.append(f"réglage inconnu ou valeur invalide : {name}")
+        if dz.get("show"):
+            reply += "\n\n" + design.describe(cfg.data_dir, fmt)
+        if notes:
+            reply += "\n\n✏️ " + " · ".join(notes)
+            if ep and fmt in validated(ep):
+                reply += f"\n(La miniature {THUMB_NAMES[fmt]} est validée : 🔁 Refaire la rouvre.)"
+            redo = fmt
+    kb_redo = [[B(f"🔁 Refaire {THUMB_NAMES[redo]}", callback_data=f"thumb:{redo}")]] if redo and ep and ep.get("pick_marius") else None
     ask = res.get("ask_claude")
     if ask:
         reg.data["pending_ask"] = {"text": str(ask), "thumbs": bool(res.get("thumbs")) and bool(ep), "images": []}
@@ -423,7 +452,7 @@ async def chat_with_bot(ctx, text: str, ep=None):
                   reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
     else:
         reg.save()
-        await say(ctx, esc(reply))
+        await say(ctx, esc(reply), reply_markup=K(kb_redo) if kb_redo else None)
 
 
 async def propose_ask(ctx, ep, text: str, images: list[str]):

@@ -7,13 +7,15 @@
 html,body{margin:0;background:#080403}
 .f{position:relative;width:1080px;height:1920px;overflow:hidden;background:#080403;font-family:"PP Monument Extended","Arial Black",sans-serif;color:#fff}
 .haze{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(19,14,4,.012) 10%,rgba(57,48,20,.035) 20%,rgba(90,76,35,.06) 30%,rgba(114,98,47,.1) 40%,rgba(137,118,58,.14) 50%,rgba(159,137,69,.2) 60%,rgba(180,154,79,.28) 70%,rgba(199,171,88,.42) 80%,rgba(217,187,96,.71) 90%,rgba(223,191,100,.85) 100%)}
-#q{position:absolute;left:{{ left }}px;top:{{ top_px }}px;display:flex;flex-direction:column;align-items:stretch}
+#q{position:absolute;left:{{ d.text_x }}px;top:{{ d.text_y }}px;display:flex;flex-direction:column;align-items:stretch;z-index:{{ 3 if d.text_front else 1 }}}
+.cut{z-index:2}
 #q p{margin:0;line-height:1;font-weight:800;white-space:nowrap}
 .s{font-size:72px}
 #key{font-size:120px;margin:10px 0 16px !important}
 .row{display:flex;justify-content:space-between;align-items:baseline}
+.row p{white-space:nowrap}
 .g{color:#fecb7a}
-.name{position:absolute;left:161px;top:1407px;margin:0;font-size:69px;line-height:1.2;font-weight:800;white-space:nowrap;color:#fcdf9a;mix-blend-mode:hard-light;text-transform:uppercase}
+.name{position:absolute;left:161px;top:1407px;margin:0;font-size:69px;line-height:1.2;font-weight:800;white-space:nowrap;color:#fcdf9a;mix-blend-mode:hard-light;text-transform:uppercase;z-index:4}
 </style>
 </head>
 <body>
@@ -28,26 +30,56 @@ html,body{margin:0;background:#080403}
       <p class="s">{{ bottom_right }}<span class="g">”</span></p>
     </div>
   </div>
-  <img src="{{ cut }}" style="position:absolute;left:0;top:{{ cut_top }}px;width:1080px;height:{{ cut_h }}px">
+  <img class="cut" src="{{ cut }}" style="position:absolute;left:0;top:{{ cut_top }}px;width:1080px;height:{{ cut_h }}px">
   <p class="name">{{ name1 }}<br>{{ name2 }}</p>
 </div>
 <script>
 window.fit = () => {
-  const key = document.getElementById('key');
+  const PROF = {{ profile | tojson }};   // [y, left x, right x] of the cut-out head, canvas pixels
+  const q = document.getElementById('q'), key = document.getElementById('key');
   const smalls = [...document.querySelectorAll('#q .s')];
+  const rowEl = document.getElementById('bottom'), lp = rowEl.children[0], rp = rowEl.children[1];
   const maxW = {{ max_w }};
+  q.style.wordSpacing = {{ d.word_gap }} + 'px';
+  key.style.setProperty('margin', (10 + {{ d.line_gap }}) + 'px 0 ' + (16 + {{ d.line_gap }}) + 'px', 'important');
   let k = 120;
   if (key.textContent.trim().length <= 5) k = 140;
+  k = Math.round(k * {{ d.key_scale }});
   key.style.fontSize = k + 'px';
   while (key.scrollWidth > maxW && k > 80) { k -= 2; key.style.fontSize = k + 'px'; }
   const lineW = () => Math.max(document.getElementById('top').scrollWidth,
                                [...document.querySelectorAll('#bottom p')].reduce((a, e) => a + e.scrollWidth, 0) + 40);
-  let s = 72;
-  while (lineW() > Math.max(maxW, key.scrollWidth) && s > 50) { s -= 2; smalls.forEach(e => e.style.fontSize = s + 'px'); }
-  // keep the whole quote ABOVE the head (it used to run behind her hair and hide words)
-  const q = document.getElementById('q');
-  q.style.top = Math.max(150, {{ head_y }} - 30 - q.getBoundingClientRect().height) + 'px';
-  return {key: k, small: s};
+  let s = Math.round(72 * {{ d.small_scale }});
+  const setS = v => smalls.forEach(e => e.style.fontSize = v + 'px');
+  setS(s);
+  while (lineW() > Math.max(maxW, key.scrollWidth) && s > 50) { s -= 2; setS(s); }
+  // The quote sits against the head, behind it: on the last line the words stop at the edge of the head and
+  // resume on the other side, so no word is hidden.
+  let split = null;
+  if ({{ 'true' if d.text_anchor_head else 'false' }} && PROF.length && lp.textContent.trim()) {
+    const headTop = PROF[0][0];
+    for (;;) {
+      rowEl.style.justifyContent = 'flex-start';
+      lp.style.marginLeft = '0px'; rp.style.marginLeft = '0px';
+      q.style.top = '0px';
+      const rowOff = rowEl.getBoundingClientRect().top - q.getBoundingClientRect().top;
+      q.style.top = Math.round(headTop + {{ d.head_dist }} - rowOff) + 'px';
+      const r = rowEl.getBoundingClientRect();
+      const band = PROF.filter(p => p[0] >= r.top + r.height * 0.18 && p[0] <= r.bottom - r.height * 0.12);
+      if (!band.length) { rowEl.style.justifyContent = 'space-between'; break; }
+      const xl = Math.min(...band.map(p => p[1])), xr = Math.max(...band.map(p => p[2]));
+      const ql = q.getBoundingClientRect().left;
+      const wl = lp.getBoundingClientRect().width, wr = rp.getBoundingClientRect().width;
+      const leftStart = xl - {{ d.head_margin }} - wl;
+      const rightStart = xr + {{ d.head_margin }} + {{ d.split_extra }};
+      if (rightStart + wr > 1080 - 40 && s > 56) { s -= 2; setS(s); continue; }
+      lp.style.marginLeft = (leftStart - ql) + 'px';
+      rp.style.marginLeft = (rightStart - (leftStart + wl)) + 'px';
+      split = {xl, xr, leftStart, rightStart, end: rightStart + wr};
+      break;
+    }
+  }
+  return {key: k, small: s, split};
 };
 </script>
 </body>

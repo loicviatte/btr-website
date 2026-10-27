@@ -2,9 +2,10 @@
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import numpy as np
 from PIL import Image
 
-from . import imaging
+from . import design, imaging
 from .config import ASSETS, TEMPLATES
 
 env = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html"]))
@@ -32,8 +33,9 @@ def _names(full: str) -> tuple[str, str]:
 
 
 def youtube(work: Path, guest_4k: Path, guest_cx: float, marius_4k: Path, marius_cx: float,
-            quote: dict, guest_name: str) -> Path:
-    """guest_cx / marius_cx: face centre x as a fraction of frame width."""
+            quote: dict, guest_name: str, d: dict | None = None) -> Path:
+    """guest_cx / marius_cx: face centre x as a fraction of frame width. d: layout settings (design.load)."""
+    d = d or design.load(Path("/nonexistent"), "youtube")
     work.mkdir(parents=True, exist_ok=True)
     g = Image.open(guest_4k).convert("RGB").resize((1920, 1080), Image.LANCZOS)
     m = Image.open(marius_4k).convert("RGB").resize((1920, 1080), Image.LANCZOS)
@@ -49,7 +51,7 @@ def youtube(work: Path, guest_4k: Path, guest_cx: float, marius_4k: Path, marius
         assets=ASSETS.as_uri(), guest_bg="yt_guest_bg.jpg", marius_bg="yt_marius_bg.jpg",
         guest_cut="yt_guest_cut.png", marius_cut="yt_marius_cut.png", guest_left=gl, marius_left=ml,
         top=quote["top"], key=quote["key"], bottom=quote["bottom"], name1=n1, name2=n2,
-        max_w=900, center=int((400 + 1560) / 2))
+        max_w=900, center=int((400 + 1560) / 2), d=d)
     page = work / "youtube.html"
     page.write_text(html)
     png = work / "thumb_youtube.png"
@@ -59,8 +61,10 @@ def youtube(work: Path, guest_4k: Path, guest_cx: float, marius_4k: Path, marius
     return jpg
 
 
-def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: dict, guest_name: str) -> Path:
-    """face: {cx, top, fh} from the scan (fractions of the frame)."""
+def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: dict, guest_name: str,
+              d: dict | None = None) -> Path:
+    """face: {cx, top, fh} from the scan (fractions of the frame). d: layout settings (design.load)."""
+    d = d or design.load(Path("/nonexistent"), "instagram")
     work.mkdir(parents=True, exist_ok=True)
     src = Image.open(guest_4k).convert("RGB")
     W, H = src.size                       # usually 3840x2160
@@ -76,14 +80,21 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     extended.resize((1080, 1920), Image.LANCZOS).save(work / "ig_bg.jpg", quality=92)
     cut = imaging.cutout(crop)
     cut_h = round(crop.size[1] * s)
-    cut.resize((1080, cut_h), Image.LANCZOS).save(work / "ig_cut.png")
+    cut_r = cut.resize((1080, cut_h), Image.LANCZOS)
+    cut_r.save(work / "ig_cut.png")
+    alpha = np.asarray(cut_r.getchannel("A"))
+    profile = []                          # head outline [canvas y, left x, right x]: the quote wraps around it
+    for y in range(0, cut_h, 3):
+        xs = np.where(alpha[y] > 128)[0]
+        if len(xs):
+            profile.append([y + round(ext * s), int(xs.min()), int(xs.max())])
     words = quote["bottom"].split()
     bl, br = (words[0], " ".join(words[1:])) if len(words) > 1 else ("", quote["bottom"])
     n1, n2 = _names(guest_name)
     html = env.get_template("instagram.html").render(
         assets=ASSETS.as_uri(), bg="ig_bg.jpg", cut="ig_cut.png", cut_top=round(ext * s), cut_h=cut_h,
         top=quote["top"], key=quote["key"], bottom_left=bl, bottom_right=br, name1=n1, name2=n2,
-        left=145, top_px=355, head_y=520, max_w=860)
+        profile=profile, max_w=860, d=d)
     page = work / "instagram.html"
     page.write_text(html)
     png = work / "thumb_instagram.png"
@@ -93,8 +104,9 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     return jpg
 
 
-def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str, marius_front: bool = True) -> Path:
+def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str, d: dict | None = None) -> Path:
     """1080x1080 post, guest left / Marius right. Reuses the 1920x1080 frames and cutouts made by youtube()."""
+    d = d or design.load(Path("/nonexistent"), "square")
     k = 1.1                                   # frames shown at 2112x1188, as in the validated canvas board
     w, h = round(1920 * k), round(1080 * k)
     gl = int(max(1080 - w, min(0, 300 - guest_cx * w)))     # guest face ~x 300
@@ -103,7 +115,7 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
     html = env.get_template("square.html").render(
         assets=ASSETS.as_uri(), guest_bg="yt_guest_bg.jpg", marius_bg="yt_marius_bg.jpg",
         guest_cut="yt_guest_cut.png", marius_cut="yt_marius_cut.png", guest_left=gl, marius_left=ml,
-        img_w=w, img_h=h, img_top=-10, marius_front=marius_front, fade_a=max(0, 438 - ml), fade_b=max(1, 658 - ml),
+        img_w=w, img_h=h, img_top=-10, marius_front=d["marius_front"], d=d, fade_a=max(0, 438 - ml), fade_b=max(1, 658 - ml),
         top=quote["top"], key=quote["key"], bottom=quote["bottom"], name1=n1, name2=n2, max_w=960)
     page = work / "square.html"
     page.write_text(html)

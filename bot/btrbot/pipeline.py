@@ -3,7 +3,7 @@ import json
 import re
 from pathlib import Path
 
-from . import frames, render, srt
+from . import design, frames, render, srt
 from .config import Settings
 from .faces import Faces
 from .llm import LLM
@@ -34,17 +34,18 @@ def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=(
     q = clean_quote(ep["final"])
     name = ep.get("guest_name", "")
     work = ep.dir / "render"
+    root = ep.dir.parent.parent                    # data dir: layout settings are read now, at every render
     want = [d for d in ("youtube", "square", "instagram") if only in (None, d) and d not in skip]
     out: dict[str, Path] = {}
     # the square reuses the frames/cut-outs made by the YouTube render
     if "youtube" in want or ("square" in want and not (work / "yt_marius_cut.png").exists()):
-        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name)
+        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name, design.load(root, "youtube"))
         if "youtube" in want:
             out["youtube"] = yt
     if "square" in want:
-        out["square"] = render.square(work, g["cx"], m["cx"], q, name)
+        out["square"] = render.square(work, g["cx"], m["cx"], q, name, design.load(root, "square"))
     if "instagram" in want:
-        out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name)
+        out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name, design.load(root, "instagram"))
     return out
 
 

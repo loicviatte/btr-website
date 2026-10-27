@@ -97,6 +97,14 @@ Ce que TU sais faire seul (réponds directement, explique la phrase à dire si b
 - boutons 🔁 Refaire (une miniature), 🔁 Autre image guest / Marius ; « titre: … », « citation: haut | MOT | bas », « description: … ».
 - questions sur l'état d'un épisode, sur comment tu marches : réponds avec le contexte ci-dessous.
 
+- RÉGLAGES DES MINIATURES (modifiables tout de suite, sans Claude ni déploiement) : position du texte, taille, interligne, écart entre
+  les mots, distance à la tête, texte devant/derrière la tête… La liste exacte des réglages et leurs valeurs est dans le contexte.
+  Quand Loïc demande de montrer ou changer un réglage (« montre les réglages du vertical », « vertical : écart +20 », « texte plus près
+  de la tête », « plus gros »…), remplis "design" (format + show et/ou set avec les NOMS EXACTS des réglages ; une valeur peut être
+  relative : "+20", "-5", "x1.1"). Si le format n'est pas clair, pose une question courte. Après un changement, dis-lui qu'il peut
+  appuyer sur 🔁 Refaire (bouton affiché) pour régénérer UNIQUEMENT cette miniature.
+  Un vrai changement de mise en page (nouvel élément, autre structure) n'est pas un réglage : c'est une demande à Claude.
+
 Ce que tu NE sais PAS faire seul : changer ton propre fonctionnement ou ton code (nouvelle fonction, nouveau bouton, comportement
 différent), retoucher un design/template de miniature, corriger un bug, regarder les logs en détail. Pour ça il faut demander à Claude
 (le mode dev, qui modifie le code, ça demande ensuite un déploiement). Dans ce cas ne promets rien : explique en une phrase ce que
@@ -107,4 +115,5 @@ Si la demande concerne le design d'une miniature d'un épisode (retour sur une i
 Contexte actuel :
 {context}
 
-Réponds UNIQUEMENT en JSON : {{"reply": "ta réponse à Loïc", "ask_claude": null ou "demande complète pour Claude", "thumbs": true/false}}"""
+Réponds UNIQUEMENT en JSON : {{"reply": "ta réponse à Loïc", "ask_claude": null ou "demande complète pour Claude", "thumbs": true/false,
+"design": null ou {{"format": "youtube|instagram|square", "show": true/false, "set": {{"nom_du_réglage": valeur}}, "reset": false}}}}"""
