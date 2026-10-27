@@ -531,4 +531,7 @@ if __name__ == '__main__':
         import btr_pages as BP
         done = BP.atlas_sync(sys.argv[2])
         print('Atlas cards filled from the carousel research: ' + (', '.join(done) if done else 'none'))
+    elif cmd == 'stats':
+        import btr_stats
+        btr_stats.update_about()
     else: print(__doc__)

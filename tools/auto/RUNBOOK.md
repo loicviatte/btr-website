@@ -20,7 +20,20 @@ git clone -q https://github.com/loicviatte/btr-media.git ../btr-media   # public
 python3 tools/auto/btr_auto.py atlas-sync ../btr-media
 ```
 If it filled something: compile, build, smoke test (any existing slug), commit "Atlas: <country> cards", push.
-Nothing to process and nothing synced → stop, say nothing.
+Also, once a day (when `data/stats/metricool.json` has an older `date` than today), refresh the About > Partners
+figures. Metricool (brandId `7665642`, `getAnalyticsDataByMetrics`, `to` = now):
+- `IGEV01`, `TKEV07`, `YTEV01` from 7 days ago → the latest non-null value of each = Instagram followers, TikTok
+  followers, YouTube subscribers;
+- `IGRE01`, `IGRE06`, `IGRE23` from `2024-01-01` → one row per reel `[date, url, views]`;
+- `TKPO01`, `TKPO03`, `TKPO07` from `2024-01-01` → one row per TikTok video (often empty: fine).
+Write them to `data/stats/metricool.json` as `{"date": "<YYYY-MM-DD>", "instagramFollowers": n, "tiktokFollowers": n,
+"youtubeSubscribers": n, "reels": [rows], "tiktokVideos": [rows]}` (rows exactly as returned), then
+`python3 tools/auto/btr_auto.py stats`. YouTube views come from `data/stats/youtube.json` (the Action), Spotify from
+`data/stats/base.json` (by hand). If it prints "About updated": compile, build, smoke test, commit
+"About: figures <date>", push. Always commit `data/stats/metricool.json` (no deploy for it alone).
+Metricool failing is not a reason to stop: the figures stay as they are.
+
+Nothing to process, nothing synced and no figures changed → stop, say nothing.
 
 Process folders in publishing order (oldest `publishedAt` first), one at a time, steps 1 to 6 each.
 

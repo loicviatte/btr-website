@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name "btr-bot"
           git config user.email "btr-bot@users.noreply.github.com"
-          git add data/incoming
+          git add data/incoming data/stats
           if git diff --cached --quiet; then echo "Nothing new"; exit 0; fi
           git commit -m "Incoming episode data from YouTube"
           git pull --rebase

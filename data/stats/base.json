@@ -1,0 +1,24 @@
+{
+ "_note": "Figures of 26 Oct 2026 (About > Partners), used for anything no source can update. Spotify has no API: Loïc updates spotify by hand. instagram.olderReelViews = views of reels published before Metricool's import window (instagram.metricoolSince), frozen; newer reels come from Metricool every day.",
+ "asOf": "2026-10-26",
+ "instagram": {
+  "followers": 1358,
+  "views": 617878,
+  "metricoolSince": "20260825",
+  "olderReelViews": 280852
+ },
+ "youtube": {
+  "subscribers": 199,
+  "channelViews": 27567,
+  "episodeViews": 7745,
+  "episodes": 15
+ },
+ "spotify": {
+  "followers": 116,
+  "plays": 850
+ },
+ "tiktok": {
+  "followers": 25,
+  "views": 28844
+ }
+}

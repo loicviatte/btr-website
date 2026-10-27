@@ -30,6 +30,7 @@ def http(url, data=None, headers=None, raw=False):
     return body if raw else json.loads(body)
 
 TOKEN = None
+CHANNEL = {}
 def token():
     global TOKEN
     if TOKEN is None and os.environ.get('YT_REFRESH_TOKEN'):
@@ -59,13 +60,14 @@ def known_vids():
 
 def uploads():
     if token():
-        ch = api('channels', part='contentDetails,snippet', mine='true')
+        ch = api('channels', part='contentDetails,snippet,statistics', mine='true')
     else:
-        ch = api('channels', part='contentDetails,snippet', id=os.environ['YT_CHANNEL_ID'])
+        ch = api('channels', part='contentDetails,snippet,statistics', id=os.environ['YT_CHANNEL_ID'])
     print('Channel:', ch['items'][0]['snippet']['title'])
+    CHANNEL.update(ch['items'][0].get('statistics', {}))
     pl = ch['items'][0]['contentDetails']['relatedPlaylists']['uploads']
     ids, page = [], None
-    for _ in range(3):      # the latest 150 uploads (shorts included), plenty between two runs
+    for _ in range(4):      # the latest 200 uploads (shorts included): every episode, for the About figures
         kw = {'part': 'contentDetails', 'playlistId': pl, 'maxResults': 50}
         if page: kw['pageToken'] = page
         res = api('playlistItems', **kw)
@@ -74,7 +76,7 @@ def uploads():
         if not page: break
     out = []
     for k in range(0, len(ids), 50):
-        out += api('videos', part='snippet,contentDetails,status', id=','.join(ids[k:k + 50]))['items']
+        out += api('videos', part='snippet,contentDetails,status,statistics', id=','.join(ids[k:k + 50]))['items']
     print(f'{len(out)} uploads checked (latest: ' + (out[0]['snippet']['title'] if out else '—') + ')')
     return out
 
@@ -148,12 +150,34 @@ def captions_drive(title, files, dest, meta):
             print('  Drive download failed for', name, e)
     return False
 
+def save_stats(videos):
+    """Once a day: YouTube figures for About > Partners (tools/auto/btr_stats.py)."""
+    import datetime
+    path = os.path.join(ROOT, 'data', 'stats', 'youtube.json')
+    today = datetime.date.today().isoformat()
+    try:
+        if json.load(open(path)).get('date') == today: return
+    except Exception: pass
+    # full episodes = the videos in the site's Episodes list (design/Episodes.dc.html, `const list`, 5th value)
+    lst = re.search(r'const list = \[\n(.*?)\n    \];', open(os.path.join(ROOT, 'design', 'Episodes.dc.html'), encoding='utf-8').read(), re.S)
+    on_site = {vals[4] for vals in (re.findall(r"'((?:[^'\\]|\\.)*)'", l) for l in lst.group(1).split('\n')) if len(vals) == 7}
+    eps = [{'id': v['id'], 'title': v['snippet']['title'], 'views': int(v.get('statistics', {}).get('viewCount', 0))}
+           for v in videos if v['id'] in on_site]
+    if not CHANNEL.get('viewCount') or not eps: return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump({'date': today, 'subscribers': int(CHANNEL.get('subscriberCount', 0)), 'channelViews': int(CHANNEL['viewCount']),
+               'episodes': sorted(eps, key=lambda e: e['title'])}, open(path, 'w'), ensure_ascii=False, indent=1)
+    print(f"YouTube figures: {CHANNEL.get('subscriberCount')} subscribers, {CHANNEL['viewCount']} views, {len(eps)} full episodes")
+
 def main():
     os.makedirs(INCOMING, exist_ok=True)
     known = known_vids()
     files = drive_srts()
     found = 0
-    for v in uploads():
+    videos = uploads()
+    try: save_stats(videos)
+    except Exception as e: print('YouTube figures not saved:', e)
+    for v in videos:
         vid = v['id']
         secs = iso_secs(v['contentDetails']['duration'])
         if v['status'].get('privacyStatus') != 'public' or secs < MIN_SECS or vid in known:
