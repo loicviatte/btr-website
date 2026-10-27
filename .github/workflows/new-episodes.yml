@@ -26,12 +26,16 @@ jobs:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
           YT_CHANNEL_ID: ${{ secrets.YT_CHANNEL_ID }}
         run: python3 tools/auto/yt_fetch.py
+      - name: Fill missing reel covers on the episode pages
+        run: |
+          python3 tools/auto/reel_covers.py
+          if ! git diff --quiet -- design; then npm ci --no-audit --no-fund && npm run compile; fi
       - name: Save what was found
         run: |
           git config user.name "btr-bot"
           git config user.email "btr-bot@users.noreply.github.com"
-          git add data/incoming data/stats
+          git add data/incoming data/stats design components lib public app
           if git diff --cached --quiet; then echo "Nothing new"; exit 0; fi
-          git commit -m "Incoming episode data from YouTube"
+          git commit -m "Incoming episode data from YouTube / reel covers"
           git pull --rebase
           git push

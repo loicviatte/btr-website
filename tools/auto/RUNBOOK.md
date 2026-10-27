@@ -27,8 +27,10 @@ figures. Metricool (brandId `7665642`, `getAnalyticsDataByMetrics`, `to` = now):
   followers, YouTube subscribers;
 - `IGRE01`, `IGRE06`, `IGRE23` from `2024-01-01` → one row per reel `[date, url, views]`;
 - `TKPO01`, `TKPO03`, `TKPO07` from `2024-01-01` → one row per TikTok video (often empty: fine).
+- `IGRE06`, `IGRE05` from `2024-01-01` → `[reel url, cover image url]` rows: save them as `reelCovers`; the GitHub
+  Action uses them to fill reels without a cover on the episode pages (`tools/auto/reel_covers.py`).
 Write them to `data/stats/metricool.json` as `{"date": "<YYYY-MM-DD>", "instagramFollowers": n, "tiktokFollowers": n,
-"youtubeSubscribers": n, "reels": [rows], "tiktokVideos": [rows]}` (rows exactly as returned), then
+"youtubeSubscribers": n, "reels": [rows], "tiktokVideos": [rows], "reelCovers": [rows]}` (rows exactly as returned), then
 `python3 tools/auto/btr_auto.py stats`. YouTube views come from `data/stats/youtube.json` (the Action), Spotify from
 `data/stats/base.json` (by hand). If it prints "About updated": compile, build, smoke test, commit
 "About: figures <date>", push. Always commit `data/stats/metricool.json` (no deploy for it alone).
