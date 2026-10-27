@@ -79,7 +79,7 @@ async def plain(ctx, text: str, **kw):
         await ctx.bot.send_message(cfg.chat_id, c, disable_web_page_preview=True, **(kw if n == len(chunks) - 1 else {}))
 
 
-async def talk_to_agent(ctx, text: str):
+async def talk_to_agent(ctx, text: str, strong: bool = False):
     if not text:
         return
     if not AGENT.available():
@@ -89,11 +89,12 @@ async def talk_to_agent(ctx, text: str):
     if AGENT_LOCK.locked():
         await say(ctx, "⏳ Je suis déjà en train de travailler sur ta demande précédente, je te réponds dès que c'est fini.")
     async with AGENT_LOCK:
-        await ctx.bot.send_message(cfg.chat_id, "🤔 Je regarde… (jusqu'à quelques minutes si je dois coder)")
+        await ctx.bot.send_message(cfg.chat_id, ("🧠 Mode Opus. " if strong else "🤔 ")
+                                   + "Je regarde… (jusqu'à quelques minutes si je dois coder)")
         reg.data["dev_last_request"] = text[:200]
         reg.save()
         try:
-            res = await run(AGENT.ask, text)
+            res = await run(lambda: AGENT.ask(text, strong=strong))
         except Exception as e:  # noqa: BLE001
             log.exception("agent")
             await say(ctx, f"⚠️ Le mode dev a planté : <code>{esc(str(e)[-600:])}</code>")
@@ -130,6 +131,12 @@ async def on_dev_button(ctx, data: str):
 async def claude_cmd(update: Update, ctx):
     if allowed(update):
         await talk_to_agent(ctx, " ".join(ctx.args))
+
+
+async def claude_strong_cmd(update: Update, ctx):
+    """/opus <demande>: same, with the most capable model (for hard changes)."""
+    if allowed(update):
+        await talk_to_agent(ctx, " ".join(ctx.args), strong=True)
 
 
 async def new_conv_cmd(update: Update, ctx):
@@ -292,11 +299,11 @@ async def start(update: Update, ctx):
         cfg.chat_file.write_text(str(cid))
         start_polling(ctx.application)
         await update.message.reply_text("C'est noté, ce chat est le tien ✅ Je surveille YouTube toutes les "
-                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id> · /claude <demande> · /nouveau")
+                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id> · /claude <demande> · /opus <demande> · /nouveau")
         return
     if not allowed(update):
         return
-    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id> · /claude <demande> · /nouveau")
+    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id> · /claude <demande> · /opus <demande> · /nouveau")
 
 
 async def status(update: Update, ctx):
@@ -562,6 +569,7 @@ def main():
     app.add_handler(CommandHandler("scan", scan_cmd))
     app.add_handler(CommandHandler("episode", episode_cmd))
     app.add_handler(CommandHandler("claude", claude_cmd))
+    app.add_handler(CommandHandler("opus", claude_strong_cmd))
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

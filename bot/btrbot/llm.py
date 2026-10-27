@@ -15,12 +15,17 @@ class LLM:
         self.model = model
 
     def _ask(self, content, max_tokens: int = 4000) -> str:
-        msg = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=prompts.SYSTEM,
-            messages=[{"role": "user", "content": content}],
-        )
+        kw = dict(model=self.model, max_tokens=max_tokens, system=prompts.SYSTEM,
+                  messages=[{"role": "user", "content": content}])
+        try:
+            msg = self.client.messages.create(**kw)
+        except anthropic.BadRequestError as e:
+            if "ttl" not in str(e) or not isinstance(content, list):
+                raise
+            for block in content:  # API without the 1-hour cache: fall back to the default 5-minute one
+                if "cache_control" in block:
+                    block["cache_control"] = {"type": "ephemeral"}
+            msg = self.client.messages.create(**kw)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
     def _json(self, content, max_tokens: int = 4000) -> dict:
@@ -30,19 +35,26 @@ class LLM:
             raise ValueError(f"No JSON in model answer: {text[:300]}")
         return json.loads(m.group(0))
 
+    @staticmethod
+    def _with_transcript(transcript: str, text: str) -> list[dict]:
+        """The transcript goes first and is cached: the axes, then every message of the discussion about
+        them, reuse it at ~10% of the price instead of paying for the whole episode each time."""
+        return [{"type": "text", "text": prompts.TRANSCRIPT.format(transcript=transcript[:180_000]),
+                 "cache_control": {"type": "ephemeral", "ttl": "1h"}},
+                {"type": "text", "text": text}]
+
     # -------------------------------------------------------------------
     def propose_axes(self, video_title: str, guest_hint: str, ref_titles: list[str], transcript: str) -> dict:
-        return self._json(prompts.AXES.format(
+        return self._json(self._with_transcript(transcript, prompts.AXES.format(
             video_title=video_title, guest_hint=guest_hint or "unknown",
-            ref_titles="\n".join(f"- {t}" for t in ref_titles) or "- (none yet)",
-            transcript=transcript[:180_000]))
+            ref_titles="\n".join(f"- {t}" for t in ref_titles) or "- (none yet)")))
 
     def refine(self, video_title: str, guest_name: str, axes: list, transcript: str, message: str,
                history: list | None = None) -> dict:
         hist = "\n".join(f"{h['who']}: {h['text']}" for h in (history or [])[-20:]) or "(nothing yet)"
-        return self._json(prompts.REFINE.format(
+        return self._json(self._with_transcript(transcript, prompts.REFINE.format(
             video_title=video_title, guest_name=guest_name, axes=json.dumps(axes, ensure_ascii=False),
-            transcript=transcript[:180_000], message=message, history=hist))
+            message=message, history=hist)))
 
     def pick_frames(self, sheet: Path, who: str, quote: str, n: int = 4) -> dict:
         img = base64.standard_b64encode(sheet.read_bytes()).decode()

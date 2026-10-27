@@ -117,11 +117,12 @@ class Agent:
     def available(self) -> bool:
         return bool(shutil.which("claude")) and bool(self.token)
 
-    def ask(self, message: str, timeout: int = 1200) -> dict:
+    def ask(self, message: str, timeout: int = 1200, strong: bool = False) -> dict:
         """Returns {"text", "cost", "files"}; keeps the conversation (Claude Code session) across messages."""
         self.sync()
         st = self._state()
-        cmd = ["claude", "-p", "--output-format", "json", "--permission-mode", "acceptEdits",
+        model = "opus" if strong else os.environ.get("DEV_MODEL", "sonnet")  # Sonnet: ~3-5x cheaper, enough for most changes
+        cmd = ["claude", "-p", "--output-format", "json", "--model", model, "--permission-mode", "acceptEdits",
                "--append-system-prompt", SYSTEM, "--add-dir", "/opt/btr-bot/data", "--max-turns", "60"]
         if st.get("session"):
             cmd += ["--resume", st["session"]]
@@ -134,7 +135,7 @@ class Agent:
         except Exception:  # noqa: BLE001
             if st.get("session"):  # a stale session (e.g. after a reinstall): start a fresh one once
                 self.reset_conversation()
-                return self.ask(message, timeout)
+                return self.ask(message, timeout, strong)
             raise RuntimeError((r.stderr or r.stdout or "Claude Code n'a rien répondu")[-800:])
         if out.get("session_id"):
             self._save(session=out["session_id"])

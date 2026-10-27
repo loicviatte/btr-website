@@ -17,10 +17,7 @@ Reference: the channel's previous episode titles (copy their pattern and tone):
 
 Previous thumbnail quotes that worked: "I'd had enough", "Who PROTECTS the dancers?", "My family DIDN'T SPEAK to me", "They're gonna BAN judges", "People were BREAKING the rules".
 
-Transcript with [mm:ss] markers:
-<transcript>
-{transcript}
-</transcript>
+The transcript (with [mm:ss] markers) is above.
 
 Find the 3 strongest, clearly different angles (axes) for this episode. Return ONLY JSON:
 {{"guest_name": "First Last",
@@ -36,10 +33,7 @@ Find the 3 strongest, clearly different angles (axes) for this episode. Return O
 REFINE = """Current episode: "{video_title}" with {guest_name}.
 Axes proposed so far (JSON): {axes}
 
-Transcript with [mm:ss] markers:
-<transcript>
-{transcript}
-</transcript>
+The transcript (with [mm:ss] markers) is above.
 
 Conversation so far about this episode (oldest first):
 {history}
@@ -78,6 +72,11 @@ CHAPTERS = """Create YouTube chapters for this episode from the timed transcript
 Rules: first chapter at 00:00; 6 to 15 chapters; at least 1 minute apart; titles in English, 3 to 8 words, SEO oriented (names, topics, competitions), no hyphens or dashes, never in the host's first person. Flag the recurring segments explicitly when they appear: the World Atlas game, the rapid-fire questions, the question passed from one guest to the next.
 Use the timestamps of the transcript (they match the video). Return ONLY JSON: {{"chapters": [["00:00", "Title"], ["mm:ss", "Title"]]}}
 
+<transcript>
+{transcript}
+</transcript>"""
+
+TRANSCRIPT = """Transcript of the episode, with [mm:ss] markers:
 <transcript>
 {transcript}
 </transcript>"""
