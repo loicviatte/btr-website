@@ -105,9 +105,15 @@ class Pipeline:
     def propose_frames(self, ep: Episode, who: str, exclude=()) -> list[dict]:
         cands = self.scan(ep)
         near = mmss(ep["final"].get("timestamp")) if who == "guest" and ep.get("final") else None
-        sl = frames.shortlist(cands, who, 12, near, exclude)
+        sl = frames.shortlist(cands, who, 16, near, exclude)
         if not sl:
             return []
+        try:  # drop closed eyes / blinks (checked on face close-ups, the contact sheet is too small)
+            closed = set(self.llm.closed_eyes(frames.face_sheet(sl, ep.file(f"eyes_{who}.jpg"))))
+            kept = [c for i, c in enumerate(sl, 1) if i not in closed]
+            sl = kept if len(kept) >= 4 else sl
+        except Exception:
+            pass
         sheet = frames.contact_sheet(sl, ep.file(f"sheet_{who}.jpg"))
         label = ep.get("guest_name", "the guest") if who == "guest" else f"{self.cfg.host_name} (the host)"
         try:

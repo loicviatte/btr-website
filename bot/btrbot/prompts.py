@@ -51,6 +51,10 @@ PICK_FRAMES = """These are numbered candidate frames of {who} from the episode. 
 Pick the {n} best frames for a YouTube/Instagram thumbnail: eyes open, face sharp and well lit, a strong readable expression that fits the quote's emotion, mouth not caught mid-word in an ugly way, head not cut, not blurred by motion. Prefer variety (different expressions).
 Return ONLY JSON: {{"best": [numbers in order of preference], "note": "1 short French line"}}"""
 
+EYES_CLOSED = """These are numbered close-ups of the upper half of a face (eyes area), taken from a video.
+List the numbers where the eyes are closed, half-closed, mid-blink, or looking clearly down with heavy lids. Be strict: a thumbnail needs both eyes clearly open.
+Return ONLY JSON: {{"closed": [numbers]}}"""
+
 DESCRIPTION = """Write the YouTube description for the new episode, keeping EXACTLY the structure of the channel's existing descriptions below: same sections in the same order, same fixed blocks (links, credits, sponsors, socials, hashtags) copied verbatim, same tone and length. Only replace the episode-specific parts (hook/summary about the guest and topics).
 Where the previous descriptions have chapters/timestamps, put the single line {{CHAPTERS}} instead (it will be filled later). If they have none, put {{CHAPTERS}} just before the links block.
 Never invent facts: use only what the transcript says.

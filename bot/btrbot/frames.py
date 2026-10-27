@@ -116,3 +116,29 @@ def contact_sheet(cands: list[dict], out: Path, cols: int = 4) -> Path:
         d.text((x + 10, y + 4), str(i + 1), fill=(254, 203, 122), font=font)
     sheet.save(out, quality=85)
     return out
+
+
+def face_sheet(cands: list[dict], out: Path, cols: int = 4) -> Path:
+    """Big crops of the upper face (eyes) of each candidate, numbered, to spot closed eyes."""
+    tw, th = 480, 300
+    rows = (len(cands) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * th), (0, 0, 0))
+    d = ImageDraw.Draw(sheet)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 36)
+    except OSError:
+        font = ImageFont.load_default()
+    for i, c in enumerate(cands):
+        im = Image.open(c["file"]).convert("RGB")
+        W, H = im.size
+        x0, x1 = (c["cx"] - c["fw"] * 0.6) * W, (c["cx"] + c["fw"] * 0.6) * W
+        y0, y1 = (c["top"] - c["fh"] * 0.05) * H, (c["top"] + c["fh"] * 0.65) * H
+        crop = im.crop((max(int(x0), 0), max(int(y0), 0), int(x1), int(y1)))
+        k = min(tw / crop.width, th / crop.height)
+        crop = crop.resize((max(int(crop.width * k), 1), max(int(crop.height * k), 1)), Image.LANCZOS)
+        x, y = (i % cols) * tw, (i // cols) * th
+        sheet.paste(crop, (x, y))
+        d.rectangle([x, y, x + 56, y + 46], fill=(0, 0, 0))
+        d.text((x + 8, y + 2), str(i + 1), fill=(254, 203, 122), font=font)
+    sheet.save(out, quality=90)
+    return out
