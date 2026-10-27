@@ -83,6 +83,8 @@ async def plain(ctx, text: str, **kw):
 async def talk_to_agent(ctx, text: str, strong: bool = False, thumb_ep=None):
     if not text:
         return
+    if thumb_ep is None and reg.active and reg.episode(reg.active).stage == "thumbs_proposed":
+        thumb_ep = reg.episode(reg.active)   # any dev answer that re-rendered designs (DESIGNS: line) shows them
     if not AGENT.available():
         await say(ctx, "Je ne sais pas encore faire ça, et mon mode « dev » (Claude Code, qui me permet de me modifier "
                        "moi-même) n'est pas activé : il manque le secret <code>BOT_GITHUB_TOKEN</code> sur GitHub.")
@@ -371,7 +373,7 @@ async def make_thumbs(ctx, ep, only: str | None = None):
 
 
 FB = {"images": [], "text": [], "task": None}
-DESIGN_WORDS = re.compile(r"miniature|thumbnail|youtube|insta|carr[ée]|square|design|template|police|texte|taille|logo|halo|"
+DESIGN_WORDS = re.compile(r"chaise|on (ne )?voit|cach[ée]|devant|derri[èe]re|visage|t[êe]te|corps|marius|oti |miniature|thumbnail|youtube|insta|carr[ée]|square|design|template|police|texte|taille|logo|halo|"
                           r"voile|d[ée]tour|d[ée]coup|cadr|zoom|flou|couleur|ombre|marge|align|bord|coup[ée]|trop (haut|bas|grand|petit)",
                           re.I)
 
