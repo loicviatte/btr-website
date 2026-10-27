@@ -44,6 +44,9 @@ window.fit = () => {
                                [...document.querySelectorAll('#bottom p')].reduce((a, e) => a + e.scrollWidth, 0) + 40);
   let s = 72;
   while (lineW() > Math.max(maxW, key.scrollWidth) && s > 50) { s -= 2; smalls.forEach(e => e.style.fontSize = s + 'px'); }
+  // keep the whole quote ABOVE the head (it used to run behind her hair and hide words)
+  const q = document.getElementById('q');
+  q.style.top = Math.max(150, {{ head_y }} - 30 - q.getBoundingClientRect().height) + 'px';
   return {key: k, small: s};
 };
 </script>

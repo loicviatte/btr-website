@@ -83,7 +83,7 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     html = env.get_template("instagram.html").render(
         assets=ASSETS.as_uri(), bg="ig_bg.jpg", cut="ig_cut.png", cut_top=round(ext * s), cut_h=cut_h,
         top=quote["top"], key=quote["key"], bottom_left=bl, bottom_right=br, name1=n1, name2=n2,
-        left=145, top_px=355, max_w=860)
+        left=145, top_px=355, head_y=520, max_w=860)
     page = work / "instagram.html"
     page.write_text(html)
     png = work / "thumb_instagram.png"

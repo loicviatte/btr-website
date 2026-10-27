@@ -490,7 +490,7 @@ Miniatures actuelles : {ep.dir}/render/thumb_youtube.jpg, thumb_instagram.jpg, t
 Images choisies (inchangées) : guest {g.get('hires')}, Marius {m.get('hires')}.
 
 À faire :
-1. Comprends de QUELLE miniature il parle (youtube = 1920x1080, instagram = vertical 1080x1920, square = 1080x1080) ; s'il ne précise pas, déduis-le des captures, sinon de ce qui est visiblement faux.
+1. Comprends de QUELLE miniature il parle (youtube = 1920x1080, instagram = vertical 1080x1920, square = 1080x1080) ; s'il ne précise pas, déduis-le des captures ou du contexte. Si c'est vraiment impossible, pose UNE question courte et NE MODIFIE RIEN (pas de ligne DESIGNS).
 2. Corrige uniquement ce qui concerne cette/ces miniature(s) (btrbot/templates/*.html ou btrbot/render.py). Les autres designs doivent rester identiques ; si une règle de marque est en jeu (voir CLAUDE.md), respecte-la.
 3. Re-rends SEULEMENT les designs concernés avec le code modifié : `/opt/btr-bot/.venv/bin/python -m btrbot.rerender {ep.video_id} <youtube|instagram|square>` (depuis le dossier courant), regarde le résultat avec Read et itère jusqu'à ce que ce soit bon.
 4. Dernière ligne de ta réponse, exactement : DESIGNS: <liste séparée par des virgules des designs re-rendus>"""
@@ -710,10 +710,12 @@ async def on_text(update: Update, ctx):
         return
     if ep.stage == "thumbs_proposed" and validated(ep) and UNVALIDATE.search(low) and re.search(_ALIAS, low, re.I):
         back = [d for w in re.findall(_ALIAS, low, re.I) for d in design_of(w)]
+        back = list(dict.fromkeys(back))
         ep["validated"] = [d for d in validated(ep) if d not in back]
         ep.save()
-        await say(ctx, "↩️ Je peux de nouveau modifier : " + ", ".join(THUMB_NAMES[d] for d in back) + ". " + valid_status(ep),
-                  reply_markup=thumb_kb(ep))
+        await say(ctx, "↩️ Je rouvre : " + ", ".join(THUMB_NAMES[d] for d in back) + " (les autres restent figées).")
+        for d in back:   # reopening = redo it with the current code; only that one is sent
+            await guarded(ctx, "Miniature", make_thumbs(ctx, ep, d))
         return
     if ep.stage == "thumbs_proposed" and FB["images"]:
         queue_feedback(ctx, ep, text=text)   # his explanation of the screenshots just sent
