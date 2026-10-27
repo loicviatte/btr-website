@@ -205,7 +205,9 @@ def update_atlas(spec):
     MAP, CAR = js_array(s, 'MAP'), js_array(s, 'CAR')
     no = f'{len(MAP) + 1:02d}'
     c = country_data(at.get('mapName') or at['country'], no)
-    vid = spec['parts'][at.get('part', 0)]['vid']
+    pi = at.get('part', 0)
+    part = spec['parts'][pi] if pi < len(spec['parts']) else spec['parts'][-1]   # a part 2 spec only lists the new part
+    vid = part['vid']
     def q(x): return "'" + x.replace('\\', '\\\\').replace("'", "\\'") + "'"
     m = re.search(r'(    const raw = \[\n)(.*?)(\n    \];)', s, re.S)
     rows = [r.rstrip().rstrip(',') for r in m.group(2).split('\n') if r.strip()]
@@ -217,6 +219,9 @@ def update_atlas(spec):
     s = set_js_array(s, 'CAR', CAR)
     s = re.sub(r'(    const slugs = \[)(.*?)(\];)', lambda x: x.group(1) + x.group(2) + f", '{at['slug']}'" + x.group(3), s, count=1)
     s = re.sub(r'    const n = \d+;', f'    const n = {len(MAP)};', s, count=1)
+    # poster of the draw video box (YouTube thumbnail of that part)
+    if part.get('thumb'):
+        s = re.sub(r'(    const THUMBS = \{)(.*?)(\};)', lambda x: x.group(1) + x.group(2) + f', "{vid}": "{part["thumb"]}"' + x.group(3), s, count=1)
     write('Atlas.dc.html', s)
     # home page card: country shape, pin (newest highlighted), count
     h = read('Main.dc.html')

@@ -26,7 +26,12 @@ proj.translate([proj.translate()[0], proj.translate()[1] - y0]);
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
 const ALIAS = { drc: 'demrepcongo', democraticrepublicofthecongo: 'demrepcongo', republicofthecongo: 'congo', ivorycoast: 'cotedivoire', czechrepublic: 'czechia', unitedstates: 'unitedstatesofamerica', usa: 'unitedstatesofamerica', uk: 'unitedkingdom', bosnia: 'bosniaandherz', bosniaandherzegovina: 'bosniaandherz', centralafricanrepublic: 'centralafricanrep', dominicanrepublic: 'dominicanrep', southsudan: 'ssudan', equatorialguinea: 'eqguinea', northmacedonia: 'macedonia', eswatini: 'eswatini', swaziland: 'eswatini', easttimor: 'timorleste', saotomeandprincipe: 'saotomeandprincipe' };
 const want = ALIAS[norm(name)] || norm(name);
-const f = all.find((x) => norm(x.properties.name) === want);
+// Constituent countries a guest can draw (Scotland, England, Wales, Northern Ireland) are not separate in
+// countries-50m: their outlines come from Natural Earth's map units (tools/auto/subunits-50m.json), drawn in the same
+// projection. The world map underneath still shows the United Kingdom as one land shape.
+const SUB = JSON.parse(readFileSync(new URL('./subunits-50m.json', import.meta.url))).features;
+const SUB_ALIAS = { nireland: 'northernireland' };
+const f = SUB.find((x) => norm(x.properties.name) === (SUB_ALIAS[want] || want)) || all.find((x) => norm(x.properties.name) === want);
 if (!f) {
   const close = all.map((x) => x.properties.name).filter((n) => norm(n).includes(want.slice(0, 4)));
   console.error('Not found: ' + name + (close.length ? '. Did you mean: ' + close.join(', ') : ''));
