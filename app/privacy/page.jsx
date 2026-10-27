@@ -20,7 +20,7 @@ export default function Privacy() {
         <p style={p}>When you search the episodes, your search words may be sent to Anthropic (the company behind Claude) to rank the results by meaning. They are not stored by us and are not linked to you.</p>
 
         <h2 style={h2}>Cookies and tracking</h2>
-        <p style={p}>The site itself sets no advertising or analytics cookies. It remembers in your browser, for the current visit only, that you have seen the intro animation.</p>
+        <p style={p}>The site sets no cookies for advertising or tracking. We count visits with Vercel Web Analytics, which uses no cookies and keeps no personal data: only anonymous page views (page, country, device type). The site also remembers in your browser, for the current visit only, that you have seen the intro animation.</p>
         <p style={p}>Videos play through YouTube (youtube-nocookie.com) and reels through Instagram. When you press play, those services apply their own privacy policies.</p>
 
         <h2 style={h2}>Hosting and our own YouTube data</h2>

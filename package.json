@@ -9,6 +9,7 @@
     "compile": "node tools/compile.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "next": "15.5.27",
     "react": "19.2.8",
     "react-dom": "19.2.8"

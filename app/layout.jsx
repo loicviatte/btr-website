@@ -1,6 +1,7 @@
 import './globals.css';
 import './dc.generated.css';
 import MediaLightbox from '../components/MediaLightbox';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'Break The Routine · The DanceSport Podcast',
@@ -33,6 +34,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <MediaLightbox />
+        <Analytics />
       </body>
     </html>
   );
