@@ -63,13 +63,13 @@ class LLM:
             {"type": "text", "text": prompts.PICK_FRAMES.format(who=who, quote=quote, n=n)},
         ], max_tokens=800)
 
-    def closed_eyes(self, sheet: Path) -> list[int]:
+    def open_eyes(self, sheet: Path) -> list[int]:
         img = base64.standard_b64encode(sheet.read_bytes()).decode()
         r = self._json([
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
-            {"type": "text", "text": prompts.EYES_CLOSED},
+            {"type": "text", "text": prompts.EYES_OPEN},
         ], max_tokens=300)
-        return [int(i) for i in r.get("closed", [])]
+        return [int(i) for i in r.get("open", [])]
 
     def description(self, title: str, guest_name: str, refs: list[dict], transcript: str) -> str:
         ref_txt = "\n\n".join(f"--- {r['title']} ---\n{r['description']}" for r in refs[:3]) or "(none)"
