@@ -12,6 +12,7 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, Con
                           filters)
 
 from . import drive
+from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
 from .state import Registry
@@ -21,6 +22,8 @@ cfg = Settings()
 reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
 LOCK = asyncio.Lock()
+AGENT = Agent(cfg.agent_src, cfg.github_token, cfg.anthropic_key, cfg.data_dir)
+AGENT_LOCK = asyncio.Lock()
 PENDING = cfg.data_dir / "pending_srt"   # SRTs (Drive folder or chat) waiting for their video
 PENDING.mkdir(parents=True, exist_ok=True)
 
@@ -65,6 +68,74 @@ async def guarded(ctx, label: str, coro):
         except Exception as e:  # noqa: BLE001
             log.exception(label)
             await say(ctx, f"⚠️ {esc(label)} a échoué : <code>{esc(e)}</code>\n<pre>{esc(traceback.format_exc()[-800:])}</pre>")
+
+
+# ---------------------------------------------------------------- dev mode (Claude Code)
+async def plain(ctx, text: str, **kw):
+    """Long plain-text answers, split for Telegram's 4096-char limit."""
+    text = text or "(vide)"
+    chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
+    for n, c in enumerate(chunks):
+        await ctx.bot.send_message(cfg.chat_id, c, disable_web_page_preview=True, **(kw if n == len(chunks) - 1 else {}))
+
+
+async def talk_to_agent(ctx, text: str):
+    if not text:
+        return
+    if not AGENT.available():
+        await say(ctx, "Je ne sais pas encore faire ça, et mon mode « dev » (Claude Code, qui me permet de me modifier "
+                       "moi-même) n'est pas activé : il manque le secret <code>BOT_GITHUB_TOKEN</code> sur GitHub.")
+        return
+    if AGENT_LOCK.locked():
+        await say(ctx, "⏳ Je suis déjà en train de travailler sur ta demande précédente, je te réponds dès que c'est fini.")
+    async with AGENT_LOCK:
+        await ctx.bot.send_message(cfg.chat_id, "🤔 Je regarde… (jusqu'à quelques minutes si je dois coder)")
+        reg.data["dev_last_request"] = text[:200]
+        reg.save()
+        try:
+            res = await run(AGENT.ask, text)
+        except Exception as e:  # noqa: BLE001
+            log.exception("agent")
+            await say(ctx, f"⚠️ Le mode dev a planté : <code>{esc(str(e)[-600:])}</code>")
+            return
+        cost = f"\n\n(≈ {res['cost']:.2f} $)" if isinstance(res.get("cost"), (int, float)) else ""
+        await plain(ctx, res["text"] + cost)
+        if res["files"]:
+            stat = await run(AGENT.diff_summary)
+            kb = [[B("🚀 Déployer", callback_data="dev:deploy"), B("❌ Annuler", callback_data="dev:discard")]]
+            await say(ctx, f"🛠 <b>Changements prêts</b> (rien n'est en ligne tant que tu ne valides pas) :\n"
+                           f"<pre>{esc(stat or ', '.join(res['files']))[:3000]}</pre>\n"
+                           "Tu peux aussi continuer à m'écrire pour ajuster avant de déployer.", reply_markup=K(kb))
+
+
+async def on_dev_button(ctx, data: str):
+    if data == "dev:discard":
+        await run(AGENT.discard)
+        await say(ctx, "❌ Changements annulés, rien n'a bougé.")
+    elif data == "dev:deploy":
+        try:
+            sha = await run(AGENT.deploy, reg.data.get("dev_last_request", "update"))
+        except Exception as e:  # noqa: BLE001
+            await say(ctx, f"⚠️ Déploiement refusé : <code>{esc(str(e)[-800:])}</code>")
+            return
+        await say(ctx, f"🚀 Envoyé sur GitHub (<code>{esc(sha)}</code>). Le serveur se met à jour, je redémarre dans "
+                       "1 à 3 min. Si la nouvelle version plante, je reviens tout seul à l'ancienne et je te préviens.")
+    elif data == "dev:fix":
+        log_txt = reg.data.pop("deploy_error", "")
+        reg.save()
+        await talk_to_agent(ctx, "Le dernier déploiement a planté au démarrage et le serveur est revenu à la version "
+                                 "d'avant. Voici la fin du journal :\n" + log_txt + "\nTrouve la cause et corrige.")
+
+
+async def claude_cmd(update: Update, ctx):
+    if allowed(update):
+        await talk_to_agent(ctx, " ".join(ctx.args))
+
+
+async def new_conv_cmd(update: Update, ctx):
+    if allowed(update):
+        AGENT.reset_conversation()
+        await update.message.reply_text("🆕 Nouvelle conversation avec le mode dev (il oublie la discussion précédente).")
 
 
 # ---------------------------------------------------------------- jobs
@@ -221,11 +292,11 @@ async def start(update: Update, ctx):
         cfg.chat_file.write_text(str(cid))
         start_polling(ctx.application)
         await update.message.reply_text("C'est noté, ce chat est le tien ✅ Je surveille YouTube toutes les "
-                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id>")
+                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id> · /claude <demande> · /nouveau")
         return
     if not allowed(update):
         return
-    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id>")
+    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id> · /claude <demande> · /nouveau")
 
 
 async def status(update: Update, ctx):
@@ -283,6 +354,9 @@ async def on_button(update: Update, ctx):
         return
     q = update.callback_query
     await q.answer()
+    if q.data.startswith("dev:"):
+        await on_dev_button(ctx, q.data)
+        return
     if q.data == "srt:next":
         await say(ctx, "OK, je le garde pour la prochaine vidéo non répertoriée.")
         return
@@ -340,9 +414,8 @@ async def on_button(update: Update, ctx):
 async def on_text(update: Update, ctx):
     if not allowed(update):
         return
-    if not reg.active or reg.episode(reg.active).stage in ("waiting_transcript", "done"):
-        await update.message.reply_text("Pas d'épisode en discussion pour l'instant. Je te préviens dès qu'une vidéo non "
-                                        "répertoriée est prête. Tu peux déjà m'envoyer le SRT (ou le mettre dans le dossier Drive), je le garderai pour elle.")
+    if not reg.active or reg.episode(reg.active).stage not in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
+        await talk_to_agent(ctx, update.message.text.strip())
         return
     ep = reg.episode(reg.active)
     text = update.message.text.strip()
@@ -374,6 +447,9 @@ async def on_text(update: Update, ctx):
         async def go():
             res = await run(pipe.refine, ep, text)
             ep.save()
+            if res.get("route") == "agent":
+                asyncio.create_task(talk_to_agent(ctx, text))
+                return
             if res.get("final"):
                 ep.stage = "frames_proposed"
                 for k in ("pick_guest", "pick_marius"):
@@ -465,6 +541,14 @@ async def on_boot(app):
         start_polling(app)
         try:
             await app.bot.send_message(cfg.chat_id, "🔄 BTR bot (re)démarré, je surveille YouTube.")
+            err = cfg.data_dir / "last_deploy_error.txt"
+            if err.exists():
+                reg.data["deploy_error"] = err.read_text()[-3000:]
+                reg.save()
+                err.unlink()
+                await app.bot.send_message(
+                    cfg.chat_id, "⚠️ La dernière mise à jour plantait au démarrage : je suis revenu tout seul à la version "
+                    "d'avant. Je corrige ?", reply_markup=K([[B("🔧 Corrige", callback_data="dev:fix")]]))
         except Exception:  # noqa: BLE001
             log.exception("boot message")
 
@@ -477,6 +561,8 @@ def main():
     app.add_handler(CommandHandler("check", check_cmd))
     app.add_handler(CommandHandler("scan", scan_cmd))
     app.add_handler(CommandHandler("episode", episode_cmd))
+    app.add_handler(CommandHandler("claude", claude_cmd))
+    app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))

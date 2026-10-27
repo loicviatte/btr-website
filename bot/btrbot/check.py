@@ -38,6 +38,12 @@ def main():
         from . import drive
         step("Drive SRT folder", lambda: (lambda f: f"{len(f)} SRT: " + ", ".join(n for _, n in f[:5]))(drive.list_srt(cfg.drive_srt_folder)))
 
+    import shutil
+    import subprocess
+    step("Claude Code (mode dev)", lambda: (subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
+                                            if shutil.which("claude") else (_ for _ in ()).throw(RuntimeError("pas installé")))
+         + (" · GitHub OK" if cfg.github_token else " · secret BOT_GITHUB_TOKEN manquant"))
+
     import anthropic
     step("Anthropic", lambda: anthropic.Anthropic(api_key=cfg.anthropic_key).messages.create(
         model=cfg.model, max_tokens=20, messages=[{"role": "user", "content": "Say OK"}]).content[0].text)

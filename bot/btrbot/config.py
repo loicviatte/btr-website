@@ -36,6 +36,9 @@ class Settings:
         self.models_dir = Path(os.environ.get("MODELS_DIR", ROOT / "models"))
         # shared Drive folder where the DaVinci SRTs are dropped (link-shared, read without login)
         self.drive_srt_folder = os.environ.get("DRIVE_SRT_FOLDER", "1OF0ALQxvNZb2Qc5TqYURbx04BDe4Kk5-").strip()
+        # "dev" mode: Claude Code edits the bot from Telegram and pushes to GitHub (token: contents write on the repo)
+        self.github_token = os.environ.get("BOT_GITHUB_TOKEN", "").strip()
+        self.agent_src = Path(os.environ.get("AGENT_SRC", ROOT.parent / "btr-src"))
         self.poll_minutes = int(os.environ.get("POLL_MINUTES", "15"))
         self.host_name = os.environ.get("HOST_NAME", "Marius Iepure")
 

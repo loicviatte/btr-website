@@ -47,6 +47,7 @@ Conversation so far about this episode (oldest first):
 Loïc now writes: "{message}"
 
 Answer him in French. If he asks for changes or new options, propose them (always verbatim guest quotes). If he clearly picks or validates one, set "final".
+If his message is NOT about this episode's title/quote (e.g. he asks the bot to do something new, change how it works, a question about the bot, its logs, its settings, or anything else), return ONLY {{"route": "agent"}}.
 Return ONLY JSON:
 {{"reply": "your French message to Loïc",
   "axes": [optional new/updated list of axes, same shape as before, or null],

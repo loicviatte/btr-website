@@ -8,6 +8,8 @@
 #   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, YT_CHANNEL_ID   (already there for the site)
 #   TELEGRAM_CHAT_ID (optional: otherwise the first /start claims the bot)
 #   BOT_YT_COOKIES   (optional: content of a cookies.txt, if YouTube blocks the server)
+#   BOT_GITHUB_TOKEN (optional: fine-grained token, Contents read/write on this repo, for the bot's Telegram "dev" mode)
+# If the new version crashes at start, the previous one is put back and the bot reports it on Telegram.
 name: Deploy bot
 on:
   push:
@@ -41,8 +43,10 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
           ssh root@"$HOST" "command -v rsync >/dev/null || (apt-get update -y && apt-get install -y rsync); mkdir -p $DIR/secrets"
 
-      - name: Copy code
+      - name: Copy code (previous version kept for rollback)
         run: |
+          ssh root@"$HOST" "if [ -d $DIR/btrbot ]; then rm -rf $DIR.prev && mkdir -p $DIR.prev && rsync -a \
+            --exclude .venv --exclude data --exclude models --exclude secrets --exclude .env --exclude .installed $DIR/ $DIR.prev/; fi"
           rsync -az --delete \
             --exclude .venv --exclude data --exclude models --exclude secrets --exclude .env --exclude .installed \
             bot/ root@"$HOST":"$DIR"/
@@ -57,6 +61,7 @@ jobs:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           YT_CHANNEL_ID: ${{ secrets.YT_CHANNEL_ID }}
           COOKIES: ${{ secrets.BOT_YT_COOKIES }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: |
           {
             echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"
@@ -66,6 +71,7 @@ jobs:
             echo "YT_CLIENT_SECRET=$YT_CLIENT_SECRET"
             echo "YT_REFRESH_TOKEN=$YT_REFRESH_TOKEN"
             echo "YOUTUBE_CHANNEL_ID=${YT_CHANNEL_ID:-UCPTfscPkr0Div6di8S3IX9w}"
+            echo "BOT_GITHUB_TOKEN=$BOT_GITHUB_TOKEN"
           } | ssh root@"$HOST" "umask 077 && cat > $DIR/.env"
           if [ -n "$COOKIES" ]; then
             printf '%s\n' "$COOKIES" | ssh root@"$HOST" "umask 077 && cat > $DIR/secrets/youtube_cookies.txt"
@@ -76,8 +82,26 @@ jobs:
           ssh root@"$HOST" "cd $DIR && sum=\$(cat install.sh requirements.txt | sha256sum) && \
             if [ \"\$(cat .installed 2>/dev/null)\" != \"\$sum\" ]; then bash install.sh && echo \"\$sum\" > .installed; else echo 'Already installed'; fi"
 
-      - name: Restart
-        run: ssh root@"$HOST" "systemctl restart btr-bot && sleep 8 && systemctl is-active btr-bot"
+      - name: Restart (rollback if the new version crashes)
+        run: |
+          ssh root@"$HOST" 'bash -s' <<'EOS'
+          DIR=/opt/btr-bot
+          systemctl restart btr-bot
+          sleep 5
+          t1=$(systemctl show -p ExecMainStartTimestampMonotonic --value btr-bot)
+          sleep 30
+          t2=$(systemctl show -p ExecMainStartTimestampMonotonic --value btr-bot)
+          if systemctl is-active --quiet btr-bot && [ "$t1" = "$t2" ]; then echo "Bot running"; exit 0; fi
+          echo "The new version crashes at start: rolling back"
+          journalctl -u btr-bot -n 60 --no-pager > /tmp/btr-crash.txt
+          if [ -d $DIR.prev/btrbot ]; then
+            rsync -a --delete --exclude .venv --exclude data --exclude models --exclude secrets --exclude .env --exclude .installed $DIR.prev/ $DIR/
+            mkdir -p $DIR/data && cp /tmp/btr-crash.txt $DIR/data/last_deploy_error.txt
+            systemctl restart btr-bot
+          fi
+          cat /tmp/btr-crash.txt
+          exit 1
+          EOS
 
       - name: Health check
         run: ssh root@"$HOST" "cd $DIR && .venv/bin/python -m btrbot.check" || true

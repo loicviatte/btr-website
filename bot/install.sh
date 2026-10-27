@@ -14,13 +14,23 @@ fi
 
 echo "== System packages"
 sudo apt-get update -y
-sudo apt-get install -y python3-venv python3-pip ffmpeg fonts-dejavu-core curl unzip
+sudo apt-get install -y python3-venv python3-pip ffmpeg fonts-dejavu-core curl unzip git
 
 echo "== Deno (JavaScript runtime yt-dlp needs for YouTube)"
 if ! command -v deno >/dev/null; then
   curl -fsSL https://deno.land/install.sh | sh -s -- -y
   sudo ln -sf "$HOME/.deno/bin/deno" /usr/local/bin/deno
 fi
+
+echo "== Claude Code (the bot's "dev" mode: it can change its own code from Telegram)"
+if ! command -v claude >/dev/null; then
+  curl -fsSL https://claude.ai/install.sh | bash || true
+  [ -x "$HOME/.local/bin/claude" ] && sudo ln -sf "$HOME/.local/bin/claude" /usr/local/bin/claude
+  if ! command -v claude >/dev/null; then   # fallback: npm package
+    sudo apt-get install -y nodejs npm && sudo npm install -g @anthropic-ai/claude-code
+  fi
+fi
+claude --version || echo "Claude Code not installed: dev mode disabled"
 
 echo "== Python environment"
 python3 -m venv .venv
