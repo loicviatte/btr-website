@@ -287,7 +287,7 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { picked: 10, q: '', canL: false, canR: false };
+    this.state = { picked: 11, q: '', canL: false, canR: false };
     this.strip = null;
   }
   componentDidMount() {
@@ -330,7 +330,7 @@ class Component extends DCLogic {
       { name: 'Peter Nash', initials: 'PN', label: '24 & 30 Sep', vid: 'gmLzaixhDqo' },
       { name: 'Peter Maxwell', initials: 'PM', label: '6 Oct', vid: 'SFl--dzjGvE' },
       { name: 'Leila Stewart', initials: 'LS', label: '14 Oct', vid: 'yO0vuX-Ygpc' },
-      { name: 'Oti Mabuse', initials: 'OM', label: '22 Oct', vid: 'pi1IhRO8v4w' },
+      { name: 'Oti Mabuse', initials: 'OM', label: '22 & 27 Oct', vid: 'PjDZ8X_JWY0' },
       { name: 'Next guest', initials: '?', label: 'Coming soon', vid: '' }
     ];
     const qs = [
@@ -345,15 +345,15 @@ class Component extends DCLogic {
       { text: 'What are the priorities that make a good dance culture in the UK? Pick three things we should focus on.', kind: 'QUESTION', ask: null, ans: 2151 },
       { text: 'What can we all do to improve our dance world? Just the one thing.', kind: 'QUESTION', ask: null, ans: 4990 },
       { text: 'Do we take ballroom and Latin dancing too seriously, or not seriously enough?', kind: 'QUESTION', ask: null, ans: 6040 },
-      { text: 'Leila’s question for Oti', kind: 'IN OTI’S PART 2', ask: null, ans: null, pending: true },
-      { text: 'Oti’s question for the next guest', kind: 'COMING IN PART 2', ask: null, ans: null }
+      { text: 'If you weren’t a dancer, what would you have done?', kind: 'QUESTION', ask: null, ans: 4898 },
+      { text: 'Oti’s question for the next guest', kind: 'COMING SOON', ask: null, ans: null }
     ];
     const thumbs = {
       'ktcEnjS1SF4': 'f50ede373b1848443c2e35c4a49fbc4b', '6SKeUQM4E1k': '09c68242801f4b282a3331acd5a342fd', 'bIJ-LJsgLbE': '497a5e87cb63153785580ffe42072102',
       '-wx7h1S8eQ8': '62bea6b1946b2ce7570d19f8db90e02c', 'r3ZKwpj9J5U': 'a7b5d5f61d5830023b2850ae7d54663e', '8tsAnwQanY0': 'bd668a798a2b7ef1ef1f2012744c7a8f',
       'aW03-xv1Iyc': '17ff73d440c3699a9cd0f1dbb6c14d99', 'c8xICOkFwEI': 'fda5fad96e887160af9fa9a1fcf78002', 'o3Daq6WSuzs': '061d818947d1c0a6765d98577a1cb7bf',
       'gmLzaixhDqo': 'bcea0d26b5e611d1a856631033e7a45c', 'SFl--dzjGvE': '24eb7384bb059d4fdbde52ab2838ee99', 'yO0vuX-Ygpc': 'd6442b82364bfd30966d31b8267286d1',
-      'pi1IhRO8v4w': '6704faaedd6251c16887bc9024d7381e'
+      'pi1IhRO8v4w': '6704faaedd6251c16887bc9024d7381e', 'PjDZ8X_JWY0': '551d9f610e702e27a8eb028b49abd59e'
     };
     const fmt = (s) => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(x).padStart(2, '0'); };
     const yt = (vid, t) => 'https://www.youtube.com/watch?v=' + vid + (t ? '&t=' + t + 's' : '');
@@ -432,7 +432,7 @@ class Component extends DCLogic {
         answerCaption: 'Plays from the moment ' + to.name.split(' ')[0] + ' hears it',
         playAria: 'Play ' + to.name + '’s answer from ' + (s.ans ? fmt(s.ans) : 'the start'),
         open: isOpen || !!s.pending,
-        openText: s.pending ? 'Oti hears Leila’s question in part 2 of her episode, out next week.' : 'Oti records her question for the next guest in part 2. It goes to the guest after her.'
+        openText: s.pending ? 'Oti hears Leila’s question in part 2 of her episode, out next week.' : from.name.split(' ')[0] + '’s question for the next guest is coming soon.'
       }
     };
   }
