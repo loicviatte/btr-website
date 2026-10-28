@@ -5,6 +5,7 @@ body{margin:0;background:#080403}
 a{color:#fecb7a}a:hover{color:#ffffff}
 a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #fecb7a;outline-offset:3px}
 .btr-burger{display:none}
+.btr-soc{display:inline-grid;place-items:center;box-sizing:border-box;border:1px solid rgba(254,203,122,0.55);color:#ffffff;text-decoration:none;transition:background-color .25s ease,color .25s ease,border-color .25s ease,transform .25s cubic-bezier(.16,1,.3,1)}.btr-soc svg{display:block}@media (hover: hover) and (pointer: fine){.btr-soc:hover{background:#fecb7a;border-color:#fecb7a;color:#000000;transform:translateY(-2px)}}details.btr-burger[open] > div > .btr-soc-row{animation:btrMenu .45s 230ms cubic-bezier(.16,1,.3,1) both}
 summary.btr-burger-btn{list-style:none}summary.btr-burger-btn::-webkit-details-marker{display:none}
 details[open] .btr-burger-open{display:none}details:not([open]) .btr-burger-close{display:none}
 .btr-email{overflow-wrap:anywhere;min-width:0}
@@ -49,6 +50,7 @@ details.chain-all summary span:last-child{transition:transform .3s ease}
 @media (max-width: 600px){.ep-trow{grid-template-columns:1fr !important;gap:2px !important}.ep-tbox{padding:18px 16px !important}.ep-hook{font-size:11px !important}.ep-hero-btn{display:none !important}}
 @keyframes btrTIn{from{opacity:0}to{opacity:1}}
 @media (max-width: 1000px){.ep-cols{flex-direction:column !important;flex-wrap:nowrap !important;align-items:stretch !important}.ep-left{display:contents !important}.ep-aside{flex:none !important;order:1}.ep-tsec{order:2}}@media (max-width: 600px){.ep-tbox[data-preview="yes"]{gap:12px !important}.ep-tbox[data-preview="yes"] > .ep-trow:nth-child(n+3){display:none !important}.ep-tbox[data-preview="yes"] > .ep-trow p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.btr-soc{display:inline-grid;place-items:center;box-sizing:border-box;border:1px solid rgba(254,203,122,0.55);color:#ffffff;text-decoration:none;transition:background-color .25s ease,color .25s ease,border-color .25s ease,transform .25s cubic-bezier(.16,1,.3,1)}.btr-soc svg{display:block}@media (hover: hover) and (pointer: fine){.btr-soc:hover{background:#fecb7a;border-color:#fecb7a;color:#000000;transform:translateY(-2px)}}@media (max-width: 600px){.btr-soc-home{gap:10px !important;width:100%;box-sizing:border-box}.btr-soc-home .btr-soc{width:calc((100% - 40px) / 5) !important;max-width:64px;height:auto !important;aspect-ratio:1}}details.btr-burger[open] > div > .btr-soc-row{animation:btrMenu .45s 230ms cubic-bezier(.16,1,.3,1) both}
 html.btr-seen .btr-intro{display:none !important}
 @keyframes btrIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}@keyframes btrRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .btr-in-logo{animation:btrIn 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-rule{animation:btrRule 700ms 600ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l1{animation:btrIn 800ms 900ms cubic-bezier(.2,.7,.2,1) both}.btr-in-l2{animation:btrIn 700ms 1700ms cubic-bezier(.2,.7,.2,1) both}.btr-in-cta{animation:btrIn 700ms 2300ms cubic-bezier(.2,.7,.2,1) both}
