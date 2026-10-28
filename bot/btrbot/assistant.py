@@ -30,6 +30,10 @@ Comment tu travailles :
 - Retour visuel sur une miniature (souvent avec captures) : d'abord un RÉGLAGE si ça suffit (set_design : position,
   taille, interligne, devant/derrière…), sinon thumbnail_feedback (Claude Code reprend la miniature avec ses captures).
 - Les miniatures : horizontal = youtube, vertical = instagram, carré = square. Une miniature validée est figée.
+  « tout validé sauf X » / « c'est bon sauf X » = valide tous les autres formats (et rouvre X s'il était validé), sans
+  poser de question.
+- Badge PART : épisode EN COURS (pas encore publié par le bot) → set_part puis redo_thumbnails ; vidéo déjà en ligne
+  (liste des vidéos récentes) → badge.
 - Si c'est vraiment ambigu, pose UNE question courte. Sinon décide.
 
 État actuel :
@@ -53,7 +57,9 @@ TOOLS = [
     {"name": "redo_thumbnails", "description": "Refaire des miniatures (arrière-plan, ~1-4 min), avec les réglages et images actuels. Rouvre celles qui étaient validées.",
      "input_schema": {"type": "object", "properties": {"formats": FORMATS}, "required": ["formats"]}},
     {"name": "set_design", "description": "Montrer ou changer les RÉGLAGES d'une miniature (noms exacts dans get_status / show). "
-     "Valeurs relatives possibles : \"+20\", \"-5\", \"x1.1\". Ne refait pas la miniature : enchaîne avec redo_thumbnails si Loïc veut voir.",
+     "Valeurs relatives : une chaîne signée (\"+20\", \"-15\", \"x1.1\") s'ajoute à la valeur ACTUELLE (voir l'état). « Un peu » ≈ 15-20 px, "
+     "« beaucoup » ≈ 50. UN SEUL appel par réglage, ne te corrige pas après coup. Ne refait pas la miniature : enchaîne avec "
+     "redo_thumbnails (sauf si la miniature est validée et que Loïc ne veut pas la rouvrir).",
      "input_schema": {"type": "object", "properties": {"format": {"type": "string", "enum": ["youtube", "instagram", "square"]},
                                                        "set": {"type": "object", "description": "{nom_du_réglage: valeur}"},
                                                        "reset": {"type": "boolean"}, "show": {"type": "boolean"}},
@@ -75,7 +81,7 @@ TOOLS = [
      "regenerate = refaire le chapitrage, into_description = les mettre dans la description avant publication.",
      "input_schema": {"type": "object", "properties": {"action": {"type": "string", "enum": ["show", "retime", "regenerate", "into_description"]}},
                       "required": ["action"]}},
-    {"name": "badge", "description": "Poser le badge « PART n » sur la miniature YouTube ACTUELLE d'une vidéo existante (même publique) : "
+    {"name": "badge", "description": "Poser le badge « PART n » sur la miniature YouTube ACTUELLE d'une vidéo DÉJÀ EN LIGNE (pas l'épisode en cours de préparation : set_part) : "
      "aperçu + bouton de validation. Trouve l'id dans la liste des vidéos récentes.",
      "input_schema": {"type": "object", "properties": {"video_id": {"type": "string"}, "part": {"type": "string"}}, "required": ["video_id", "part"]}},
     {"name": "thumbnail_feedback", "description": "Retour de mise en page sur une miniature qui demande de retoucher le template (pas un simple "

@@ -35,7 +35,7 @@ jobs:
           # annotations (readable through the API): the report in a few chunks
           python3 - <<'EOF'
           t = open("report.txt").read()
-          chunks = [t[i:i + 7000] for i in range(0, len(t), 7000)][:9]
+          chunks = [t[i:i + 3800] for i in range(0, len(t), 3800)][:10]
           for n, c in enumerate(chunks, 1):
               print(f"::notice title=stress {n}/{len(chunks)}::" + c.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))
           EOF
