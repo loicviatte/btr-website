@@ -1,0 +1,36 @@
+# Stress test of the bot's conversation, on the server with the real chat model (nothing is sent to Telegram/YouTube).
+# Actions → Bot stress test → Run workflow. The report is in the job's annotations (and in the log).
+name: Bot stress test
+on:
+  workflow_dispatch: {}
+concurrency: bot-stress
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HOST: ${{ secrets.BOT_SERVER_HOST }}
+    steps:
+      - name: SSH access
+        env:
+          KEY: ${{ secrets.BOT_SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          k=$(printf '%s' "$KEY" | tr -d '\r')
+          case "$k" in *BEGIN*) ;; *) k=$(printf '%s' "$k" | tr -d ' \n\t' | base64 -d) ;; esac
+          body=$(printf '%s' "$k" | sed -e 's/-----BEGIN OPENSSH PRIVATE KEY-----//' -e 's/-----END OPENSSH PRIVATE KEY-----//' | tr -d ' \n\t')
+          { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run
+        run: |
+          ssh root@"$HOST" 'cd /opt/btr-bot && D=$(mktemp -d) && DATA_DIR=$D timeout 1500 .venv/bin/python -m tests.stress 2>&1 | grep -v "^INFO\|httpx"; rm -rf $D' > report.txt || true
+          cat report.txt
+          # annotations (readable through the API): the report in a few chunks
+          python3 - <<'EOF'
+          t = open("report.txt").read()
+          chunks = [t[i:i + 7000] for i in range(0, len(t), 7000)][:9]
+          for n, c in enumerate(chunks, 1):
+              print(f"::notice title=stress {n}/{len(chunks)}::" + c.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))
+          EOF

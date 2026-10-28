@@ -118,13 +118,19 @@ class Agent:
         return bool(shutil.which("claude")) and bool(self.token)
 
     def ask(self, message: str, timeout: int = 1200, strong: bool = False) -> dict:
-        """Returns {"text", "cost", "files"}; keeps the conversation (Claude Code session) across messages."""
+        """Returns {"text", "cost", "files"}.
+
+        Cost control: a NEW Claude Code session for every request (a resumed session re-sends its whole, ever
+        growing history at every call: that was most of the bill). It only resumes for a follow-up on a change
+        that is still waiting for Loïc's go, within 2 hours."""
+        import time
+        pending = bool(self.pending_files())
         self.sync()
         st = self._state()
-        model = "opus" if strong else os.environ.get("DEV_MODEL", "sonnet")  # Sonnet: ~3-5x cheaper, enough for most changes
+        model = "opus" if strong else os.environ.get("DEV_MODEL", "opus")   # Opus acts: fewer broken attempts
         cmd = ["claude", "-p", "--output-format", "json", "--model", model, "--permission-mode", "acceptEdits",
-               "--append-system-prompt", SYSTEM, "--add-dir", "/opt/btr-bot/data", "--max-turns", "60"]
-        if st.get("session"):
+               "--append-system-prompt", SYSTEM, "--add-dir", "/opt/btr-bot/data", "--max-turns", "40"]
+        if st.get("session") and pending and time.time() - st.get("at", 0) < 7200:
             cmd += ["--resume", st["session"]]
         cmd += ["--allowedTools", *TOOLS]
         env = {**os.environ, "ANTHROPIC_API_KEY": self.api_key, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}
@@ -133,12 +139,17 @@ class Agent:
         try:
             out = json.loads(r.stdout.strip().splitlines()[-1])
         except Exception:  # noqa: BLE001
-            if st.get("session"):  # a stale session (e.g. after a reinstall): start a fresh one once
+            if "--resume" in cmd:  # a stale session (e.g. after a reinstall): start a fresh one once
                 self.reset_conversation()
                 return self.ask(message, timeout, strong)
             raise RuntimeError((r.stderr or r.stdout or "Claude Code n'a rien répondu")[-800:])
         if out.get("session_id"):
-            self._save(session=out["session_id"])
+            self._save(session=out["session_id"], at=time.time())
+        try:
+            from .usage import Ledger
+            Ledger(self.state_file.parent).add("Claude Code (mode dev)", model, float(out.get("total_cost_usd") or 0))
+        except Exception:  # noqa: BLE001
+            pass
         return {"text": str(out.get("result") or "").strip() or "(pas de réponse)",
                 "cost": out.get("total_cost_usd"), "error": out.get("is_error"),
                 "files": [f for f in self.pending_files() if f.startswith("bot/")]}

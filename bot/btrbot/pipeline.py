@@ -75,7 +75,7 @@ class Pipeline:
     def __init__(self, cfg: Settings):
         self.cfg = cfg
         self.yt = YouTube(cfg.youtube_token, cfg.channel_id, cfg.youtube_client)
-        self.llm = LLM(cfg.anthropic_key, cfg.model)
+        self.llm = LLM(cfg.anthropic_key, cfg.model, cfg.data_dir)
         self._faces = None
 
     @property

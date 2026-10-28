@@ -13,7 +13,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
                           MessageReactionHandler, filters)
 
-from . import design, drive, prompts
+from . import assistant, design, drive
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -24,6 +24,9 @@ cfg = Settings()
 reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
 LOCK = asyncio.Lock()
+RUNNING: dict = {}          # the heavy job running now (label, since), for « c'est fait ? »
+LAST: dict = {}             # the last heavy job finished (label, at, ok)
+MEMORY = assistant.Memory(reg)   # the conversation as the chat model sees it
 AGENT = Agent(cfg.agent_src, cfg.github_token, cfg.anthropic_key, cfg.data_dir)
 AGENT_LOCK = asyncio.Lock()
 PENDING = cfg.data_dir / "pending_srt"   # SRTs (Drive folder or chat) waiting for their video
@@ -53,6 +56,7 @@ def allowed(update: Update) -> bool:
 
 
 async def say(ctx, text, **kw):
+    MEMORY.add("assistant", text)
     return await ctx.bot.send_message(cfg.chat_id, text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, **kw)
 
 
@@ -62,20 +66,37 @@ async def run(fn, *a):
 
 async def guarded(ctx, label: str, coro):
     """Run one heavy step at a time and report errors on Telegram instead of dying silently."""
+    import time
     async with LOCK:
+        RUNNING.update(label=label, since=time.time())
+        ok = False
         try:
-            return await coro
+            r = await coro
+            ok = True
+            return r
         except DryRun as e:
             await say(ctx, f"🧪 {esc(e)}")
         except Exception as e:  # noqa: BLE001
             log.exception(label)
             await say(ctx, f"⚠️ {esc(label)} a échoué : <code>{esc(e)}</code>\n<pre>{esc(traceback.format_exc()[-800:])}</pre>")
+        finally:
+            RUNNING.clear()
+            LAST.update(label=label, at=time.time(), ok=ok)
+
+
+def bg(ctx, label: str, coro) -> str:
+    """Start a heavy job in the background (one at a time) and say so: the chat stays responsive meanwhile."""
+    import time
+    queued = f" (en file d'attente derrière « {RUNNING['label']} », lancé il y a {int(time.time() - RUNNING['since'])} s)" if RUNNING else ""
+    asyncio.create_task(guarded(ctx, label, coro))
+    return f"lancé en arrière-plan : {label}{queued}"
 
 
 # ---------------------------------------------------------------- dev mode (Claude Code)
 async def plain(ctx, text: str, **kw):
     """Long plain-text answers, split for Telegram's 4096-char limit."""
     text = text or "(vide)"
+    MEMORY.add("assistant", text)
     chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
     for n, c in enumerate(chunks):
         await ctx.bot.send_message(cfg.chat_id, c, disable_web_page_preview=True, **(kw if n == len(chunks) - 1 else {}))
@@ -147,6 +168,7 @@ async def badge_preview(ctx, vid: str, part: str):
     reg.data.setdefault("badges", {})[vid] = str(jpg)
     reg.save()
     with open(jpg, "rb") as f:
+        MEMORY.add("assistant", f"[aperçu de la miniature de {vid} avec PART {part} envoyé, bouton ✅ Mettre sur YouTube]")
         await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Miniature YouTube de https://youtu.be/{vid} avec PART {part}",
                                  reply_markup=K([[B("✅ Mettre sur YouTube", callback_data=f"badge:ok:{vid}"),
                                                   B("❌ Non", callback_data=f"badge:no:{vid}")]]))
@@ -304,6 +326,7 @@ async def propose_frames(ctx, ep, who: str, more=False):
         with open(p["hires"], "rb") as f:
             media.append(InputMediaPhoto(f.read(), caption=f"{label} {i} · {int(p['t'] // 60)}:{int(p['t'] % 60):02d}"))
     await ctx.bot.send_media_group(cfg.chat_id, media)
+    MEMORY.add("assistant", f"[{len(media)} images de {label} envoyées, numérotées 1 à {len(media)}]")
     kb = [[B(str(i), callback_data=f"pick:{who}:{i-1}") for i in range(1, len(picks) + 1)],
           [B("🔁 Autres", callback_data=f"more:{who}")]]
     await say(ctx, f"Quelle image de <b>{esc(label)}</b> ?", reply_markup=K(kb))
@@ -311,20 +334,6 @@ async def propose_frames(ctx, ep, who: str, more=False):
 
 THUMB_LABELS = {"youtube": "YouTube", "instagram": "Instagram vertical", "square": "carrée"}
 THUMB_NAMES = {"youtube": "horizontal", "instagram": "vertical", "square": "carré"}   # how Loïc calls them
-_ALIAS = r"horizontal(?:e|es|s)?|youtube|vertical(?:e|es|s)?|instagram|insta|carr[ée]s?|toutes?|tout"
-VALIDATE = re.compile(rf"((?:(?:{_ALIAS})\s*(?:,|et|&|\+)?\s*)+?)\s*(?:est\s+|sont\s+)?(?:d[ée])?valid[ée]e?s?", re.I)
-UNVALIDATE = re.compile(r"(r[ée]ouvr|d[ée]valid|plus valid|pas (?:encore )?valid)", re.I)
-
-
-def design_of(word: str) -> list[str]:
-    w = word.lower()
-    if w.startswith("tout"):
-        return list(THUMB_LABELS)
-    if w.startswith("horizontal") or w == "youtube":
-        return ["youtube"]
-    if w.startswith("vertical") or w.startswith("insta"):
-        return ["instagram"]
-    return ["square"]
 
 
 def validated(ep) -> list[str]:
@@ -357,6 +366,7 @@ async def send_thumb(ctx, ep, design: str):
             msg = await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_instagram.jpg", caption="Miniature Instagram verticale (fichier HD)")
         else:
             msg = await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
+    MEMORY.add("assistant", f"[image envoyée : miniature {THUMB_NAMES[design]}]")
     ep["thumb_msgs"] = {**(ep.get("thumb_msgs") or {}), design: msg.message_id}   # to read his reactions on them
     ep.save()
 
@@ -411,7 +421,6 @@ async def make_thumbs(ctx, ep, only: str | None = None):
               reply_markup=kb)
 
 
-RECAP = re.compile(r"(renvoi|renvoie|redonne|envoie|montre|r[ée]cap).{0,40}(miniature|photo|image|titre)|dernier check", re.I)
 
 
 async def send_recap(ctx, ep):
@@ -424,7 +433,7 @@ async def send_recap(ctx, ep):
     await say(ctx, "Dernier check : " + valid_status(ep) + "\nTout est bon ?", reply_markup=thumb_kb(ep))
 
 
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "claude-sonnet-5-5")   # the chat itself is cheap; Claude Code only on request
+CHAT_MODEL = os.environ.get("CHAT_MODEL") or os.environ.get("MODEL_CHAT") or "claude-haiku-5-5"   # Haiku talks (~20x cheaper than Sonnet)
 
 
 RECENT = {"at": 0.0, "text": ""}
@@ -463,62 +472,6 @@ def design_context() -> str:
         "\n".join(design.describe(cfg.data_dir, f) for f in design.PARAMS)
 
 
-async def chat_with_bot(ctx, text: str, ep=None, images: list | None = None):
-    """Normal conversation. Claude Code (dev mode) only runs when Loïc says yes to « Demander à Claude ? »."""
-    if not (cfg.anthropic_key and text):
-        return
-    hist = [h for h in reg.data.get("chat_hist", [])[-10:] if '"reply"' not in str(h.get("content", ""))]
-    while hist and hist[0]["role"] != "user":
-        hist = hist[1:]
-    while hist and hist[-1]["role"] != "assistant":
-        hist = hist[:-1]
-    try:
-        ctx_text = await run(chat_context, ep)
-        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=ctx_text), hist, text, images))
-    except Exception as e:  # noqa: BLE001
-        log.exception("chat")
-        await say(ctx, f"⚠️ Je n'arrive pas à te répondre : <code>{esc(str(e)[-300:])}</code>")
-        return
-    reply = str(res.get("reply") or "").strip() or "👍"
-    reg.data["chat_hist"] = (hist + [{"role": "user", "content": text}, {"role": "assistant", "content": reply}])[-12:]
-    dz = res.get("design")
-    redo = None
-    if isinstance(dz, dict) and dz.get("format") in design.PARAMS:
-        fmt, notes = dz["format"], []
-        if dz.get("reset"):
-            design.reset(cfg.data_dir, fmt)
-            notes.append("réglages remis par défaut")
-        for name, val in (dz.get("set") or {}).items():
-            try:
-                notes.append(f"{name} → {design.set_value(cfg.data_dir, fmt, name, val)}")
-            except (KeyError, ValueError, TypeError):
-                notes.append(f"réglage inconnu ou valeur invalide : {name}")
-        if dz.get("show"):
-            reply += "\n\n" + design.describe(cfg.data_dir, fmt)
-        if notes:
-            reply += "\n\n✏️ " + " · ".join(notes)
-            if ep and fmt in validated(ep):
-                reply += f"\n(La miniature {THUMB_NAMES[fmt]} est validée : 🔁 Refaire la rouvre.)"
-            redo = fmt
-    kb_redo = [[B(f"🔁 Refaire {THUMB_NAMES[redo]}", callback_data=f"thumb:{redo}")]] if redo and ep and ep.get("pick_marius") else None
-    badges = [b for b in (res.get("badges") or []) if isinstance(b, dict) and b.get("video") and str(b.get("part", "")).strip()]
-    ask = res.get("ask_claude")
-    if badges:
-        reg.save()
-        await say(ctx, esc(reply))
-        for b in badges[:4]:
-            await guarded(ctx, "Badge PART", badge_preview(ctx, str(b["video"]).strip(), str(b["part"]).strip()))
-        return
-    if ask:
-        reg.data["pending_ask"] = {"text": str(ask), "thumbs": bool(res.get("thumbs")) and bool(ep), "images": []}
-        reg.save()
-        await say(ctx, esc(reply) + "\n\n🧠 Demander à Claude ?",
-                  reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
-    else:
-        reg.save()
-        await say(ctx, esc(reply), reply_markup=K(kb_redo) if kb_redo else None)
-
-
 async def propose_ask(ctx, ep, text: str, images: list[str]):
     """Screenshots + feedback on a thumbnail: needs Claude, but only after Loïc's yes."""
     reg.data["pending_ask"] = {"text": text, "thumbs": True, "images": images}
@@ -539,32 +492,6 @@ async def on_ask_button(ctx, data: str):
         await thumb_feedback(ctx, ep, pend["text"], pend.get("images") or [])
     else:
         await talk_to_agent(ctx, pend["text"])
-
-
-FB = {"images": [], "text": [], "task": None}
-DESIGN_WORDS = re.compile(r"chaise|on (ne )?voit|cach[ée]|devant|derri[èe]re|visage|t[êe]te|corps|marius|oti |miniature|thumbnail|youtube|insta|carr[ée]|square|design|template|police|texte|taille|logo|halo|"
-                          r"voile|d[ée]tour|d[ée]coup|cadr|zoom|flou|couleur|ombre|marge|align|bord|coup[ée]|trop (haut|bas|grand|petit)",
-                          re.I)
-
-
-def queue_feedback(ctx, ep, text: str | None = None, image=None):
-    """Feedback on the thumbnails = text and/or screenshots showing the problem. Grouped for a few seconds, then
-    handed to dev mode with the CURRENT picked frames (the screenshots are not new frames)."""
-    if text:
-        FB["text"].append(text)
-    if image:
-        FB["images"].append(str(image))
-    if FB["task"]:
-        FB["task"].cancel()
-    if not FB["text"]:
-        return   # screenshots only: wait for his explanation
-
-    async def later():
-        await asyncio.sleep(4)
-        txt, imgs = "\n".join(FB["text"]), list(FB["images"])
-        FB.update(text=[], images=[], task=None)
-        await propose_ask(ctx, ep, txt, imgs)
-    FB["task"] = asyncio.create_task(later())
 
 
 async def thumb_feedback(ctx, ep, text: str, images: list[str]):
@@ -606,8 +533,6 @@ async def retime_chapters(ctx, ep):
     await show_chapters(ctx, ep, "Chapitres recalés sur le SRT")
 
 
-CHAPTERS_WORDS = re.compile(r"chapitr|timecode|time code", re.I)
-RETIME_WORDS = re.compile(r"recalcul|recal|v[ée]rifi|check|corrig|refais|refait|r[ée]g[ée]n|pas bon|faux|d[ée]cal|pas (?:à|a) ", re.I)
 
 
 async def propose_chapters(ctx, ep, source: str):
@@ -620,6 +545,310 @@ async def propose_chapters(ctx, ep, source: str):
     await say(ctx, f"📑 <b>Chapitrage</b> (depuis {esc(source)})\n<pre>{body}</pre>", reply_markup=K(kb))
 
 
+# ---------------------------------------------------------------- the assistant (Haiku + tools)
+SHOTS: list = []   # screenshots waiting for his explanation (thumbnail feedback)
+
+
+def assistant_context(ep) -> str:
+    import time
+    lines = [_ep_context(ep)]
+    if ep and ep.stage == "axes_proposed":
+        lines.append("Axes proposés : " + " | ".join(f"{i}. {a.get('top')} {a.get('key')} {a.get('bottom')} → titre « {a.get('title')} »"
+                                                   for i, a in enumerate(ep.get("axes", []), 1)))
+    if ep:
+        from .pipeline import part_number
+        p = part_number(ep)
+        if p:
+            lines.append(f"Badge PART {p} sur les miniatures de cet épisode.")
+    if RUNNING:
+        lines.append(f"EN COURS : {RUNNING['label']} (depuis {int(time.time() - RUNNING['since'])} s).")
+    if LAST:
+        lines.append(f"Dernier travail terminé : {LAST['label']} ({'ok' if LAST['ok'] else 'ÉCHEC'}, il y a {int(time.time() - LAST['at'])} s).")
+    if AGENT_LOCK.locked():
+        lines.append("Claude Code (mode dev) est en train de travailler sur une demande.")
+    if reg.data.get("pending_ask"):
+        lines.append("Bouton « Demander à Claude ? » en attente de sa réponse : " + str(reg.data["pending_ask"].get("text", ""))[:200])
+    if list(PENDING.glob("*.srt")):
+        lines.append("SRT en attente de leur vidéo : " + ", ".join(p.name for p in PENDING.glob("*.srt")))
+    if SHOTS:
+        lines.append(f"{len(SHOTS)} capture(s) d'écran reçue(s) en attente d'explication.")
+    lines.append(design_context())
+    lines.append("Vidéos récentes de la chaîne (id, statut, titre) :\n" + recent_videos())
+    return "\n".join(lines)
+
+
+def tool_handlers(ctx, images: list) -> dict:
+    """The bot's functions, as the chat model can call them. Each returns a short French text for the model."""
+    def cur():
+        return reg.episode(reg.active) if reg.active else None
+
+    def need(stages=None):
+        ep = cur()
+        if not ep:
+            raise RuntimeError("aucun épisode en cours")
+        if stages and ep.stage not in stages:
+            raise RuntimeError(f"impossible à l'étape actuelle ({ep.stage})")
+        return ep
+
+    async def get_status():
+        ep = cur()
+        extra = ""
+        if ep and ep.get("chapters"):
+            extra = "\nChapitres actuels :\n" + "\n".join(f"{t} {x}" for t, x in ep["chapters"])
+        return await run(assistant_context, ep) + extra
+
+    async def title_chat(message):
+        ep = need(("axes_proposed", "frames_proposed", "thumbs_proposed"))
+        await title_discussion(ctx, ep, message)
+        return "fait : la réponse sur le titre a déjà été envoyée à Loïc (ne la répète pas, réponds en un mot ou rien)."
+
+    async def choose_axis(n):
+        ep = need(("axes_proposed", "frames_proposed", "thumbs_proposed"))
+        axes = ep.get("axes") or []
+        if not 1 <= int(n) <= len(axes):
+            return f"il n'y a que {len(axes)} axes"
+        await pick_axis(ctx, ep, int(n) - 1)
+        return f"axe {n} retenu, recherche d'images lancée"
+
+    async def other_frames(who):
+        ep = need(("frames_proposed", "thumbs_proposed"))
+        return bg(ctx, "Recherche d'images", propose_frames(ctx, ep, who, more=True))
+
+    async def validate(formats):
+        ep = need(("thumbs_proposed",))
+        ep["validated"] = validated(ep) + [f for f in dict.fromkeys(formats) if f not in validated(ep)]
+        ep.save()
+        return valid_status(ep)
+
+    async def reopen(formats):
+        ep = need(("thumbs_proposed",))
+        ep["validated"] = [d for d in validated(ep) if d not in formats]
+        ep.save()
+        return valid_status(ep)
+
+    async def redo_thumbnails(formats):
+        ep = need(("thumbs_proposed",))
+        if not (ep.get("pick_guest") and ep.get("pick_marius")):
+            return "pas encore d'images choisies"
+        fmts = list(dict.fromkeys(formats)) or list(THUMB_LABELS)
+        ep["validated"] = [d for d in validated(ep) if d not in fmts]
+        ep.save()
+        if len(fmts) == 3:
+            return bg(ctx, "Miniatures", make_thumbs(ctx, ep))
+
+        async def seq():
+            for f in fmts:
+                await make_thumbs(ctx, ep, f)
+        return bg(ctx, "Miniature " + ", ".join(THUMB_NAMES[f] for f in fmts), seq())
+
+    async def set_design(format, set=None, reset=False, show=False):   # noqa: A002
+        notes = []
+        if reset:
+            design.reset(cfg.data_dir, format)
+            notes.append("réglages remis par défaut")
+        for name, val in (set or {}).items():
+            try:
+                notes.append(f"{name} → {design.set_value(cfg.data_dir, format, name, val)}")
+            except (KeyError, ValueError, TypeError):
+                notes.append(f"réglage inconnu ou valeur invalide : {name}")
+        out = " · ".join(notes) or "aucun changement"
+        if show or not notes:
+            out += "\n" + design.describe(cfg.data_dir, format)
+        return out + "\n(pas encore re-rendu : redo_thumbnails pour voir le résultat)"
+
+    async def set_title(title):
+        ep = need(("frames_proposed", "thumbs_proposed"))
+        ep["final"]["title"] = title.strip()[:100]
+        ep.save()
+        return "titre mis à jour : " + ep["final"]["title"]
+
+    async def set_quote(top, key, bottom):
+        ep = need(("thumbs_proposed",))
+        ep["final"].update({"top": top, "key": key, "bottom": bottom})
+        ep.data.pop("validated", None)
+        ep.save()
+        return bg(ctx, "Miniatures (nouvelle citation)", make_thumbs(ctx, ep))
+
+    async def set_part(part):
+        ep = need()
+        ep["part"] = re.sub(r"\D", "", str(part or ""))
+        ep.save()
+        return (f"badge PART {ep['part']}" if ep["part"] else "pas de badge") + " pour cet épisode (redo_thumbnails pour l'appliquer)"
+
+    async def edit_description(instruction):
+        ep = need(("thumbs_proposed", "published", "chapters_proposed"))
+        prompt = ("Rewrite this YouTube description following this instruction: " + instruction + "\n"
+                  "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n" + ep["description"])
+        ep["description"] = await run(lambda: pipe.llm._ask(prompt, task="description (retouche)"))
+        ep.save()
+        await plain(ctx, "Nouvelle description :\n\n" + ep["description"])
+        return "nouvelle description envoyée à Loïc"
+
+    async def send_recap_t():
+        ep = need(("thumbs_proposed",))
+        return bg(ctx, "Récap", send_recap(ctx, ep))
+
+    async def publish():
+        ep = need(("thumbs_proposed",))
+        await say(ctx, f"Je publie sur YouTube le titre « {esc(ep['final']['title'])} », la description et la miniature horizontale ? "
+                       + valid_status(ep), reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
+        return "bouton de publication affiché : Loïc doit cliquer"
+
+    async def chapters(action):
+        ep = need()
+        if action == "show":
+            if not ep.get("chapters"):
+                return "pas encore de chapitres (regenerate pour les créer)"
+            await show_chapters(ctx, ep)
+            return "chapitres affichés avec le bouton YouTube"
+        if action == "retime":
+            return bg(ctx, "Chapitres (recalage)", retime_chapters(ctx, ep))
+        if action == "regenerate":
+            return bg(ctx, "Chapitrage", propose_chapters(ctx, ep, "nouvel essai"))
+
+        async def into():
+            await say(ctx, "⏱ Je génère les chapitres avec timecodes et je les mets dans la description…")
+            await plain(ctx, await run(pipe.description_with_chapters, ep))
+            await say(ctx, "Voilà la description avec les timecodes (elle sera publiée telle quelle).", reply_markup=thumb_kb(ep))
+        return bg(ctx, "Chapitres dans la description", into())
+
+    async def badge(video_id, part):
+        m = re.search(r"([\w-]{11})", video_id or "")
+        if not m:
+            return "id de vidéo invalide"
+        return bg(ctx, f"Badge PART {part}", badge_preview(ctx, m.group(1), re.sub(r"\D", "", str(part)) or str(part)))
+
+    async def thumbnail_feedback(feedback):
+        ep = need(("thumbs_proposed",))
+        await propose_ask(ctx, ep, feedback, [str(p) for p in images] + [str(p) for p in SHOTS])
+        SHOTS.clear()
+        return "bouton « Demander à Claude ? » affiché avec ses captures : Loïc doit dire oui"
+
+    async def propose_claude_code(request):
+        reg.data["pending_ask"] = {"text": request, "thumbs": False, "images": [str(p) for p in images]}
+        reg.save()
+        await say(ctx, "🧠 Je fais coder ça par Claude ?\n<i>" + esc(request[:600]) + "</i>",
+                  reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
+        return "bouton affiché : rien ne part sans son oui"
+
+    async def start_episode(video):
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", video.strip())
+        if not m:
+            return "lien ou id YouTube invalide"
+        return bg(ctx, "Nouvel épisode", start_video(ctx, m.group(1)))
+
+    async def scan_youtube():
+        return bg(ctx, "Scan YouTube + Drive", poll_youtube(ctx))
+
+    async def costs(days=1):
+        return pipe.llm.ledger.summary(float(days or 1)) if pipe.llm.ledger else "pas de suivi"
+
+    async def health_check():
+        async def go():
+            out = await run(run_check)
+            await plain(ctx, out[-3800:] or "(rien)")
+        return bg(ctx, "Test complet", go())
+
+    return {"get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
+            "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
+            "set_title": set_title, "set_quote": set_quote, "set_part": set_part, "edit_description": edit_description,
+            "send_recap": send_recap_t, "publish": publish, "chapters": chapters, "badge": badge,
+            "thumbnail_feedback": thumbnail_feedback, "propose_claude_code": propose_claude_code,
+            "start_episode": start_episode, "scan_youtube": scan_youtube, "costs": costs, "health_check": health_check}
+
+
+ASSIST_LOCK = asyncio.Lock()
+
+
+async def ask_assistant(ctx, text: str, images: list | None = None):
+    """One message from Loïc → the chat model acts with its tools → one short answer."""
+    import base64
+    images = list(images or [])
+    MEMORY.add("user", text + (f" [+{len(images)} capture(s)]" if images else ""))
+    async with ASSIST_LOCK:   # one conversation turn at a time (heavy jobs run in the background)
+        try:
+            await ctx.bot.send_chat_action(cfg.chat_id, "typing")
+        except Exception:  # noqa: BLE001
+            pass
+        ep = reg.episode(reg.active) if reg.active else None
+        content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                "data": base64.standard_b64encode(open(p, "rb").read()).decode()}}
+                   for p in images[:4]] + [{"type": "text", "text": text or "(capture sans texte)"}]
+        try:
+            ctx_text = await run(assistant_context, ep)
+            hist = MEMORY.history()
+            reply, actions = await assistant.converse(pipe.llm, CHAT_MODEL, ctx_text, hist, content, tool_handlers(ctx, images))
+        except Exception as e:  # noqa: BLE001
+            log.exception("assistant")
+            await say(ctx, f"⚠️ Je n'arrive pas à te répondre : <code>{esc(str(e)[-300:])}</code>")
+            return
+        if actions:
+            log.info("assistant actions: %s", actions)
+            MEMORY.add("assistant", "[actions : " + " ; ".join(a.split(" → ")[0] for a in actions) + "]")
+        if reply.strip():
+            await say(ctx, esc(reply))
+
+
+def run_check() -> str:
+    import contextlib
+    import io
+
+    from . import check
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        check.main()
+    return buf.getvalue()
+
+
+async def start_video(ctx, vid: str):
+    v = await run(pipe.yt.video, vid)
+    reg.mark_seen(vid)
+    ep = reg.episode(vid)
+    ep["title"] = v["snippet"]["title"]
+    ep.stage = "waiting_transcript"
+    ep.save()
+    reg.active = vid
+    await say(ctx, f"OK, je prends <b>{esc(ep['title'])}</b>.")
+    await poll_transcripts(ctx)
+
+
+async def pick_axis(ctx, ep, i: int):
+    a = ep["axes"][i]
+    ep["final"] = {**a, "guest_name": ep.get("guest_name")}
+    for k in ("pick_guest", "pick_marius", "shown_guest", "shown_marius", "validated"):
+        ep.data.pop(k, None)
+    ep.stage = "frames_proposed"
+    ep.save()
+    await say(ctx, f"👍 Axe retenu : “{esc(a['top'])} <b>{esc(a['key'])}</b> {esc(a['bottom'])}”")
+    asyncio.create_task(guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, "guest")))
+
+
+async def title_discussion(ctx, ep, text: str):
+    """The hook discussion itself stays on the creative model (with the cached transcript)."""
+    res = await run(pipe.refine, ep, text)
+    ep.save()
+    if res.get("final"):
+        ep.stage = "frames_proposed"
+        for k in ("pick_guest", "pick_marius", "validated"):
+            ep.data.pop(k, None)
+        ep.save()
+        f = clean_quote(res["final"])
+        await say(ctx, f"{esc(res.get('reply'))}\n\n👍 Retenu : “{esc(f['top'])} <b>{esc(f['key'])}</b> {esc(f['bottom'])}”")
+        asyncio.create_task(guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, "guest")))
+    elif res.get("axes"):
+        ep.stage = "axes_proposed"
+        ep.save()
+        await send_axes(ctx, ep, intro=esc(res.get("reply")))
+    else:
+        await say(ctx, esc(res.get("reply") or "…"))
+
+
+async def couts_cmd(update: Update, ctx):
+    if allowed(update):
+        days = float(ctx.args[0]) if ctx.args and ctx.args[0].replace(".", "").isdigit() else 1
+        await update.message.reply_text(pipe.llm.ledger.summary(days) + "\n\n(estimation ; la Console Anthropic fait foi)")
+
+
 # ---------------------------------------------------------------- handlers
 async def start(update: Update, ctx):
     cid = update.effective_chat.id
@@ -629,11 +858,11 @@ async def start(update: Update, ctx):
         cfg.chat_file.write_text(str(cid))
         start_polling(ctx.application)
         await update.message.reply_text("C'est noté, ce chat est le tien ✅ Je surveille YouTube toutes les "
-                                        f"{cfg.poll_minutes} min.\n/status · /scan · /check · /episode <id> · /claude <demande> · /opus <demande> · /nouveau")
+                                        f"{cfg.poll_minutes} min.\nParle-moi normalement. Commandes : /status · /scan · /check · /couts · /episode <id> · /badge <lien> <n> · /claude <demande> · /nouveau")
         return
     if not allowed(update):
         return
-    await update.message.reply_text("BTR bot en ligne ✅\n/status · /scan · /check · /episode <id> · /claude <demande> · /opus <demande> · /nouveau")
+    await update.message.reply_text("BTR bot en ligne ✅\nParle-moi normalement. Commandes : /status · /scan · /check · /couts · /episode <id> · /badge <lien> <n> · /claude <demande> · /nouveau")
 
 
 async def status(update: Update, ctx):
@@ -651,16 +880,6 @@ async def check_cmd(update: Update, ctx):
     if not allowed(update):
         return
     await update.message.reply_text("🩺 Je teste tout (YouTube, téléchargement, Claude, modèles)… ~1 min")
-
-    def run_check():
-        import contextlib
-        import io
-
-        from . import check
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            check.main()
-        return buf.getvalue()
     out = await run(run_check)
     await update.message.reply_text(out[-3800:] or "(rien)")
 
@@ -675,15 +894,7 @@ async def episode_cmd(update: Update, ctx):
     if not allowed(update) or not ctx.args:
         return
     vid = ctx.args[0].split("v=")[-1].split("/")[-1][:11]
-    v = await run(pipe.yt.video, vid)
-    reg.mark_seen(vid)
-    ep = reg.episode(vid)
-    ep["title"] = v["snippet"]["title"]
-    ep.stage = "waiting_transcript"
-    ep.save()
-    reg.active = vid
-    await say(ctx, f"OK, je prends <b>{esc(ep['title'])}</b>.")
-    await poll_transcripts(ctx)
+    await guarded(ctx, "Nouvel épisode", start_video(ctx, vid))
 
 
 async def on_button(update: Update, ctx):
@@ -691,6 +902,8 @@ async def on_button(update: Update, ctx):
         return
     q = update.callback_query
     await q.answer()
+    if not q.data.startswith("axis:"):
+        MEMORY.add("user", f"[bouton : {q.data}]")
     if q.data.startswith("dev:"):
         await on_dev_button(ctx, q.data)
         return
@@ -718,14 +931,8 @@ async def on_button(update: Update, ctx):
         return
     d = q.data
     if d.startswith("axis:"):
-        a = ep["axes"][int(d.split(":")[1])]
-        ep["final"] = {**a, "guest_name": ep.get("guest_name")}
-        for k in ("pick_guest", "pick_marius", "shown_guest", "shown_marius", "validated"):
-            ep.data.pop(k, None)
-        ep.stage = "frames_proposed"
-        ep.save()
-        await say(ctx, f"👍 Axe retenu : “{esc(a['top'])} <b>{esc(a['key'])}</b> {esc(a['bottom'])}”")
-        await guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, "guest"))
+        MEMORY.add("user", f"[bouton : axe {int(d.split(':')[1]) + 1}]")
+        await pick_axis(ctx, ep, int(d.split(":")[1]))
     elif d.startswith("more:"):
         await guarded(ctx, "Recherche d'images", propose_frames(ctx, ep, d.split(":")[1], more=True))
     elif d.startswith("pick:"):
@@ -770,119 +977,34 @@ async def on_button(update: Update, ctx):
 
 
 async def on_text(update: Update, ctx):
+    """Exact « titre: / citation: / part: / description: » commands stay instant; everything else is a conversation."""
     if not allowed(update):
         return
-    if reg.active and CHAPTERS_WORDS.search(update.message.text) and not re.search(r"descr", update.message.text, re.I) \
-            and reg.episode(reg.active).get("chapters"):
-        ep = reg.episode(reg.active)
-        if RETIME_WORDS.search(update.message.text):
-            await guarded(ctx, "Chapitrage", retime_chapters(ctx, ep))
-        else:
-            await show_chapters(ctx, ep)
-        return
-    if not reg.active or reg.episode(reg.active).stage not in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
-        await chat_with_bot(ctx, update.message.text.strip(), reg.episode(reg.active) if reg.active else None)
-        return
-    ep = reg.episode(reg.active)
     text = update.message.text.strip()
     low = text.lower()
-    if low.startswith("part:"):
-        val = text.split(":", 1)[1].strip().lower()
-        ep["part"] = "" if val in ("", "aucun", "aucune", "non", "0", "none") else re.sub(r"\D", "", val) or ""
-        ep.data.pop("validated", None)
-        ep.save()
-        await say(ctx, (f"Badge <b>PART {esc(ep['part'])}</b>" if ep["part"] else "Pas de badge PART") +
-                  " sur les 3 miniatures. Appuie sur 🔁 Refaire, ou je les refais maintenant :",
-                  reply_markup=K([[B("🔁 Refaire les 3 miniatures", callback_data="part:redo")]]))
-        return
-    if ep.stage == "thumbs_proposed" and low.startswith("titre:"):
-        ep["final"]["title"] = text.split(":", 1)[1].strip()
-        ep.save()
-        await say(ctx, f"Titre mis à jour : <b>{esc(ep['final']['title'])}</b>", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
-        return
-    if ep.stage == "thumbs_proposed" and low.startswith("citation:"):
-        parts = [p.strip() for p in text.split(":", 1)[1].split("|")]
-        if len(parts) == 3:
-            ep["final"].update({"top": parts[0], "key": parts[1], "bottom": parts[2]})
-            ep.data.pop("validated", None)   # the quote is on every design
-            ep.save()
-            await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
-        else:
-            await say(ctx, "Format : <code>citation: haut | MOT | bas</code>")
-        return
-    if ep.stage == "thumbs_proposed" and low.startswith("description:"):
-        async def go():
-            prompt = ("Rewrite this YouTube description following this instruction: " + text.split(":", 1)[1].strip() + "\n"
-                      "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n" + ep["description"])
-            ep["description"] = await run(pipe.llm._ask, prompt)
-            ep.save()
-            await say(ctx, f"<b>Nouvelle description :</b>\n{esc(ep['description'])[:3500]}", reply_markup=K([[B("✅ Publier sur YouTube", callback_data="publish")]]))
-        await guarded(ctx, "Description", go())
-        return
-    if ep.stage == "thumbs_proposed" and RECAP.search(low) and ep.file("render/thumb_youtube.jpg").exists():
-        await guarded(ctx, "Récap", send_recap(ctx, ep))
-        return
-    if ep.stage == "thumbs_proposed" and re.search(r"descr.*(timecode|chapitr)|(timecode|chapitr).*descr", low):
-        async def go():
-            await say(ctx, "⏱ Je génère les chapitres avec timecodes et je les mets dans la description…")
-            desc = await run(pipe.description_with_chapters, ep)
-            await plain(ctx, desc)
-            await say(ctx, "Voilà la description avec les timecodes (elle sera publiée telle quelle).",
-                      reply_markup=thumb_kb(ep))
-        await guarded(ctx, "Chapitres", go())
-        return
-    if ep.stage == "thumbs_proposed" and not UNVALIDATE.search(low) and VALIDATE.search(low):
-        # "horizontal validé", "vertical et carré validés", "tout validé": freeze those designs
-        found = []
-        for mt in VALIDATE.finditer(low):
-            for w in re.findall(_ALIAS, mt.group(1), re.I):
-                found += design_of(w)
-        ep["validated"] = validated(ep) + [d for d in dict.fromkeys(found) if d not in validated(ep)]
-        ep.save()
-        rest = VALIDATE.sub(" ", text)
-        rest = re.sub(r"[\s,.;:!?&+]+|\b(et|mais|donc|ensuite|le|la|les)\b", " ", rest, flags=re.I).strip()
-        await say(ctx, "👍 " + ", ".join(THUMB_NAMES[d] for d in dict.fromkeys(found)).capitalize()
-                  + " validé(e)(s), je n'y touche plus. " + valid_status(ep), reply_markup=thumb_kb(ep))
-        if len(rest) > 6:   # the rest of his message is feedback on the other designs
-            queue_feedback(ctx, ep, text=VALIDATE.sub(" ", text).strip())
-        return
-    if ep.stage == "thumbs_proposed" and validated(ep) and UNVALIDATE.search(low) and re.search(_ALIAS, low, re.I):
-        back = [d for w in re.findall(_ALIAS, low, re.I) for d in design_of(w)]
-        back = list(dict.fromkeys(back))
-        ep["validated"] = [d for d in validated(ep) if d not in back]
-        ep.save()
-        await say(ctx, "↩️ Je rouvre : " + ", ".join(THUMB_NAMES[d] for d in back) + " (les autres restent figées).")
-        for d in back:   # reopening = redo it with the current code; only that one is sent
-            await guarded(ctx, "Miniature", make_thumbs(ctx, ep, d))
-        return
-    if ep.stage == "thumbs_proposed" and FB["images"]:
-        queue_feedback(ctx, ep, text=text)   # his explanation of the screenshots just sent
-        return
-    if ep.stage == "thumbs_proposed":
-        await chat_with_bot(ctx, text, ep)
-        return
-    if ep.stage in ("axes_proposed", "frames_proposed", "thumbs_proposed"):
-        async def go():
-            res = await run(pipe.refine, ep, text)
-            ep.save()
-            if res.get("route") == "agent":
-                asyncio.create_task(chat_with_bot(ctx, text, ep))
-                return
-            if res.get("final"):
-                ep.stage = "frames_proposed"
-                for k in ("pick_guest", "pick_marius", "validated"):
-                    ep.data.pop(k, None)
-                ep.save()
-                f = clean_quote(res["final"])
-                await say(ctx, f"{esc(res.get('reply'))}\n\n👍 Retenu : “{esc(f['top'])} <b>{esc(f['key'])}</b> {esc(f['bottom'])}”")
-                await propose_frames(ctx, ep, "guest")
-            elif res.get("axes"):
-                ep.stage = "axes_proposed"
-                ep.save()
-                await send_axes(ctx, ep, intro=esc(res.get("reply")))
+    ep = reg.episode(reg.active) if reg.active else None
+    if ep and ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low):
+        h = tool_handlers(ctx, [])
+        MEMORY.add("user", text)
+        arg = text.split(":", 1)[1].strip()
+        try:
+            if low.startswith("titre"):
+                out = await h["set_title"](arg)
+            elif low.startswith("citation"):
+                parts = [x.strip() for x in arg.split("|")]
+                out = await h["set_quote"](*parts) if len(parts) == 3 else "Format : citation: haut | MOT | bas"
+            elif low.startswith("part"):
+                out = await h["set_part"]("" if arg.lower() in ("aucun", "aucune", "non", "0", "none") else arg)
+                out += " — " + await h["redo_thumbnails"](list(THUMB_LABELS))
             else:
-                await say(ctx, esc(res.get("reply")))
-        await guarded(ctx, "Discussion", go())
+                out = await h["edit_description"](arg)
+        except Exception as e:  # noqa: BLE001
+            out = f"⚠️ {e}"
+        await say(ctx, "👍 " + esc(out))
+        return
+    images = list(SHOTS)
+    SHOTS.clear()
+    await ask_assistant(ctx, text, images)
 
 
 async def on_document(update: Update, ctx):
@@ -925,24 +1047,28 @@ async def use_srt_for(ctx, ep, path):
 
 async def on_photo(update: Update, ctx):
     """Fallback: Loïc sends his own still when the scan found nothing."""
-    if not allowed(update) or not reg.active:
+    if not allowed(update):
+        return
+    if not reg.active:
+        path = cfg.data_dir / "feedback" / f"{update.message.message_id}.jpg"
+        path.parent.mkdir(exist_ok=True)
+        await (await update.message.photo[-1].get_file()).download_to_drive(str(path))
+        await ask_assistant(ctx, update.message.caption or "(capture d'écran sans texte)", [path])
         return
     ep = reg.episode(reg.active)
-    if ep.stage == "thumbs_proposed" and ep.get("pick_guest") and ep.get("pick_marius"):
-        # a screenshot with feedback: it shows the problem, it does not replace the picked frames
-        path = ep.file(f"feedback/{update.message.message_id}.jpg")
-        path.parent.mkdir(exist_ok=True)
-        await (await update.message.photo[-1].get_file()).download_to_drive(str(path))
-        if not FB["text"] and not update.message.caption:
-            await say(ctx, "📎 Capture reçue. Dis-moi ce qui ne va pas dessus (tu peux en envoyer d'autres) et je reprends la miniature concernée.")
-        queue_feedback(ctx, ep, text=update.message.caption, image=path)
-        return
     if ep.stage != "frames_proposed":
-        # not waiting for a frame: the photo is just something he shows me (never a replacement of the picked frames)
+        # not waiting for a frame: a screenshot he shows me (feedback), never a replacement of the picked frames
         path = ep.file(f"feedback/{update.message.message_id}.jpg")
         path.parent.mkdir(exist_ok=True)
         await (await update.message.photo[-1].get_file()).download_to_drive(str(path))
-        await chat_with_bot(ctx, update.message.caption or "(capture d'écran jointe, sans texte)", ep, [path])
+        if update.message.caption:
+            images = list(SHOTS) + [path]
+            SHOTS.clear()
+            await ask_assistant(ctx, update.message.caption, images)
+        else:
+            SHOTS.append(path)
+            if len(SHOTS) == 1:
+                await say(ctx, "📎 Capture reçue. Dis-moi ce qui ne va pas (tu peux en envoyer d'autres).")
         return
     who = "guest" if not ep.get("pick_guest") else "marius"
     ph = update.message.photo[-1]
@@ -989,7 +1115,8 @@ async def on_boot(app):
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    app = Application.builder().token(cfg.telegram_token).post_init(on_boot).build()
+    # concurrent updates: he can keep talking while a render or a frame search runs (heavy jobs share LOCK)
+    app = Application.builder().token(cfg.telegram_token).post_init(on_boot).concurrent_updates(True).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("check", check_cmd))
@@ -999,6 +1126,7 @@ def main():
     app.add_handler(CommandHandler("badge", badge_cmd))
     app.add_handler(CommandHandler("opus", claude_strong_cmd))
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
+    app.add_handler(CommandHandler("couts", couts_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
