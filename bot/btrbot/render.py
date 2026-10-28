@@ -104,6 +104,19 @@ def instagram(work: Path, models_dir: Path, guest_4k: Path, face: dict, quote: d
     return jpg
 
 
+def badge(work: Path, bg: Path, part: str) -> Path:
+    """An existing YouTube thumbnail (any size, 16:9) + the PART badge, as a 1920x1080 JPEG."""
+    work.mkdir(parents=True, exist_ok=True)
+    Image.open(bg).convert("RGB").resize((1920, 1080), Image.LANCZOS).save(work / "badge_bg.jpg", quality=95)
+    page = work / "badge.html"
+    page.write_text(env.get_template("badge.html").render(assets=ASSETS.as_uri(), bg="badge_bg.jpg", d={"part": part}))
+    png = work / f"thumb_part{part}.png"
+    _shot(page, png, 1920, 1080)
+    jpg = work / f"thumb_part{part}.jpg"
+    Image.open(png).convert("RGB").save(jpg, quality=90, optimize=True)
+    return jpg
+
+
 def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_name: str, d: dict | None = None) -> Path:
     """1080x1080 post, guest left / Marius right. Reuses the 1920x1080 frames and cutouts made by youtube()."""
     d = d or design.load(Path("/nonexistent"), "square")

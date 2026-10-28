@@ -79,14 +79,16 @@ class LLM:
         content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                 "data": base64.standard_b64encode(p.read_bytes()).decode()}}
                    for p in (images or [])] + [{"type": "text", "text": message}]
-        msg = self.client.messages.create(model=model, max_tokens=1200, system=system,
-                                          messages=history + [{"role": "user", "content": content}])
+        # The answer comes back through a forced tool call: always a clean object, never JSON mixed into the text
+        # (a reply that printed its own JSON, or got cut by max_tokens, used to lose the "ask Claude" request).
+        msg = self.client.messages.create(model=model, max_tokens=3000, system=system,
+                                          messages=history + [{"role": "user", "content": content}],
+                                          tools=[prompts.CHAT_TOOL], tool_choice={"type": "tool", "name": "respond"})
+        for b in msg.content:
+            if getattr(b, "type", "") == "tool_use" and isinstance(b.input, dict):
+                return b.input
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
-        m = re.search(r"\{.*\}", text, re.S)
-        try:
-            return json.loads(m.group(0)) if m else {"reply": text}
-        except ValueError:
-            return {"reply": text}
+        return parse_reply(text)
 
     def description(self, title: str, guest_name: str, refs: list[dict], transcript: str) -> str:
         ref_txt = "\n\n".join(f"--- {r['title']} ---\n{r['description']}" for r in refs[:3]) or "(none)"
@@ -95,3 +97,22 @@ class LLM:
 
     def chapters(self, timed_transcript: str) -> list[list[str]]:
         return self._json(prompts.CHAPTERS.format(transcript=timed_transcript[:180_000]))["chapters"]
+
+
+def parse_reply(text: str) -> dict:
+    """Fallback for a plain-text answer: keep the JSON object if there is one, never show raw JSON to Loïc."""
+    i = text.find('{"reply"')
+    if i < 0:
+        i = text.find("{")
+    if i >= 0:
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text[i:])
+            if isinstance(obj, dict) and "reply" in obj:
+                return obj
+        except ValueError:
+            m = re.search(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)', text[i:], re.S)
+            if m:
+                return {"reply": json.loads('"' + m.group(1) + '"'), "truncated": True}
+        text = text[:i].strip() or text
+    text = re.sub(r"```(json)?", "", text).strip()
+    return {"reply": text}

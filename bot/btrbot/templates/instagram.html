@@ -32,6 +32,7 @@ html,body{margin:0;background:#080403}
   </div>
   <img class="cut" src="{{ cut }}" style="position:absolute;left:0;top:{{ cut_top }}px;width:1080px;height:{{ cut_h }}px">
   <p class="name">{{ name1 }}<br>{{ name2 }}</p>
+  {% with part_size=50, part_right=30, part_top=34 %}{% include "_part.html" %}{% endwith %}
 </div>
 <script>
 window.fit = () => {

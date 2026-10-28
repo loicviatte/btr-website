@@ -140,6 +140,44 @@ async def on_dev_button(ctx, data: str):
                                  "d'avant. Voici la fin du journal :\n" + log_txt + "\nTrouve la cause et corrige.")
 
 
+async def badge_preview(ctx, vid: str, part: str):
+    """PART badge on the CURRENT YouTube thumbnail of any video (also already public): preview, then Loïc's go."""
+    await ctx.bot.send_message(cfg.chat_id, f"🏷 Je pose « PART {part} » sur la miniature de {vid}…")
+    jpg = await run(pipe.badge_thumbnail, vid, part)
+    reg.data.setdefault("badges", {})[vid] = str(jpg)
+    reg.save()
+    with open(jpg, "rb") as f:
+        await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Miniature YouTube de https://youtu.be/{vid} avec PART {part}",
+                                 reply_markup=K([[B("✅ Mettre sur YouTube", callback_data=f"badge:ok:{vid}"),
+                                                  B("❌ Non", callback_data=f"badge:no:{vid}")]]))
+
+
+async def on_badge_button(ctx, data: str):
+    from pathlib import Path
+    _, act, vid = data.split(":", 2)
+    jpg = Path((reg.data.get("badges") or {}).get(vid, ""))
+    if act == "no" or not jpg.is_file():
+        await say(ctx, "OK, la miniature reste comme elle est." if act == "no" else "Aperçu introuvable, redemande-moi le badge.")
+        return
+    # explicit go from Loïc on this exact image: allowed even on a public video (only the thumbnail changes)
+    await run(pipe.yt.set_thumbnail, vid, jpg)
+    await say(ctx, f"✅ Miniature mise à jour sur https://youtu.be/{vid} (YouTube peut mettre quelques minutes à l'afficher).")
+
+
+async def badge_cmd(update: Update, ctx):
+    """/badge <lien ou id> <numéro>"""
+    if not allowed(update):
+        return
+    if len(ctx.args) < 2:
+        await update.message.reply_text("Usage : /badge <lien ou id YouTube> <numéro>, ex. /badge https://youtu.be/PjDZ8X_JWY0 2")
+        return
+    m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", ctx.args[0])
+    if not m:
+        await update.message.reply_text("Je ne reconnais pas ce lien YouTube.")
+        return
+    await guarded(ctx, "Badge PART", badge_preview(ctx, m.group(1), re.sub(r"\D", "", ctx.args[1]) or ctx.args[1]))
+
+
 async def claude_cmd(update: Update, ctx):
     if allowed(update):
         await talk_to_agent(ctx, " ".join(ctx.args))
@@ -389,8 +427,24 @@ async def send_recap(ctx, ep):
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "claude-sonnet-5-5")   # the chat itself is cheap; Claude Code only on request
 
 
+RECENT = {"at": 0.0, "text": ""}
+
+
+def recent_videos() -> str:
+    """Last uploads (id, visibility, title), refreshed every 10 min: lets the chat find « les 2 dernières vidéos d'Oti »."""
+    import time
+    if time.time() - RECENT["at"] > 600:
+        try:
+            vids = pipe.yt.recent(15)
+            RECENT["text"] = "\n".join(f"- {v['id']} ({v['status'].get('privacyStatus')}) {v['snippet']['title']}" for v in vids)
+            RECENT["at"] = time.time()
+        except Exception as e:  # noqa: BLE001
+            log.warning("recent videos: %s", e)
+    return RECENT["text"] or "(indisponible)"
+
+
 def chat_context(ep) -> str:
-    return (_ep_context(ep) + "\n\n" + design_context())
+    return (_ep_context(ep) + "\n\n" + design_context() + "\n\nVidéos récentes de la chaîne (id, statut, titre) :\n" + recent_videos())
 
 
 def _ep_context(ep) -> str:
@@ -413,11 +467,14 @@ async def chat_with_bot(ctx, text: str, ep=None, images: list | None = None):
     """Normal conversation. Claude Code (dev mode) only runs when Loïc says yes to « Demander à Claude ? »."""
     if not (cfg.anthropic_key and text):
         return
-    hist = reg.data.get("chat_hist", [])[-10:]
+    hist = [h for h in reg.data.get("chat_hist", [])[-10:] if '"reply"' not in str(h.get("content", ""))]
     while hist and hist[0]["role"] != "user":
         hist = hist[1:]
+    while hist and hist[-1]["role"] != "assistant":
+        hist = hist[:-1]
     try:
-        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=chat_context(ep)), hist, text, images))
+        ctx_text = await run(chat_context, ep)
+        res = await run(lambda: pipe.llm.chat(CHAT_MODEL, prompts.CHAT_SYSTEM.format(context=ctx_text), hist, text, images))
     except Exception as e:  # noqa: BLE001
         log.exception("chat")
         await say(ctx, f"⚠️ Je n'arrive pas à te répondre : <code>{esc(str(e)[-300:])}</code>")
@@ -444,7 +501,14 @@ async def chat_with_bot(ctx, text: str, ep=None, images: list | None = None):
                 reply += f"\n(La miniature {THUMB_NAMES[fmt]} est validée : 🔁 Refaire la rouvre.)"
             redo = fmt
     kb_redo = [[B(f"🔁 Refaire {THUMB_NAMES[redo]}", callback_data=f"thumb:{redo}")]] if redo and ep and ep.get("pick_marius") else None
+    badges = [b for b in (res.get("badges") or []) if isinstance(b, dict) and b.get("video") and str(b.get("part", "")).strip()]
     ask = res.get("ask_claude")
+    if badges:
+        reg.save()
+        await say(ctx, esc(reply))
+        for b in badges[:4]:
+            await guarded(ctx, "Badge PART", badge_preview(ctx, str(b["video"]).strip(), str(b["part"]).strip()))
+        return
     if ask:
         reg.data["pending_ask"] = {"text": str(ask), "thumbs": bool(res.get("thumbs")) and bool(ep), "images": []}
         reg.save()
@@ -633,6 +697,13 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("ask:"):
         await guarded(ctx, "Demande à Claude", on_ask_button(ctx, q.data))
         return
+    if q.data.startswith("badge:"):
+        await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data == "part:redo":
+        if reg.active:
+            await guarded(ctx, "Miniatures", make_thumbs(ctx, reg.episode(reg.active)))
+        return
     if q.data == "srt:next":
         await say(ctx, "OK, je le garde pour la prochaine vidéo non répertoriée.")
         return
@@ -715,6 +786,15 @@ async def on_text(update: Update, ctx):
     ep = reg.episode(reg.active)
     text = update.message.text.strip()
     low = text.lower()
+    if low.startswith("part:"):
+        val = text.split(":", 1)[1].strip().lower()
+        ep["part"] = "" if val in ("", "aucun", "aucune", "non", "0", "none") else re.sub(r"\D", "", val) or ""
+        ep.data.pop("validated", None)
+        ep.save()
+        await say(ctx, (f"Badge <b>PART {esc(ep['part'])}</b>" if ep["part"] else "Pas de badge PART") +
+                  " sur les 3 miniatures. Appuie sur 🔁 Refaire, ou je les refais maintenant :",
+                  reply_markup=K([[B("🔁 Refaire les 3 miniatures", callback_data="part:redo")]]))
+        return
     if ep.stage == "thumbs_proposed" and low.startswith("titre:"):
         ep["final"]["title"] = text.split(":", 1)[1].strip()
         ep.save()
@@ -916,6 +996,7 @@ def main():
     app.add_handler(CommandHandler("scan", scan_cmd))
     app.add_handler(CommandHandler("episode", episode_cmd))
     app.add_handler(CommandHandler("claude", claude_cmd))
+    app.add_handler(CommandHandler("badge", badge_cmd))
     app.add_handler(CommandHandler("opus", claude_strong_cmd))
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CallbackQueryHandler(on_button))

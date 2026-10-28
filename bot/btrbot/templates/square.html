@@ -35,6 +35,7 @@ html,body{margin:0;background:#080403}
   </div>
   <img class="logo" src="{{ assets }}/btr-secondary-white.png">
   <p class="name">{{ name1 }}<br>{{ name2 }}</p>
+  {% with part_size=46, part_right=28, part_top=30 %}{% include "_part.html" %}{% endwith %}
 </div>
 <script>
 window.fit = () => {

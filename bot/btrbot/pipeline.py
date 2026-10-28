@@ -27,6 +27,18 @@ def mmss(t: str) -> float:
     return float(sec)
 
 
+def part_number(ep) -> str | None:
+    """'PART 2' badge for multi-part episodes: set by Loïc (ep["part"], "" = none) or read from the titles."""
+    import re
+    if ep.get("part") is not None:
+        return str(ep["part"]) or None
+    for t in ((ep.get("final") or {}).get("title", ""), ep.get("title", "")):
+        m = re.search(r"\bpart(?:ie)?\s*_?(\d)\b", t or "", re.I)
+        if m:
+            return m.group(1)
+    return None
+
+
 def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=()) -> dict[str, Path]:
     """Render the 3 thumbnails from the picked frames, or just one ("youtube" | "instagram" | "square").
     Designs in `skip` (validated by Loïc) are left untouched."""
@@ -35,17 +47,23 @@ def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=(
     name = ep.get("guest_name", "")
     work = ep.dir / "render"
     root = ep.dir.parent.parent                    # data dir: layout settings are read now, at every render
+    part = part_number(ep)
+
+    def lay(fmt):
+        d = design.load(root, fmt)
+        d["part"] = part
+        return d
     want = [d for d in ("youtube", "square", "instagram") if only in (None, d) and d not in skip]
     out: dict[str, Path] = {}
     # the square reuses the frames/cut-outs made by the YouTube render
     if "youtube" in want or ("square" in want and not (work / "yt_marius_cut.png").exists()):
-        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name, design.load(root, "youtube"))
+        yt = render.youtube(work, Path(g["hires"]), g["cx"], Path(m["hires"]), m["cx"], q, name, lay("youtube"))
         if "youtube" in want:
             out["youtube"] = yt
     if "square" in want:
-        out["square"] = render.square(work, g["cx"], m["cx"], q, name, design.load(root, "square"))
+        out["square"] = render.square(work, g["cx"], m["cx"], q, name, lay("square"))
     if "instagram" in want:
-        out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name, design.load(root, "instagram"))
+        out["instagram"] = render.instagram(work, models_dir, Path(g["hires"]), g, q, name, lay("instagram"))
     return out
 
 
@@ -186,6 +204,22 @@ class Pipeline:
         refs = ep.get("refs") or self.yt.public_references(4)
         text = srt.plain_text(self.cues(ep))
         return self.llm.description(ep["final"]["title"], ep.get("guest_name", ""), refs, text)
+
+    def badge_thumbnail(self, vid: str, part: str) -> Path:
+        """Current YouTube thumbnail of a video (the bot's own 1920 render if it made it) + the PART badge."""
+        import urllib.request
+        ep = Episode(self.cfg.data_dir, vid)
+        work = ep.dir / "badge"
+        work.mkdir(parents=True, exist_ok=True)
+        local = ep.dir / "render" / "thumb_youtube.png"
+        if local.exists():
+            bg = local
+        else:
+            th = self.yt.video(vid)["snippet"]["thumbnails"]
+            url = (th.get("maxres") or th.get("standard") or th.get("high"))["url"]
+            bg = work / "current.jpg"
+            urllib.request.urlretrieve(url, bg)
+        return render.badge(work, bg, str(part))
 
     def _guard(self, ep: Episode) -> None:
         """Never touch a video that is already public: /episode on a live episode is a dry run."""

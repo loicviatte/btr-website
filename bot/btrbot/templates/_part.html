@@ -1,0 +1,2 @@
+{# "PART 1" / "PART 2" badge, top right, as on the Peter Nash thumbnails: white PART, gold number, Monument Heavy. #}
+{% if d and d.part %}<p style="position:absolute;right:{{ part_right }}px;top:{{ part_top }}px;margin:0;font-family:'PP Monument Extended','Arial Black',sans-serif;font-weight:800;font-size:{{ part_size }}px;line-height:1;color:#fff;white-space:nowrap;z-index:50">PART <span style="color:#fecb7a">{{ d.part }}</span></p>{% endif %}

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Heavy.woff2") format("woff2");font-weight:800 900}
+html,body{margin:0;background:#080403}
+.f{position:relative;width:1920px;height:1080px;overflow:hidden}
+.f img{position:absolute;inset:0;width:1920px;height:1080px}
+</style>
+</head>
+<body>
+<div class="f">
+  <img src="{{ bg }}">
+  {% with part_size=63, part_right=34, part_top=30 %}{% include "_part.html" %}{% endwith %}
+</div>
+<script>window.fit = () => ({});</script>
+</body>
+</html>

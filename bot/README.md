@@ -66,6 +66,9 @@ Pour voir les logs en direct (facultatif) : `ssh -i ~/.ssh/btr_bot root@IP journ
 Au déploiement, il pousse sur GitHub, la GitHub Action met le serveur à jour, et si la nouvelle version plante au démarrage, l'ancienne revient toute seule et le bot te propose **🔧 Corrige**.
 `/claude <demande>` force le mode dev. Il tourne sur **Sonnet** (économique) ; `/opus <demande>` passe sur Opus pour les changements difficiles. `/nouveau` lui fait oublier la conversation. Il a besoin du secret `BOT_GITHUB_TOKEN` : un token GitHub *fine-grained* limité au dépôt btr-website, avec *Contents: Read and write*. Le coût réel s'affiche sous chaque réponse.
 
+## Badge PART 1 / PART 2
+Pour un épisode en plusieurs parties, le badge « PART 2 » (en haut à droite, comme sur les miniatures de Peter Nash) s'ajoute tout seul sur les 3 miniatures si le titre contient « part 2 ». `part: 2` le force, `part: aucun` l'enlève. Sur une vidéo déjà en ligne : `/badge <lien> 2`, ou demande-le simplement (« mets PART 1 et PART 2 sur les deux dernières d'Oti »). Le bot montre l'aperçu, puis tu valides avec ✅ avant que la miniature change sur YouTube.
+
 ## Notes
 - **SRT DaVinci :** dépose-le dans le dossier Drive « SRT » (partagé par lien ; dossier modifiable avec `DRIVE_SRT_FOLDER`) ou envoie-le dans le chat. Le bot le relève toutes les 15 min, l'associe à la vidéo dont le titre contient un mot du nom du fichier (`oti_Subtitle_part2.srt` → « Oti … part 2 »), sinon le garde pour la prochaine vidéo. Avec un SRT, il démarre sans attendre les sous-titres YouTube.
 - **Premier lancement :** les vidéos déjà non répertoriées sont ignorées. Pour en traiter une : `/episode <ID>`.

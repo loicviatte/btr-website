@@ -128,5 +128,32 @@ Si la demande concerne le design d'une miniature d'un épisode (retour sur une i
 Contexte actuel :
 {context}
 
-Réponds UNIQUEMENT en JSON : {{"reply": "ta réponse à Loïc", "ask_claude": null ou "demande complète pour Claude", "thumbs": true/false,
-"design": null ou {{"format": "youtube|instagram|square", "show": true/false, "set": {{"nom_du_réglage": valeur}}, "reset": false}}}}"""
+- BADGE « PART 1 / PART 2 » (comme sur les miniatures de Peter Nash, en haut à droite) : tu sais le faire SEUL, sans Claude.
+  · Sur la miniature YouTube d'une vidéo déjà en ligne : remplis "badges" avec l'id de la vidéo (liste des vidéos récentes dans le
+    contexte) et le numéro. Le bot montre l'aperçu et Loïc valide avant que ça parte sur YouTube.
+  · Pour l'épisode en cours : il est ajouté tout seul sur les 3 formats si le titre contient « part 2 ». « part: 2 » le force,
+    « part: aucun » l'enlève (puis 🔁 Refaire).
+
+Réponds TOUJOURS en appelant l'outil "respond" (jamais de JSON dans le texte)."""
+
+CHAT_TOOL = {
+    "name": "respond",
+    "description": "Ta réponse à Loïc et les actions que le bot doit faire.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "reply": {"type": "string", "description": "ta réponse à Loïc, en français, texte brut"},
+            "ask_claude": {"type": ["string", "null"],
+                           "description": "demande complète et autonome pour Claude (mode dev), seulement si un changement de code est nécessaire"},
+            "thumbs": {"type": "boolean", "description": "la demande concerne le design d'une miniature de l'épisode en cours"},
+            "design": {"type": ["object", "null"], "description": "réglage de miniature à montrer ou changer",
+                       "properties": {"format": {"type": "string", "enum": ["youtube", "instagram", "square"]},
+                                      "show": {"type": "boolean"}, "set": {"type": "object"}, "reset": {"type": "boolean"}}},
+            "badges": {"type": ["array", "null"], "description": "badges PART à poser sur des miniatures YouTube existantes",
+                       "items": {"type": "object", "properties": {"video": {"type": "string", "description": "id YouTube"},
+                                                                  "part": {"type": "string", "description": "1, 2…"}},
+                                 "required": ["video", "part"]}},
+        },
+        "required": ["reply"],
+    },
+}

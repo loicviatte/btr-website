@@ -18,6 +18,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   #FCDF9A hard-light, gold haze behind the cut-out people.
 - `btrbot/state.py` — per-episode JSON state in `data/episodes/<id>/` (live data: `/opt/btr-bot/data`).
 - `btrbot/drive.py` — shared Drive folder of DaVinci SRTs; `btrbot/srt.py` — SRT parsing (DaVinci 01:00:00 offset).
+- Chat with Loïc: `bot.chat_with_bot` → `llm.chat` (forced tool `respond`, schema `prompts.CHAT_TOOL`: reply, ask_claude, design, badges). Never parse JSON out of free text.
+- PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules
