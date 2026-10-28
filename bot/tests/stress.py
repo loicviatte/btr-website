@@ -3,7 +3,7 @@
 Run ON THE SERVER (it needs the real API key), on a throw-away data folder:
     DATA_DIR=$(mktemp -d) .venv/bin/python -m tests.stress
 Nothing is sent to Telegram or YouTube: heavy jobs and messages are recorded instead.
-Prints, for every message, the tools the model called, its answer, latency and cost, then a summary.
+Prints, for each message, the tools the model called, its answer, latency and cost, then a summary.
 """
 import asyncio
 import json
