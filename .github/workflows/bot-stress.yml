@@ -1,11 +1,16 @@
 # Stress test of the bot's conversation, on the server with the real chat model (nothing is sent to Telegram/YouTube).
-# Actions → Bot stress test → Run workflow. The report is in the job's annotations (and in the log).
+# Runs by hand (Actions → Bot stress test → Run workflow), or after a bot deploy whose commit message contains [stress].
+# The report is in the job's annotations (and in the log). Costs a few cents (Haiku).
 name: Bot stress test
 on:
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Deploy bot"]
+    types: [completed]
 concurrency: bot-stress
 jobs:
   stress:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[stress]'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
