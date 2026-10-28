@@ -18,7 +18,13 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   #FCDF9A hard-light, gold haze behind the cut-out people.
 - `btrbot/state.py` — per-episode JSON state in `data/episodes/<id>/` (live data: `/opt/btr-bot/data`).
 - `btrbot/drive.py` — shared Drive folder of DaVinci SRTs; `btrbot/srt.py` — SRT parsing (DaVinci 01:00:00 offset).
-- Chat with Loïc: `bot.chat_with_bot` → `llm.chat` (tool `respond` (tool_choice auto: forced choice is refused by the model), schema `prompts.CHAT_TOOL`: reply, ask_claude, design, badges). Never parse JSON out of free text.
+- Conversation: `btrbot/assistant.py` — Haiku with ~22 tools (`assistant.TOOLS`), handlers in `bot.tool_handlers`. Every free-text
+  message / screenshot goes to `bot.ask_assistant`; heavy jobs start in the background with `bot.bg` (one at a time, LOCK).
+  `assistant.Memory` keeps the chat (Loïc + everything the bot posted). Add a capability = a tool + a handler, not a regex.
+  Exact « titre: / citation: / part: / description: » stay instant fast paths. `tests/stress.py` = 30 real-model scenarios
+  (workflow « Bot stress test », runs after a deploy whose commit message contains [stress]).
+- Models (`llm.MODELS`, `usage.py`): chat Haiku, creative Opus (axes, title, description), work Sonnet (chapters, frames),
+  vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

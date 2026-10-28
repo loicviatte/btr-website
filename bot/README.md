@@ -61,7 +61,10 @@ Si ça ne suffit pas : proxy résidentiel, ou bot sur un Raspberry Pi chez toi (
 
 Pour voir les logs en direct (facultatif) : `ssh -i ~/.ssh/btr_bot root@IP journalctl -u btr-bot -f`.
 
-## Parler au bot / le faire évoluer (mode dev)
+## Parler au bot
+Écris-lui comme à une personne : « vertical validé, et le carré texte un peu plus haut puis refais-le », « les yeux de Marius sont fermés », « c'est fait ? », « mets PART 2 sur la vidéo d'Oti », « combien j'ai dépensé ? ». Il comprend avec Haiku (rapide, ~0,1 ¢ par message), agit lui-même avec ses outils, et lance les travaux lourds en arrière-plan : tu peux continuer à lui parler pendant un rendu. `/couts` affiche les dépenses estimées.
+
+## Le faire évoluer (mode dev)
 Écris-lui normalement. Hors discussion d'épisode (ou si ta demande ne concerne pas le titre en cours), ton message part à **Claude Code**, installé sur le serveur, qui travaille sur une copie du code du bot. Il répond à tes questions (état d'un épisode, logs, fonctionnement). Si tu demandes quelque chose que le bot ne sait pas faire, il **modifie son propre code**, puis te montre les changements avec deux boutons, **🚀 Déployer** ou **❌ Annuler**. Rien n'est mis en ligne sans ton clic.
 Au déploiement, il pousse sur GitHub, la GitHub Action met le serveur à jour, et si la nouvelle version plante au démarrage, l'ancienne revient toute seule et le bot te propose **🔧 Corrige**.
 `/claude <demande>` force le mode dev. Il tourne sur **Sonnet** (économique) ; `/opus <demande>` passe sur Opus pour les changements difficiles. `/nouveau` lui fait oublier la conversation. Il a besoin du secret `BOT_GITHUB_TOKEN` : un token GitHub *fine-grained* limité au dépôt btr-website, avec *Contents: Read and write*. Le coût réel s'affiche sous chaque réponse.
