@@ -83,7 +83,9 @@ class LLM:
         # (a reply that printed its own JSON, or got cut by max_tokens, used to lose the "ask Claude" request).
         msg = self.client.messages.create(model=model, max_tokens=3000, system=system,
                                           messages=history + [{"role": "user", "content": content}],
-                                          tools=[prompts.CHAT_TOOL], tool_choice={"type": "tool", "name": "respond"})
+                                          tools=[prompts.CHAT_TOOL], tool_choice={"type": "auto"})
+        # (a forced tool_choice is refused by some models: "auto" + the system prompt asking for the tool, and
+        #  parse_reply() below as a safety net if it ever answers in plain text)
         for b in msg.content:
             if getattr(b, "type", "") == "tool_use" and isinstance(b.input, dict):
                 return b.input
