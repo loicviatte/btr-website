@@ -43,7 +43,7 @@ def patch(path):
     if m:
         s = s[:m.start()] + '\n' + m.group(1) + row(48, 22, 10, ' margin-top: 24px;') + s[m.start():]
     # home page row
-    h = re.search(r'(<p[^>]*>Watch and listen wherever you are</p>\s*)<div style="display: flex; flex-wrap: wrap; gap: 4px 34px;[^"]*">.*?</div>', s, re.S)
+    h = re.search(r'(<p[^>]*>Watch and listen (?:<span[^>]*>)?wherever you are(?:</span>)?</p>\s*)<div style="display: flex; flex-wrap: wrap; gap: 4px 34px;[^"]*">.*?</div>', s, re.S)
     if h:
         home = row(64, 28, 14).replace('class="btr-soc-row" style="display: flex; flex-wrap: wrap;', 'class="btr-soc-row btr-soc-home" style="display: flex; flex-wrap: nowrap;')
         home = home.replace('style="width: 64px; height: 64px;"', 'style="width: 64px; height: 64px; flex: 0 1 64px;"')
