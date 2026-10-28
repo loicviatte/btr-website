@@ -89,7 +89,7 @@ class Component extends DCLogic {
   }
   componentWillUnmount() { if (this.state.tModal) this.closeT(); }
   renderVals() {
-    const R = [{"code": "De0-CkNirnP", "hook": "What does it take to build a life that feels truly yours?", "views": "18.4k", "poster": "", "src": ""}, {"code": "De2Mb74CtD5", "hook": "The gender imbalance in dance has turned toxic", "views": "11.8k", "poster": "", "src": ""}, {"code": "De4xsBzChts", "hook": "Dance is more than technical perfection", "views": "2.8k", "poster": "/_blob/f1eb009c8cc615f8613d2dabfec78afd", "src": ""}, {"code": "De7dds4lqIy", "hook": "Talent thrives in places with nothing to lose", "views": "2k", "poster": "/_blob/1328fa4835cae69869e896fa2b7360b0", "src": ""}];
+    const R = [{"code": "De0-CkNirnP", "hook": "What does it take to build a life that feels truly yours?", "views": "18.4k", "poster": "/_blob/2725fce2d21a867a34e1a0b52d04c88c", "src": ""}, {"code": "De2Mb74CtD5", "hook": "The gender imbalance in dance has turned toxic", "views": "11.8k", "poster": "/_blob/aad5cd67c822637951e0cad8741a7f78", "src": ""}, {"code": "De4xsBzChts", "hook": "Dance is more than technical perfection", "views": "2.8k", "poster": "/_blob/f1eb009c8cc615f8613d2dabfec78afd", "src": ""}, {"code": "De7dds4lqIy", "hook": "Talent thrives in places with nothing to lose", "views": "2k", "poster": "/_blob/1328fa4835cae69869e896fa2b7360b0", "src": ""}];
     const on = this.state.on;
     const reels = R.map((r, i) => ({
       hook: r.hook,

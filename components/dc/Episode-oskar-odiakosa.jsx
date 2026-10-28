@@ -89,7 +89,7 @@ class Component extends DCLogic {
   }
   componentWillUnmount() { if (this.state.tModal) this.closeT(); }
   renderVals() {
-    const R = [{"code": "DdWxaY0Nck-", "hook": "We need electric scooters", "views": "7.9k", "poster": "", "src": ""}, {"code": "DdUhKico5ZZ", "hook": "Part 2 with Oskar is out now", "views": "7.1k", "poster": "", "src": ""}, {"code": "DdKJxo7o2FR", "hook": "Would you trust your younger self as a partner?", "views": "7k", "poster": "", "src": ""}, {"code": "Ddb0HbTtLe4", "hook": "The imposter syndrome confession", "views": "6.3k", "poster": "/_blob/59d1fc3b3167f469a6bd18755bc09414", "src": ""}, {"code": "DdEM3AoIjZR", "hook": "How far would you go for the thing you love?", "views": "6.2k", "poster": "", "src": ""}];
+    const R = [{"code": "DdWxaY0Nck-", "hook": "We need electric scooters", "views": "7.9k", "poster": "/_blob/6facb1642e465dd8e0e00a159e7413d0", "src": ""}, {"code": "DdUhKico5ZZ", "hook": "Part 2 with Oskar is out now", "views": "7.1k", "poster": "/_blob/e2d458d53aa45d23f92c69851d8b2339", "src": ""}, {"code": "DdKJxo7o2FR", "hook": "Would you trust your younger self as a partner?", "views": "7k", "poster": "/_blob/861785e48bf8b708f64b9436cce3592a", "src": ""}, {"code": "Ddb0HbTtLe4", "hook": "The imposter syndrome confession", "views": "6.3k", "poster": "/_blob/59d1fc3b3167f469a6bd18755bc09414", "src": ""}, {"code": "DdEM3AoIjZR", "hook": "How far would you go for the thing you love?", "views": "6.2k", "poster": "/_blob/9599f586e757c7439f61fc60acdc8b3d", "src": ""}];
     const on = this.state.on;
     const reels = R.map((r, i) => ({
       hook: r.hook,
