@@ -55,6 +55,15 @@ def main():
     step("Face models + Marius reference", lambda: (lambda f: "ready")(__import__("btrbot.faces", fromlist=["Faces"]).Faces(cfg.models_dir)))
     step("LaMa model", lambda: f"{(cfg.models_dir / 'big-lama.pt').stat().st_size // 2**20} MB")
 
+    def reels_ready():
+        from . import reels, subs
+        from .config import ASSETS
+        subs.prepare_fonts(ASSETS, cfg.data_dir / "fonts")
+        size = (cfg.models_dir / reels.ASR_DIR / "encoder.int8.onnx").stat().st_size // 2**20
+        import shutil
+        return f"transcription {size} MB, polices OK, {shutil.disk_usage(cfg.data_dir).free // 2**30} GB libres"
+    step("Reels (transcription + polices)", reels_ready)
+
 
 if __name__ == "__main__":
     main()

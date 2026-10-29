@@ -104,4 +104,17 @@ class LLM:
         return self._json(prompts.CHAPTERS.format(transcript=timed_transcript[:180_000]), tier="work",
                           task="chapitres")["chapters"]
 
+    # ---- reels -------------------------------------------------------------
+    def reel_candidates(self, video_title: str, guest_name: str, avoid: str, transcript: str, n: int = 10) -> list[dict]:
+        r = self._json(self._with_transcript(transcript, prompts.REEL_CANDIDATES.format(
+            video_title=video_title, guest_name=guest_name or "the guest", avoid=avoid or "(nothing)", n=n)),
+            6000, task="reels (moments)")
+        return r.get("candidates", [])
 
+    def reel_blocks(self, words: list[str]) -> list[dict]:
+        listing = " ".join(f"{i}:{w}" for i, w in enumerate(words))
+        return self._json(prompts.REEL_BLOCKS.format(words=listing), 4000, tier="work", task="reels (sous-titres)").get("blocks", [])
+
+    def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
+        return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
+                                                       text=text[:4000]), 1500, task="reels (légendes)")

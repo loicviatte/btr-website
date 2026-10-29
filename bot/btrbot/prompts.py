@@ -96,3 +96,51 @@ TRANSCRIPT = """Transcript of the episode, with [mm:ss] markers:
 </transcript>"""
 
 
+
+# ---------------------------------------------------------------- reels (claude/btr-reels-workflow.md)
+REEL_CANDIDATES = """Episode: "{video_title}" with {guest_name}.
+The thumbnail/teaser of this episode already uses this moment (avoid it): {avoid}
+
+The transcript (with [mm:ss] markers) is above.
+
+Find the {n} best moments for vertical reels (Instagram Reels, TikTok, YouTube Shorts) aimed at the DanceSport community.
+Each moment:
+- 20 to 60 seconds, self-contained (a viewer who never saw the episode understands it), mostly the guest speaking.
+- Opens with a punchy sentence in the first 5 seconds (the hook): no warm-up, start right on it.
+- Has a turn or a clear stance that makes dancers react (debate, confession, surprising fact, strong opinion, funny story).
+- Ends on a strong last sentence (a punchline or a stance), not mid-thought.
+- No two moments overlap; cover different topics.
+For each, give the EXACT first words and the EXACT last words as they appear in the transcript (5 to 8 words each), so the cut can be found in the audio.
+Return ONLY JSON:
+{{"candidates": [
+  {{"start": "mm:ss", "end": "mm:ss",
+    "first_words": "exact first 5-8 words", "last_words": "exact last 5-8 words",
+    "hook": "the opening sentence, verbatim",
+    "title": "3-6 word English label",
+    "why": "1 short French line: why it will work"}}
+]}}"""
+
+REEL_BLOCKS = """Lay out animated subtitles for a vertical reel of a DanceSport podcast, in the "Diary of a CEO" stacked style.
+Here are the words actually spoken in the reel, in order (index:word):
+{words}
+
+Group them into blocks of 2 to 7 short lines (1 to 3 words per line) that follow the speech. Notation for each token:
+- lower-case = small linking word; UPPER-CASE = punch word shown huge (one or two per block, the words that carry the meaning)
+- prefix * = gold (key words, about one per block), / = italic (punchlines), ~ = letters that tighten (use 1 or 2 times in the whole reel)
+- a prefix applies to ONE word only. Put “ ” around words the speaker quotes or paraphrases from someone else.
+Rules: use ONLY the spoken words, in the same order, same spelling (you may fix the capitalisation and punctuation). You may skip
+fillers and stutters ("um", "you know", repeated words) but never add, change or reorder words. Never put a long small-word
+phrase on the same line as a punch word: split it. Vary the alignment from one block to the next: "c" centred, "l" left, "stair".
+Return ONLY JSON: {{"blocks": [{{"align": "c", "lines": ["where are my *FRIENDS", "FAMILY", "HUSBAND?"]}}]}}"""
+
+REEL_CAPTIONS = """Write the social captions for this reel of Break The Routine, a DanceSport podcast hosted by Marius Iepure (@mariusiepure).
+Guest: {guest_name}. Episode: "{video_title}".
+What is said in the reel:
+<reel>
+{text}
+</reel>
+Rules: English; first line = a hook that makes a dancer stop scrolling (never invent facts or quotes: only what is said above);
+then 1 or 2 short lines of context; then a call to action to watch the full episode (YouTube / Spotify, link in bio).
+Instagram: NO hashtags, max 60 words. TikTok / YouTube Shorts: same text plus 5 to 8 relevant hashtags at the end
+(#dancesport #ballroom #latindance …).
+Return ONLY JSON: {{"instagram": "...", "tiktok": "..."}}"""

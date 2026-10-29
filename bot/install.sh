@@ -48,6 +48,10 @@ mkdir -p models secrets data
   https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
 [ -s models/face_recognition_sface_2021dec.onnx ] || curl -L -o models/face_recognition_sface_2021dec.onnx \
   https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
+# speech-to-text for the reels (NVIDIA Parakeet TDT 0.6B, int8, ~650 MB): word timings of each extract
+[ -s models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/encoder.int8.onnx ] || curl -L \
+  https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2 \
+  | tar xj -C models
 python -c "from rembg import new_session; new_session('isnet-general-use'); print('rembg model ready')"
 
 [ -f .env ] || cp .env.example .env

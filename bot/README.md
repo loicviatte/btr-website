@@ -72,6 +72,10 @@ Au déploiement, il pousse sur GitHub, la GitHub Action met le serveur à jour, 
 ## Badge PART 1 / PART 2
 Pour un épisode en plusieurs parties, le badge « PART 2 » (en haut à droite, comme sur les miniatures de Peter Nash) s'ajoute tout seul sur les 3 miniatures si le titre contient « part 2 ». `part: 2` le force, `part: aucun` l'enlève. Sur une vidéo déjà en ligne : `/badge <lien> 2`, ou demande-le simplement (« mets PART 1 et PART 2 sur les deux dernières d'Oti »). Le bot montre l'aperçu, puis tu valides avec ✅ avant que la miniature change sur YouTube.
 
+## Reels (à la place d'Opus Clip)
+Après les chapitres d'un épisode, le bot propose un bouton **🎞️ Proposer les reels** ; sinon `/reels` (dernier épisode) ou `/reels <lien>`, ou simplement « propose-moi des reels ». Il lit le transcript et envoie **10 moments** (timecode, phrase d'accroche, pourquoi ça marche). Coche-en 6, puis **🎬 Monter la sélection**.
+Pour chaque reel, il télécharge seulement l'extrait en 4K, le retranscrit mot à mot, coupe les longs silences, suit le montage de l'épisode (gros plan guest, gros plan Marius, et plan large → **écran scindé : guest en haut, Marius en bas**), ajoute les sous-titres v3 (sans musique) et t'envoie l'aperçu. Retouche en parlant : « commence 2 s plus tôt », « finis plus tôt », « enlève la phrase “you know what I mean” ». **✅ Valider** t'envoie le fichier final et les légendes Instagram (sans hashtags) et TikTok / Shorts (avec). **C'est toi qui publies.** Compte quelques minutes par reel. Les fichiers restent 3 semaines sur le serveur.
+
 ## Notes
 - **SRT DaVinci :** dépose-le dans le dossier Drive « SRT » (partagé par lien ; dossier modifiable avec `DRIVE_SRT_FOLDER`) ou envoie-le dans le chat. Le bot le relève toutes les 15 min, l'associe à la vidéo dont le titre contient un mot du nom du fichier (`oti_Subtitle_part2.srt` → « Oti … part 2 »), sinon le garde pour la prochaine vidéo. Avec un SRT, il démarre sans attendre les sous-titres YouTube.
 - **Premier lancement :** les vidéos déjà non répertoriées sont ignorées. Pour en traiter une : `/episode <ID>`.

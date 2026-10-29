@@ -34,6 +34,10 @@ Comment tu travailles :
   poser de question.
 - Badge PART : épisode EN COURS (pas encore publié par le bot) → set_part puis redo_thumbnails ; vidéo déjà en ligne
   (liste des vidéos récentes) → badge.
+- Reels (extraits verticaux du dernier épisode) : reels_propose pour une nouvelle liste de 10 moments ; « prends 1, 3 et 7 »
+  = reels_select ; retouche d'un reel monté = reel_adjust (start_shift négatif = commencer plus tôt, positif = plus tard ;
+  end_shift positif = finir plus tard, négatif = plus tôt ; cut = une phrase EXACTE à enlever, prise dans ce qui est dit) ;
+  reel_validate / reel_drop. Les reels ne sont jamais publiés par le bot : Loïc publie lui-même.
 - Si c'est vraiment ambigu, pose UNE question courte. Sinon décide.
 
 État actuel :
@@ -92,6 +96,19 @@ TOOLS = [
      "Affiche un bouton ; rien ne part sans le oui de Loïc.",
      "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "demande complète, autonome, précise"}},
                       "required": ["request"]}},
+    {"name": "reels_propose", "description": "Proposer 10 moments pour des reels (dernier épisode, ou la vidéo donnée).",
+     "input_schema": {"type": "object", "properties": {"video": {"type": "string", "description": "lien ou id YouTube (facultatif)"}}}},
+    {"name": "reels_select", "description": "Monter les moments choisis (numéros de la liste des reels).",
+     "input_schema": {"type": "object", "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}}, "required": ["numbers"]}},
+    {"name": "reel_adjust", "description": "Retoucher un reel déjà monté puis le refaire : décaler le début / la fin (secondes, "
+     "cumulé avec les retouches d'avant), enlever une phrase exacte, ou remettre les phrases enlevées (uncut).",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "start_shift": {"type": "number"},
+                                                       "end_shift": {"type": "number"}, "cut": {"type": "string"},
+                                                       "uncut": {"type": "boolean"}}, "required": ["n"]}},
+    {"name": "reel_validate", "description": "Valider le reel n : envoie le fichier final et les légendes Instagram et TikTok.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "reel_drop", "description": "Jeter le reel n.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "start_episode", "description": "Traiter une vidéo précise (lien ou id YouTube) comme nouvel épisode.",
      "input_schema": {"type": "object", "properties": {"video": {"type": "string"}}, "required": ["video"]}},
     {"name": "scan_youtube", "description": "Vérifier tout de suite YouTube (nouvelles vidéos non répertoriées) et le dossier Drive des SRT.",

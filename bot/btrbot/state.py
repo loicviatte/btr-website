@@ -90,3 +90,28 @@ class Registry:
 
     def episode(self, vid: str) -> Episode:
         return Episode(self.root, vid)
+
+
+class Reels:
+    """The reels of one episode in their own file (data/episodes/<id>/reels.json), one shared object per process:
+    a render running in the background and a « Valider » click never overwrite each other."""
+    _cache: dict = {}
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.data: dict[str, Any] = json.loads(path.read_text()) if path.exists() else {"cands": [], "sel": [], "items": {}}
+
+    @classmethod
+    def of(cls, ep: Episode) -> "Reels":
+        key = str(ep.dir)
+        if key not in cls._cache:
+            cls._cache[key] = cls(ep.dir / "reels.json")
+        return cls._cache[key]
+
+    def __bool__(self) -> bool:
+        return bool(self.data.get("cands"))
+
+    def save(self) -> None:
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.data, indent=1, ensure_ascii=False))
+        tmp.replace(self.path)

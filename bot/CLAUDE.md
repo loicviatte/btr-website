@@ -26,6 +26,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
 - Models (`llm.MODELS`, `usage.py`): chat Haiku, creative Opus (axes, title, description), work Sonnet (chapters, frames),
   vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
+- Reels (workflow: claude/btr-reels-workflow.md in the Claude project): `btrbot/reels.py` (section download in 4K,
+  word timings with Parakeet via sherpa-onnx in `models/`, silence cuts, shot-by-shot framing from the source edit:
+  guest / Marius close-up 9:16 alternating wide/tight at jump cuts, wide shot of both → split screen guest top /
+  Marius bottom, frame-exact render, −14 LUFS, no music), `btrbot/subs.py` (v3 subtitles as ASS: Regular/Heavy,
+  gold, italic, tighten; words only from the transcription, never added), state in `data/episodes/<id>/reels.json`
+  (`state.Reels`, one shared object per process). Telegram: `/reels [lien]`, list of 10 moments with tick buttons,
+  previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_validate / reel_drop. Loïc publishes
+  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

@@ -15,3 +15,7 @@ jinja2
 rapidfuzz
 python-dotenv
 gdown>=5.2
+# reels: word-level speech recognition (Parakeet via sherpa-onnx) and brand fonts for libass
+sherpa-onnx>=1.12
+fonttools>=4.50
+brotli
