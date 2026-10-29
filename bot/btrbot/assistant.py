@@ -45,6 +45,9 @@ Comment tu travailles :
     tel endroit », mise en page) = reel_subtitles avec son retour tel quel pour ce reel (il comprend et ne refait que les
     sous-titres). Un doute sur un nom (« je suis pas sûr, c'est peut-être Motsi ») : passe-le aussi, avec ses mots.
   · « good », « parfait », « ok » sur un reel = rien à faire (ne le valide pas sans qu'il le dise).
+  · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
+  · Un reel validé part tout seul sur Drive (dossier BTR Reels) et dans sa tâche ClickUp (lien, légendes, cover). Si Drive
+    ou ClickUp ne sont pas connectés, dis-lui d'envoyer /connect.
   · Une règle pour TOUS les futurs reels (« toujours laisser plus de temps à la fin ») : propose_claude_code.
   Termine par un récap court de ce qui est lancé, reel par reel.
 - Si c'est vraiment ambigu, pose UNE question courte. Sinon décide.
@@ -122,6 +125,14 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "
+                                          "« next » pour la suivante) et/ou autre accroche (small = petits mots, big = "
+                                          "mot(s) en très gros, gold = dernier(s) mot(s) en or italique ; uniquement des "
+                                          "mots dits dans le reel, dans l'ordre). Si le reel est validé, Drive et ClickUp "
+                                          "sont mis à jour.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "photo": {"type": ["integer", "string"]},
+                                                       "small": {"type": "string"}, "big": {"type": "string"},
+                                                       "gold": {"type": "string"}}, "required": ["n"]}},
     {"name": "reels_resend", "description": "Refaire et renvoyer des reels déjà choisis avec les règles actuelles (« renvoie-moi "
                                             "les reels », « remonte les reels 1 et 5 »), sans changer leur début/fin. "
                                             "Sans liste = tous les reels cochés (sauf les jetés).",

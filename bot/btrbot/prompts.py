@@ -151,7 +151,17 @@ Rules: English; first line = a hook that makes a dancer stop scrolling (never in
 then 1 or 2 short lines of context; then a call to action to watch the full episode (YouTube / Spotify, link in bio).
 Instagram: NO hashtags, max 60 words. TikTok / YouTube Shorts: same text plus 5 to 8 relevant hashtags at the end
 (#dancesport #ballroom #latindance …).
-Return ONLY JSON: {{"instagram": "...", "tiktok": "..."}}"""
+Cover: also choose the hook printed on the reel cover: 2 to 5 CONSECUTIVE words the guest really says above (exact
+words, same order), the most striking ones (e.g. "They just don't care."). Split them in up to 3 parts: "small" = the
+lead-in words (lower-case look, may be empty), "big" = the punch word(s) shown huge, "gold" = the last punch word(s)
+in gold italic (may be empty). Example: {{"small": "They just", "big": "DON'T", "gold": "CARE."}}. big and gold: 1 or 2
+short words each, in UPPER CASE.
+Return ONLY JSON: {{"instagram": "...", "tiktok": "...", "cover": {{"small": "...", "big": "...", "gold": "..."}}}}"""
+
+REEL_COVER_PICK = """These are numbered close-ups of a podcast guest's face, taken from a vertical video. Pick the best ones for the
+cover of the reel: both eyes fully open, a natural lively expression (a smile or a strong, engaged look), mouth not
+caught mid-word in an odd shape, face sharp, not blurred by motion, looking at the host or slightly to the side.
+Return ONLY JSON: {{"best": [numbers, best first, up to 3]}}"""
 
 REEL_ARBITRATE = """Two transcriptions of the same podcast audio disagree in a few places: an automatic speech model ("audio")
 and the producer's subtitle file ("srt"). Either one can be wrong. For each disagreement, pick the version that is most

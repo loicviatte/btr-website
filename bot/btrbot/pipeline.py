@@ -1,5 +1,6 @@
 """The heavy, blocking steps. The Telegram bot calls these in a worker thread."""
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from .llm import LLM
 from .state import Episode, Reels
 from .youtube import YouTube
 
+log = logging.getLogger(__name__)
+
 
 def _clean(s: str) -> str:
     return re.sub(r"^[\s“”\"']+|[\s“”\"']+$", "", s or "")
@@ -17,6 +20,26 @@ def _clean(s: str) -> str:
 
 def clean_quote(a: dict) -> dict:
     return {"top": _clean(a.get("top")), "key": _clean(a.get("key")).upper(), "bottom": _clean(a.get("bottom"))}
+
+
+def cover_hook(c, said: str, fallback: bool = False) -> dict | None:
+    """The cover words, only if they are words really said, consecutively (« They just / DON'T / CARE. »)."""
+    def key(w):
+        return re.sub(r"[^a-z0-9']", "", w.lower().replace("’", "'")).replace("'", "")
+    spoken = [key(w) for w in (said or "").split()]
+    spoken = [w for w in spoken if w]
+    if c and isinstance(c, dict):
+        parts = {k: re.sub(r"\s+", " ", str(c.get(k) or "")).strip() for k in ("small", "big", "gold")}
+        words = [key(w) for k in ("small", "big", "gold") for w in parts[k].split()]
+        words = [w for w in words if w]
+        n = len(words)
+        if 1 <= n <= 7 and any(spoken[i:i + n] == words for i in range(len(spoken) - n + 1)):
+            parts["big"], parts["gold"] = parts["big"].upper(), parts["gold"].upper()
+            return parts
+    if fallback and spoken:
+        raw = [w for w in (said or "").split() if key(w)][:4]
+        return {"small": " ".join(raw[:-2]), "big": raw[-2].upper() if len(raw) > 1 else "", "gold": raw[-1].upper()}
+    return None
 
 
 def mmss(t) -> float:
@@ -447,6 +470,10 @@ class Pipeline:
         a, b = ranges[0][0], ranges[-1][1]
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in R.sample_frames(clip, a, b, work / "frames")]
         shots = R.shot_layouts(samples, scene, a, b)
+        try:
+            R.cover_candidates(clip, samples, ranges, work / "cover")       # 4K stills for the reel cover
+        except Exception:  # noqa: BLE001
+            log.exception("reel cover stills")
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
         if not pcs:
             raise RuntimeError("extrait vide après le montage")
@@ -545,4 +572,132 @@ class Pipeline:
         tt = (c.get("tiktok") or ig).strip()
         if "#" not in tt:
             tt += "\n\n#dancesport #ballroom #latindance #breaktheroutine"
-        return {"instagram": ig, "tiktok": tt}
+        out = {"instagram": ig, "tiktok": tt}
+        cover = cover_hook(c.get("cover"), said)
+        if cover:
+            out["cover"] = cover
+        return out
+
+    def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None) -> dict:
+        """The cover of reel n: the best 4K still of the guest (eyes open, lively; the model looks at the faces),
+        the hook in the validated template. `text` / `pick` = Loïc's choice (other words, other photo number)."""
+        work = ep.dir / "reels" / f"r{n:02d}"
+        cdir = work / "cover"
+        cands = json.loads((cdir / "cands.json").read_text()) if (cdir / "cands.json").exists() else []
+        cands = [c for c in cands if (cdir / c["file"]).exists()]
+        if not cands and (work / "base.mp4").exists():          # reels made before the stills were kept
+            cands = self._cover_from_edit(work, cdir)
+        if not cands:
+            raise RuntimeError("pas d'image du guest pour la cover")
+        order = list(range(len(cands)))
+        if pick is not None and 1 <= pick <= len(cands):
+            order = [pick - 1]
+        elif len(cands) > 1:
+            try:
+                sheet = render.cover_sheet([cdir / c["file"] for c in cands], cands, cdir / "sheet.jpg")
+                best = [i - 1 for i in self.llm.reel_cover_pick(sheet) if 1 <= i <= len(cands)]
+                order = best + [i for i in order if i not in best]
+            except Exception:  # noqa: BLE001
+                log.exception("cover pick")
+        c = cands[order[0]]
+        hook = cover_hook(text, item.get("said", "")) if text else None
+        hook = hook or (item.get("captions") or {}).get("cover")
+        if not hook:                                   # captions written before the cover existed: ask for the hook
+            hook = self.reel_captions(ep, item.get("said", "")).get("cover")
+        hook = hook or cover_hook(None, item.get("said", ""), fallback=True)
+        slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
+        out = render.reel_cover(cdir, cdir / c["file"], c, hook, ep.get("guest_name") or "",
+                                work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
+        return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
+
+    def reel_share(self, ep: Episode, n: int, item: dict, taken: set[str]) -> dict:
+        """Validated reel n → Drive (« BTR Reels / <episode> », video + cover, viewable by link) and its ClickUp
+        slot (the episode's next free « Reel k/N » task, else a new task): link, captions, cover, status approved.
+        Each part is independent: one failing does not block the other. Returns what was done and why not."""
+        from . import share
+        sec = share.Secrets(self.cfg.data_dir)
+        client = self.cfg.youtube_client[:2]
+        title = item.get("title") or f"Reel {n}"
+        guest = ep.get("guest_name") or ""
+        part = part_number(ep)
+        label = share.episode_label(guest, part) or self.reel_title(ep)
+        out: dict = {"links": dict(item.get("links") or {})}
+        try:
+            d = share.Drive(sec, client)
+            root = sec.get("drive_root") or d.folder(share.FOLDER)
+            sec.set(drive_root=root)
+            sub = d.folder(f"{self.reel_title(ep)} ({ep.video_id})", root)
+            out["links"]["folder"] = d.folder_link(sub)
+            out["links"]["video"] = d.upload(Path(item["file"]), sub, "video/mp4")["webViewLink"]
+            if item.get("cover") and Path(item["cover"]).exists():
+                out["links"]["cover"] = d.upload(Path(item["cover"]), sub, "image/jpeg")["webViewLink"]
+        except share.NotConnected as e:
+            out["drive_error"] = str(e)
+        except Exception as e:  # noqa: BLE001
+            log.exception("drive")
+            out["drive_error"] = share.drive_error(e)
+        try:
+            cu = share.ClickUp(sec.get("clickup_token"))
+            try:
+                video = self.yt.video(ep.video_id)
+            except Exception:  # noqa: BLE001
+                video = {}
+            ep_date = share.episode_date(video)
+            tid = item.get("clickup_task")
+            task = cu.task(tid) if tid else None
+            if task is None:
+                slot = share.pick_slot(cu.tasks(), label, guest, part, ep_date, taken)
+                task = cu.task(slot["id"]) if slot else None
+            url = f"https://www.youtube.com/watch?v={ep.video_id}"
+            if task is None:
+                desc = share.description("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
+                                         "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” "
+                                         "to the episode, no link in the description.", out["links"], item, title, url,
+                                         share.today_str())
+                task = cu.create(name=f"Reel · {label} · {title}"[:200], markdown_content=desc, status="approved",
+                                 custom_fields=[{"id": share.F_EPISODE, "value": label},
+                                                {"id": share.F_FORMAT, "value": share.CLIP},
+                                                {"id": share.F_PLACEMENT, "value": share.REELS_TAB}])
+                out["clickup_new"] = True
+            else:
+                old = task.get("markdown_description") or task.get("description") or ""
+                cu.update(task["id"], name=share.slot_name(task.get("name", ""), label, title),
+                          markdown_content=share.description(old, out["links"], item, title, url, share.today_str()),
+                          status="approved")
+                if not share._field(task, share.F_EPISODE) or "of " in str(share._field(task, share.F_EPISODE)):
+                    cu.set_field(task["id"], share.F_EPISODE, label)
+            if item.get("cover") and Path(item["cover"]).exists() and item.get("cover_sent") != item.get("cover"):
+                try:
+                    cu.attach(task["id"], Path(item["cover"]))
+                    out["cover_sent"] = item["cover"]
+                except Exception:  # noqa: BLE001
+                    log.exception("clickup attach")
+            out["clickup_task"] = task["id"]
+            out["clickup_url"] = task.get("url") or f"https://app.clickup.com/t/{task['id']}"
+            out["clickup_name"] = share.slot_name(task.get("name", ""), label, title) if not out.get("clickup_new") \
+                else f"Reel · {label} · {title}"
+        except share.NotConnected as e:
+            out["clickup_error"] = str(e)
+        except Exception as e:  # noqa: BLE001
+            log.exception("clickup")
+            out["clickup_error"] = str(e)[-300:]
+        return out
+
+    def _cover_from_edit(self, work: Path, cdir: Path) -> list[dict]:
+        """Fallback stills from the edit itself (1080×1920, no subtitles): guest frames only."""
+        import cv2
+
+        from . import reels as R
+        cdir.mkdir(parents=True, exist_ok=True)
+        edit = json.loads((work / "edit.json").read_text())
+        dur = edit["frames"] / edit["fps"]
+        out = []
+        for i, t in enumerate([dur * k / 9 for k in range(1, 9)]):
+            jpg = cdir / f"e_{i:02d}.jpg"
+            R.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", work / "base.mp4", "-frames:v", "1",
+                   "-q:v", "2", jpg])
+            img = cv2.imread(str(jpg))
+            k = R.classify(img, self.faces) if img is not None else {"kind": "none"}
+            if k["kind"] in ("guest", "unsure") and R.layout_at(edit["layout"], t) != "split":
+                out.append({"file": jpg.name, "t": round(t, 2), **k["face"]})
+        return out

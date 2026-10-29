@@ -37,7 +37,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
   placement (`vary` + `place`: mostly centred, 2 pages off-centre every 8 (l / r / lower / stair), a page never starts below the last word of the previous one nor in the bottom third). A restart resumes interrupted reels; when the reel rules
   change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
-  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom).
+  the reels himself: the bot never posts them. On ✅ Valider: cover (`pipeline.reel_cover`: 4K guest stills kept at
+  render time in `reels/rNN/cover/`, best face chosen by Haiku, hook = consecutive words really said, template
+  `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):
+  Drive (Loïc's own Drive, scope drive.file, folder « BTR Reels / <episode> », files viewable by link) and ClickUp
+  (list « Content calendar »: the episode's next free « Reel k/N » slot, else a new task; renamed, status approved,
+  description block below « ———— BTR Studio ———— » with links + captions, cover attached). Both are connected from
+  Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
+  sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

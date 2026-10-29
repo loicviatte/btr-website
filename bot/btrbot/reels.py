@@ -476,7 +476,8 @@ def classify(img, faces) -> dict:
 
     def info(f):
         x, y, w, h = f.box
-        return {"cx": (x + w / 2) / W, "cy": (y + h / 2) / H, "fh": h / H, "sim": f.sim_marius}
+        return {"cx": (x + w / 2) / W, "cy": (y + h / 2) / H, "fh": h / H, "fw": w / W, "top": y / H,
+                "score": float(f.score), "sim": f.sim_marius}
     if len(fs) >= 2 and fs[0].box[3] / H <= 0.30:
         # a wide shot: Marius (best match) and the biggest other face, at comparable sizes
         mf = max(fs, key=lambda f: f.sim_marius)
@@ -725,6 +726,32 @@ def layout_at(pcs: list[dict], t: float) -> str:  # pieces, or the stored layout
 
 
 # ---------------------------------------------------------------- disk
+def cover_candidates(clip: Path, samples: list[tuple[float, dict]], ranges: list[tuple[float, float]], out_dir: Path,
+                     k: int = 8) -> list[dict]:
+    """Stills of the guest for the reel cover, taken from the 4K source while it is still here: moments kept in the
+    edit where the guest is alone on screen, biggest and highest faces first, at least 1.2 s apart."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in out_dir.glob("c_*.jpg"):
+        p.unlink()
+    pool = [(t, c["face"]) for t, c in samples if c.get("kind") in ("guest", "unsure") and "face" in c
+            and any(a + 0.2 <= t <= b - 0.2 for a, b in ranges)]
+    pool.sort(key=lambda x: -(x[1]["fh"] * x[1].get("score", 1.0) - 0.15 * max(0.0, x[1]["cy"] - 0.35)))
+    chosen: list[tuple[float, dict]] = []
+    for t, f in pool:
+        if all(abs(t - u) >= 1.2 for u, _ in chosen):
+            chosen.append((t, f))
+        if len(chosen) == k:
+            break
+    out = []
+    for i, (t, f) in enumerate(sorted(chosen)):
+        jpg = out_dir / f"c_{i:02d}.jpg"
+        run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
+        if jpg.exists():
+            out.append({"file": jpg.name, "t": round(t, 3), **{x: f[x] for x in ("cx", "cy", "fh", "fw", "top") if x in f}})
+    (out_dir / "cands.json").write_text(json.dumps(out))
+    return out
+
+
 def slim(work: Path, keep_final: bool = True) -> None:
     """After a reel is validated (keep the final file) or dropped (keep nothing): the 4K source goes."""
     for p in work.glob("clip*"):        # the 4K section; the edit (base.mp4, audio, edit.json) stays for fixes

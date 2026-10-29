@@ -819,12 +819,23 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
+    async def reel_cover(n, photo=None, small=None, big=None, gold=None):
+        ep = reels_or_fail()
+        n = int(n)
+        item = RS(ep).data["items"].get(str(n)) or {}
+        if not item.get("file"):
+            return f"le reel {n} n'est pas encore monté"
+        text = {"small": small or "", "big": big or "", "gold": gold or ""} if (big or gold or small) else None
+        if photo == "next":
+            photo = (int(item.get("cover_pick") or 1) % max(1, int(item.get("cover_count") or 1))) + 1
+        return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None))
+
     async def reels_resend(nums=None):
         ep = reels_or_fail()
         return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
-            "reel_subtitles": reel_subtitles, "reels_resend": reels_resend,
+            "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1063,6 +1074,9 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
         return False
     if item.get("status") == "dropped":
         return False
+    if need != "subs":
+        for k in ("cover", "cover_pick", "cover_count"):          # new stills: the cover is made again
+            item.pop(k, None)
     item.update(res)
     item["status"] = "preview"
     if not item.get("captions"):
@@ -1169,13 +1183,95 @@ async def validate_reel(ctx, ep, n: int):
         return
     item["status"] = "ok"
     RS(ep).save()
+    if not item.get("cover") or not Path(item["cover"]).exists():
+        try:
+            item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+            RS(ep).save()
+        except Exception as e:  # noqa: BLE001
+            log.exception("cover")
+            await say(ctx, f"⚠️ Cover du reel {n} pas faite : <code>{esc(str(e)[-200:])}</code>")
     with open(item["file"], "rb") as f:
         await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["file"]).name, caption=f"Reel {n} validé : le fichier final.",
                                     read_timeout=300, write_timeout=300)
+    await send_cover(ctx, ep, n)
     caps = item.get("captions") or {}
     await plain(ctx, f"📸 Légende Instagram (reel {n}) :\n\n{caps.get('instagram') or '(pas de légende)'}")
     await plain(ctx, f"🎵 Légende TikTok / Shorts (reel {n}) :\n\n{caps.get('tiktok') or '(pas de légende)'}")
     R.slim(Path(item["file"]).parent, keep_final=True)
+    await share_reel(ctx, ep, n)
+
+
+async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
+    item = reel_item(ep, n)
+    try:
+        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo)
+    except Exception as e:  # noqa: BLE001
+        await say(ctx, f"⚠️ Cover du reel {n} : <code>{esc(str(e)[-200:])}</code>")
+        return
+    if text and not res.get("cover_text") == pipe_cover_text(text):
+        await say(ctx, "Ces mots ne sont pas dits tels quels dans le reel : je garde l'accroche d'avant. "
+                       "Donne-moi des mots exacts, dans l'ordre.")
+    item.update(res)
+    RS(ep).save()
+    await send_cover(ctx, ep, n)
+    if item.get("status") == "ok":
+        await share_reel(ctx, ep, n)                      # same Drive link, new cover on ClickUp
+
+
+def pipe_cover_text(text: dict) -> dict:
+    return {k: (v.upper() if k != "small" else v) for k, v in text.items()}
+
+
+async def send_cover(ctx, ep, n: int):
+    from pathlib import Path
+    item = reel_item(ep, n)
+    if not item.get("cover") or not Path(item["cover"]).exists():
+        return
+    t = item.get("cover_text") or {}
+    words = " / ".join(x for x in (t.get("small"), t.get("big"), t.get("gold")) if x)
+    with open(item["cover"], "rb") as f:
+        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["cover"]).name,
+                                    caption=f"🖼 Cover du reel {n} : « {words} », photo {item.get('cover_pick', 1)}/"
+                                            f"{item.get('cover_count', 1)}. Pour changer : « cover reel {n} : autre photo » "
+                                            "ou « cover reel {n} : texte … ».".replace("{n}", str(n))[:1000])
+    MEMORY.add("assistant", f"[cover du reel {n} envoyée : « {words} », photo {item.get('cover_pick', 1)} sur "
+                            f"{item.get('cover_count', 1)}]")
+
+
+async def share_reel(ctx, ep, n: int):
+    """Drive + ClickUp for a validated reel; says what was done, or what to connect."""
+    from pathlib import Path
+    item = reel_item(ep, n)
+    if not item.get("cover") or not Path(item["cover"]).exists():      # validated before covers existed
+        try:
+            item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+            RS(ep).save()
+            await send_cover(ctx, ep, n)
+        except Exception:  # noqa: BLE001
+            log.exception("cover")
+    taken = {it.get("clickup_task") for k, it in RS(ep).data["items"].items() if k != str(n) and it.get("clickup_task")}
+    cand = reel_cand(ep, n) or {}
+    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken)
+    item["links"] = res.get("links") or item.get("links") or {}
+    for k in ("clickup_task", "clickup_url", "cover_sent"):
+        if res.get(k):
+            item[k] = res[k]
+    RS(ep).save()
+    lines = []
+    if item["links"].get("video"):
+        lines.append(f"📁 Drive : <a href=\"{item['links'].get('folder', item['links']['video'])}\">dossier du reel</a>")
+    elif res.get("drive_error"):
+        lines.append(f"📁 Drive : {esc(res['drive_error'])}")
+    if res.get("clickup_url"):
+        what = "nouvelle tâche (pas de case libre pour cet épisode)" if res.get("clickup_new") else "tâche du calendrier"
+        lines.append(f"✅ ClickUp : <a href=\"{res['clickup_url']}\">{esc(res.get('clickup_name') or 'la tâche')}</a> "
+                     f"({what}, statut approved, lien + légendes + cover)")
+    elif res.get("clickup_error"):
+        lines.append(f"ClickUp : {esc(res['clickup_error'])}")
+    if res.get("drive_error", "").endswith("pas encore connecté") or res.get("clickup_error", "").endswith("pas encore connecté"):
+        lines.append("→ /connect pour brancher Drive et ClickUp (2 minutes, depuis le téléphone).")
+    if lines:
+        await say(ctx, f"Reel {n} :\n" + "\n".join(lines))
 
 
 async def drop_reel(ctx, ep, n: int):
@@ -1383,11 +1479,70 @@ async def on_button(update: Update, ctx):
         await guarded(ctx, "Chapitrage", propose_chapters(ctx, ep, "nouvel essai"))
 
 
+async def connect_cmd(update: Update, ctx):
+    """Drive + ClickUp for the validated reels: status and the two steps, all from the phone."""
+    if not allowed(update):
+        return
+    from . import share
+    sec = share.Secrets(cfg.data_dir)
+    drive_ok, cu_ok = bool(sec.get("drive_refresh")), bool(sec.get("clickup_token"))
+    url = share.drive_auth_url(cfg.youtube_client[0]) if cfg.youtube_client[0] else ""
+    msg = [f"<b>Drive</b> {'✅ connecté' if drive_ok else '❌'}"]
+    if url:
+        msg.append(f"1. Ouvre <a href=\"{esc(url)}\">ce lien Google</a>, choisis ton compte Google (celui de ton Drive), "
+                   "accepte (si Google dit « appli non validée » : Paramètres avancés → Accéder). Le bot ne voit que les "
+                   "fichiers qu'il crée lui-même (dossier « BTR Reels »).")
+        msg.append("2. Tu arrives sur une page qui ne charge pas (127.0.0.1…) : c'est normal. Copie son adresse et "
+                   "colle-la ici.")
+    msg.append(f"\n<b>ClickUp</b> {'✅ connecté' if cu_ok else '❌'}")
+    msg.append("Sur app.clickup.com : ton avatar → Settings → Apps → API Token → Generate, copie le code « pk_… » et "
+               "colle-le ici (j'efface ton message tout de suite).")
+    await say(ctx, "\n".join(msg))
+
+
+async def on_secret(update: Update, ctx, text: str) -> bool:
+    """A pasted Google address (?code=…) or ClickUp token: stored on the server, never sent to the chat model."""
+    from . import share
+    sec = share.Secrets(cfg.data_dir)
+    code = share.code_from(text)
+    token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
+    if not code and not token:
+        return False
+    try:
+        await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        if code:
+            await run(share.drive_connect, sec, cfg.youtube_client[:2], code)
+            d = await run(share.Drive, sec, cfg.youtube_client[:2])
+            root = await run(d.folder, share.FOLDER)
+            sec.set(drive_root=root)
+            await say(ctx, f"✅ Drive connecté. Les reels validés iront dans <a href=\"{d.folder_link(root)}\">BTR Reels</a>.")
+        else:
+            me = await run(lambda: share.ClickUp(token.group(0)).me())
+            sec.set(clickup_token=token.group(0))
+            await say(ctx, f"✅ ClickUp connecté ({esc(me.get('username') or 'compte')}). J'ai effacé ton message.")
+    except Exception as e:  # noqa: BLE001
+        await say(ctx, f"⚠️ Connexion refusée : {esc(share.drive_error(e) if code else str(e)[-200:])}")
+    if sec.get("drive_refresh") and sec.get("clickup_token"):
+        ep = reel_ep()
+        todo = [int(k) for k, it in (RS(ep).data["items"].items() if ep and RS(ep) else [])
+                if it.get("status") == "ok" and not it.get("clickup_task")]
+        if todo:
+            await say(ctx, f"Je range aussi les reels déjà validés : {', '.join(map(str, sorted(todo)))}.")
+            for n in sorted(todo):
+                bg(ctx, f"Reel {n} → Drive + ClickUp", share_reel(ctx, ep, n))
+    return True
+
+
 async def on_text(update: Update, ctx):
     """Exact « titre: / citation: / part: / description: » commands stay instant; everything else is a conversation."""
     if not allowed(update):
         return
     text = update.message.text.strip()
+    if await on_secret(update, ctx, text):
+        return
     low = text.lower()
     ep = reg.episode(reg.active) if reg.active else None
     if ep and ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low):
@@ -1556,6 +1711,7 @@ def main():
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CommandHandler("couts", couts_cmd))
     app.add_handler(CommandHandler("reels", reels_cmd))
+    app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

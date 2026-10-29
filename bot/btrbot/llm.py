@@ -132,6 +132,14 @@ class LLM:
                                                            feedback=feedback), 1500, tier="work",
                           task="reels (retour sous-titres)")
 
+    def reel_cover_pick(self, sheet: Path) -> list[int]:
+        img = base64.standard_b64encode(sheet.read_bytes()).decode()
+        r = self._json([
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
+            {"type": "text", "text": prompts.REEL_COVER_PICK},
+        ], max_tokens=300, tier="vision_cheap", task="reels (cover)")
+        return [int(i) for i in r.get("best", []) if str(i).isdigit()]
+
     def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
                                                        text=text[:4000]), 1500, task="reels (légendes)")

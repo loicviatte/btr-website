@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Reel cover validated by Loïc on 29.10.2026 (Oti P2 « They just DON'T CARE. », canvas BTR Designs, Oti2-ReelCover-A) -->
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Heavy.woff2") format("woff2");font-weight:800 900}
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Regular.woff2") format("woff2");font-weight:400}
+html,body{margin:0;background:#080403}
+.f{position:relative;width:1080px;height:1920px;overflow:hidden;background:#080403;font-family:"PP Monument Extended","Arial Black",sans-serif;color:#fff}
+.dark{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,4,3,0) 34%,rgba(8,4,3,.6) 48%,rgba(8,4,3,.86) 62%,rgba(8,4,3,.92) 100%)}
+.gold{position:absolute;inset:0;background:linear-gradient(180deg,rgba(223,191,44,0) 55%,rgba(223,191,44,.10) 78%,rgba(223,191,44,.34) 100%)}
+#q{position:absolute;left:60px;bottom:520px;width:960px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+#q p{margin:0;white-space:nowrap}
+.s{margin-left:8px !important;font-size:72px;line-height:1.1;font-weight:400}
+.b{font-size:160px;line-height:.98;font-weight:800}
+.g{margin-left:150px !important;font-style:italic;color:#fcdf9a}
+.name{margin:34px 0 0 8px !important;font-size:40px;line-height:1;font-weight:800;letter-spacing:.06em;color:#fcdf9a;mix-blend-mode:hard-light;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="f">
+  <img src="{{ bg }}" style="position:absolute;left:0;top:0;width:1080px;height:1920px;object-fit:cover">
+  <div class="dark"></div>
+  <div class="gold"></div>
+  <div id="q">
+    {% if small %}<p class="s">{{ small }}</p>{% endif %}
+    {% if big %}<p class="b" id="big">{{ big }}</p>{% endif %}
+    {% if gold %}<p class="b g" id="gold">{{ gold }}</p>{% endif %}
+    <p class="name">{{ name }}</p>
+  </div>
+</div>
+<script>
+window.fit = () => {
+  // a long punch word shrinks to stay inside the 960 px column (its left offset included)
+  const out = {};
+  for (const id of ['big', 'gold']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const room = 960 - (id === 'gold' ? 150 : 0);
+    let size = 160;
+    while (el.scrollWidth > room && size > 70) { size -= 4; el.style.fontSize = size + 'px'; }
+    out[id] = size;
+  }
+  const s = document.querySelector('.s');
+  if (s) { let size = 72; while (s.scrollWidth > 950 && size > 40) { size -= 2; s.style.fontSize = size + 'px'; } out.small = size; }
+  const q = document.getElementById('q').getBoundingClientRect();
+  out.top = Math.round(q.top);
+  return out;
+};
+</script>
+</body>
+</html>
