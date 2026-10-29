@@ -111,9 +111,26 @@ class LLM:
             6000, task="reels (moments)")
         return r.get("candidates", [])
 
-    def reel_blocks(self, words: list[str]) -> list[dict]:
+    def reel_blocks(self, words: list[str], note: str = "") -> list[dict]:
         listing = " ".join(f"{i}:{w}" for i, w in enumerate(words))
-        return self._json(prompts.REEL_BLOCKS.format(words=listing), 4000, tier="work", task="reels (sous-titres)").get("blocks", [])
+        prompt = prompts.REEL_BLOCKS.format(words=listing)
+        if note:
+            prompt += f"\nThe producer asked for this change to the previous layout: {note}"
+        return self._json(prompt, 4000, tier="work", task="reels (sous-titres)").get("blocks", [])
+
+    def reel_arbitrate(self, guest_name: str, title: str, diffs: list[dict]) -> dict:
+        """{index: "audio" | "srt"} for each disagreement between the speech model and the SRT."""
+        items = "\n".join(f'{k}. context: "…{d["context"]}…" → audio: "{d["audio"] or "(nothing)"}" / srt: "{d["srt"]}"'
+                          for k, d in enumerate(diffs))
+        r = self._json(prompts.REEL_ARBITRATE.format(guest_name=guest_name or "the guest", title=title, items=items),
+                       1500, tier="work", task="reels (arbitrage mots)")
+        return {int(p["id"]): p.get("pick") for p in r.get("picks", []) if str(p.get("id", "")).isdigit()
+                and p.get("pick") in ("audio", "srt")}
+
+    def reel_sub_feedback(self, words: list[str], blocks: list[str], feedback: str) -> dict:
+        return self._json(prompts.REEL_SUB_FEEDBACK.format(words=" ".join(words), blocks="\n".join(blocks),
+                                                           feedback=feedback), 1500, tier="work",
+                          task="reels (retour sous-titres)")
 
     def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,

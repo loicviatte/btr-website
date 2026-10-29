@@ -35,9 +35,18 @@ Comment tu travailles :
 - Badge PART : épisode EN COURS (pas encore publié par le bot) → set_part puis redo_thumbnails ; vidéo déjà en ligne
   (liste des vidéos récentes) → badge.
 - Reels (extraits verticaux du dernier épisode) : reels_propose pour une nouvelle liste de 10 moments ; « prends 1, 3 et 7 »
-  = reels_select ; retouche d'un reel monté = reel_adjust (start_shift négatif = commencer plus tôt, positif = plus tard ;
-  end_shift positif = finir plus tard, négatif = plus tôt ; cut = une phrase EXACTE à enlever, prise dans ce qui est dit) ;
-  reel_validate / reel_drop. Les reels ne sont jamais publiés par le bot : Loïc publie lui-même.
+  = reels_select ; reel_validate / reel_drop. Les reels ne sont jamais publiés par le bot : Loïc publie lui-même.
+  Ses retours arrivent souvent en vrac, sur plusieurs reels d'un coup (« réel 2 : fin trop sèche ; réel 3 : sous-titre faux
+  à “why are you here”, et il manque “me” à “give me” ; réel 6 good »). Traite CHAQUE point, un outil par point :
+  · début / fin (« fin abrupte », « coupe trop tôt », « il manque le dernier mot », « commence plus tôt ») = reel_adjust :
+    end_shift / start_shift en secondes (1 image = 0,04 s ; « 5-15 images » ≈ 0,4 s ; fin abrupte ≈ +0,4 ; dernier mot
+    manquant ≈ +0,6 ; positif = plus tard, négatif = plus tôt) ; cut = une phrase EXACTE à enlever, prise dans ce qui est dit.
+  · tout ce qui touche au TEXTE des sous-titres (mot faux, nom mal écrit, « Muti c'est Motsi », « problème de sous-titre à
+    tel endroit », mise en page) = reel_subtitles avec son retour tel quel pour ce reel (il comprend et ne refait que les
+    sous-titres). Un doute sur un nom (« je suis pas sûr, c'est peut-être Motsi ») : passe-le aussi, avec ses mots.
+  · « good », « parfait », « ok » sur un reel = rien à faire (ne le valide pas sans qu'il le dise).
+  · Une règle pour TOUS les futurs reels (« toujours laisser plus de temps à la fin ») : propose_claude_code.
+  Termine par un récap court de ce qui est lancé, reel par reel.
 - Si c'est vraiment ambigu, pose UNE question courte. Sinon décide.
 
 État actuel :
@@ -105,6 +114,10 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "start_shift": {"type": "number"},
                                                        "end_shift": {"type": "number"}, "cut": {"type": "string"},
                                                        "uncut": {"type": "boolean"}}, "required": ["n"]}},
+    {"name": "reel_subtitles", "description": "Retour de Loïc sur les SOUS-TITRES d'un reel monté (mot ou nom faux, sous-titre "
+     "bizarre à un endroit, mise en page) : Claude relit le reel, corrige les mots visés, et seuls les sous-titres sont refaits.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "feedback": {"type": "string",
+                      "description": "son retour sur ce reel, tel quel"}}, "required": ["n", "feedback"]}},
     {"name": "reel_validate", "description": "Valider le reel n : envoie le fichier final et les légendes Instagram et TikTok.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
@@ -131,7 +144,7 @@ def _block(b) -> dict:
 
 
 async def converse(llm, model: str, context: str, history: list[dict], user_content, handlers: dict,
-                   max_steps: int = 6) -> tuple[str, list[str]]:
+                   max_steps: int = 12) -> tuple[str, list[str]]:
     """Runs the tool loop. Returns (final text for Loïc, list of actions done)."""
     system = SYSTEM.format(context=context)
     messages = list(history) + [{"role": "user", "content": user_content}]

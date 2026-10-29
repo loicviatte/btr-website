@@ -256,13 +256,14 @@ def finish_sentence(words: list[Word], i1: int, max_words: int = 8, max_gap: flo
     return k
 
 
-def correct_with_srt(words: list[Word], cues: list, t0: float) -> list[Word]:
-    """Loïc's own DaVinci SRT is the reference for the words (names like Motsi, mishearings): the speech model gives
-    the timing, the SRT the text. `t0` = episode time of the clip's 0. Outside the stretch both agree on, nothing
-    changes; a word the SRT has and the audio-model missed is added only where there is time for it."""
+def compare_with_srt(words: list[Word], cues: list, t0: float) -> tuple[list[Word], list[dict]]:
+    """Where the speech model and Loïc's DaVinci SRT do not hear the same words. Neither is taken as the truth:
+    each disagreement is decided later (by Claude, choosing ONE of the two versions) and shown to Loïc.
+    `t0` = episode time of the clip's 0. Returns the words (where both agree, with the SRT's capitals and punctuation:
+    same letters, so not a change of word) and the disagreements [{i1, i2, audio, srt, srt_words}] (audio words i1..i2)."""
     from difflib import SequenceMatcher
     if not words or not cues:
-        return words
+        return words, []
     a, b = t0 + words[0].start - 3, t0 + words[-1].end + 3
     ref: list[tuple[str, float, float]] = []
     for c in cues:
@@ -272,35 +273,86 @@ def correct_with_srt(words: list[Word], cues: list, t0: float) -> list[Word]:
         step = (c.end - c.start) / max(len(toks), 1)
         ref += [(t, c.start + i * step - t0, c.start + (i + 1) * step - t0) for i, t in enumerate(toks)]
     if not ref:
-        return words
+        return words, []
     ka, kb = [norm(w.text) for w in words], [norm(t) for t, _, _ in ref]
     ops = SequenceMatcher(None, ka, kb, autojunk=False).get_opcodes()
     eq = [o for o in ops if o[0] == "equal"]
     if not eq or sum(o[2] - o[1] for o in eq) < 0.5 * len(words):
-        return words                    # the SRT does not cover this clip well: keep the audio model's words
+        return words, []                # the SRT does not cover this clip well
     lo, hi = eq[0][1], eq[-1][2]        # only inside the stretch both agree on
-    out: list[Word] = list(words[:lo])
+    words = list(words)
+    for tag, i1, i2, j1, j2 in eq:
+        for i, j in zip(range(i1, i2), range(j1, j2)):
+            words[i] = Word(ref[j][0], words[i].start, words[i].end)
+    diffs = []
     for tag, i1, i2, j1, j2 in ops:
-        if i2 <= lo and i1 < lo or i1 >= hi:
-            continue
-        if tag == "equal":
-            out += [Word(ref[j][0], words[i].start, words[i].end) for i, j in zip(range(i1, i2), range(j1, j2))]
-        elif tag == "delete":
-            out += words[i1:i2]          # said but not in the SRT (stutters): kept, the subtitles skip fillers
-        elif tag == "replace":
-            span_a, span_b = words[i1].start, words[i2 - 1].end
-            n = j2 - j1
-            out += [Word(ref[j][0], span_a + (span_b - span_a) * k / n, span_a + (span_b - span_a) * (k + 1) / n)
-                    for k, j in enumerate(range(j1, j2))]
-        elif tag == "insert":
-            prev_end = out[-1].end if out else 0.0
+        if tag in ("equal", "delete") or i1 < lo or i1 > hi:
+            continue                    # agreement, or words only the audio has (stutters, kept as heard)
+        srt_words = [r[0] for r in ref[j1:j2]]
+        if tag == "insert":             # words only the SRT has: placed in the gap, if there is room for them
+            prev_end = words[i1 - 1].end if i1 > 0 else 0.0
             nxt = words[i1].start if i1 < len(words) else prev_end
-            n = j2 - j1
-            if nxt - prev_end >= 0.12 * n:
-                out += [Word(ref[j][0], prev_end + (nxt - prev_end) * k / n, prev_end + (nxt - prev_end) * (k + 1) / n)
-                        for k, j in enumerate(range(j1, j2))]
-    out += words[hi:]
-    return out
+            if nxt - prev_end < 0.12 * len(srt_words):
+                continue
+            span = (prev_end, nxt)
+        else:
+            span = (words[i1].start, words[i2 - 1].end)
+        n = len(srt_words)
+        sw = [Word(t, span[0] + (span[1] - span[0]) * k / n, span[0] + (span[1] - span[0]) * (k + 1) / n)
+              for k, t in enumerate(srt_words)]
+        diffs.append({"i1": i1, "i2": i2, "audio": " ".join(w.text for w in words[i1:i2]), "srt": " ".join(srt_words),
+                      "t": span[0], "srt_words": sw,
+                      "context": " ".join(w.text for w in words[max(0, i1 - 8):min(len(words), i2 + 8)])})
+    return words, diffs
+
+
+def apply_choices(words: list[Word], diffs: list[dict], picks: dict) -> list[Word]:
+    """Takes the SRT version where it was chosen (picks[k] == "srt"), the audio version everywhere else."""
+    out, pos = [], 0
+    for k, d in enumerate(diffs):
+        out += words[pos:d["i1"]]
+        out += d["srt_words"] if picks.get(k) == "srt" else words[d["i1"]:d["i2"]]
+        pos = d["i2"]
+    return out + words[pos:]
+
+
+def apply_fixes(words: list[Word], fixes: list[dict]) -> tuple[list[Word], list[str]]:
+    """Loïc's own corrections ("c'est Motsi, pas Muti"): the words he names are replaced by his, on the same
+    timing. He listened to it, so his version wins. Returns the words and the corrections not found."""
+    from rapidfuzz import fuzz
+    missing = []
+    for fx in fixes or ():
+        src, dst = str(fx.get("from", "")).split(), str(fx.get("to", "")).split()
+        if not src or not dst:
+            continue
+        flat = "".join(norm(t) for t in src)
+        at, n = -1, len(src)
+        # exact first (spaces aside: "check list" = "checklist"), over windows of nearby sizes
+        for size in dict.fromkeys([len(src), len(src) - 1, len(src) + 1, 1, 2]):
+            if size < 1:
+                continue
+            hit = next((i for i in range(0, len(words) - size + 1)
+                        if "".join(norm(w.text) for w in words[i:i + size]) == flat), -1)
+            if hit >= 0:
+                at, n = hit, size
+                break
+        if at < 0:                       # else a close match of the same length (his spelling may differ a bit)
+            key = " ".join(norm(t) for t in src)
+            best = 0.0
+            for i in range(0, max(0, len(words) - len(src)) + 1):
+                sc = fuzz.ratio(key, " ".join(norm(w.text) for w in words[i:i + len(src)]))
+                if sc > best:
+                    best, at = sc, i
+            if best < 90:
+                missing.append(" ".join(src))
+                continue
+        a, b = words[at].start, words[at + n - 1].end
+        trail = re.search(r"[^\w']*$", words[at + n - 1].text).group(0)
+        new = [Word(t, a + (b - a) * k / len(dst), a + (b - a) * (k + 1) / len(dst)) for k, t in enumerate(dst)]
+        if trail and not re.search(r"[^\w']$", new[-1].text):
+            new[-1].text += trail        # keep the punctuation that was there
+        words = words[:at] + new + words[at + n:]
+    return words, missing
 
 
 def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift: float = 0.0, end_shift: float = 0.0,
@@ -339,8 +391,10 @@ def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift
         a = energy.quiet(first.start + start_shift - 0.3, first.start + start_shift + 0.3)
     s_end, nxt_start = after(idx[-1])
     # the end: a breath after the last word's sound, unless the next word comes sooner (then just before it)
-    room = nxt_start - 0.06 if idx[-1] + 1 < len(words) else s_end + END_TAIL
-    b = max(min(s_end + END_TAIL, room), s_end + 0.04, last.end - 0.03)
+    has_next = idx[-1] + 1 < len(words)
+    room = nxt_start - 0.06 if has_next else s_end + END_TAIL
+    ceiling = nxt_start - 0.01 if has_next else s_end + END_TAIL      # never into the next word
+    b = min(max(min(s_end + END_TAIL, room), s_end, last.end - 0.03), ceiling)
     if end_shift:
         b = energy.quiet(b + end_shift - 0.3, b + end_shift + 0.3)
     # inner cuts: long pauses, removed phrases
@@ -626,7 +680,7 @@ def out_words(words: list[Word], pcs: list[dict], fps: float) -> list[Word]:
     return res
 
 
-def layout_at(pcs: list[dict], t: float) -> str:
+def layout_at(pcs: list[dict], t: float) -> str:  # pieces, or the stored layout [{out, frames, kind}]
     """The framing on screen at time t of the reel ('split' moves the subtitles to the seam)."""
     kind = pcs[0]["kind"] if pcs else "center"
     for p in pcs:
@@ -638,9 +692,8 @@ def layout_at(pcs: list[dict], t: float) -> str:
 # ---------------------------------------------------------------- disk
 def slim(work: Path, keep_final: bool = True) -> None:
     """After a reel is validated (keep the final file) or dropped (keep nothing): the 4K source goes."""
-    for p in list(work.glob("clip*")) + [work / "audio.m4a"]:
-        if p.exists():
-            p.unlink()
+    for p in work.glob("clip*"):        # the 4K section; the edit (base.mp4, audio, edit.json) stays for fixes
+        p.unlink()
     for d in ("pieces", "frames"):
         shutil.rmtree(work / d, ignore_errors=True)
     if not keep_final:

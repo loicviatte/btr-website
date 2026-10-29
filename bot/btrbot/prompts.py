@@ -144,3 +144,27 @@ then 1 or 2 short lines of context; then a call to action to watch the full epis
 Instagram: NO hashtags, max 60 words. TikTok / YouTube Shorts: same text plus 5 to 8 relevant hashtags at the end
 (#dancesport #ballroom #latindance …).
 Return ONLY JSON: {{"instagram": "...", "tiktok": "..."}}"""
+
+REEL_ARBITRATE = """Two transcriptions of the same podcast audio disagree in a few places: an automatic speech model ("audio")
+and the producer's subtitle file ("srt"). Either one can be wrong. For each disagreement, pick the version that is most
+likely what was really said, using the context, the speaker's name, and your knowledge of DanceSport and TV dance
+shows (names of judges, dancers, competitions, dances). You can ONLY choose between the two versions, never write another.
+Podcast: Break The Routine (DanceSport), host Marius Iepure. Guest: {guest_name}. Episode: "{title}".
+{items}
+Return ONLY JSON: {{"picks": [{{"id": 0, "pick": "audio" | "srt", "sure": true | false}}]}}"""
+
+REEL_SUB_FEEDBACK = """You fix the burned-in subtitles of a vertical reel. The producer (Loïc, writing in French, casually) gives feedback.
+Words spoken in the reel, in order (as transcribed): {words}
+Subtitles currently on screen, block by block (lines separated by " / "):
+{blocks}
+Loïc's feedback: "{feedback}"
+
+Decide what to change:
+- "fixes": words that are wrong on screen and what they should be (a misheard word, a misspelled name). "from" = the words
+  exactly as they are now, "to" = the correct words. Only words Loïc points at, or an obvious mishearing in the place he points
+  at. Never change words he did not question; never rephrase.
+- "relayout": true if the problem is the layout (cut in the wrong place, a word missing on screen, bad emphasis) rather than
+  a word; then "layout_note" = a short English instruction for whoever redoes the layout.
+- "reply": one short French sentence for Loïc saying exactly what you will change (or asking ONE question if you
+  really cannot tell what he means).
+Return ONLY JSON: {{"fixes": [{{"from": "...", "to": "..."}}], "relayout": false, "layout_note": "", "reply": "..."}}"""

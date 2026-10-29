@@ -377,13 +377,12 @@ class Pipeline:
         shutil.rmtree(ep.dir / "reels", ignore_errors=True)       # a new list replaces the previous one
         return {"id": int(time.time()) % 1_000_000, "cands": out, "sel": [], "items": {}}
 
-    def render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list) -> dict:
+    def render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list, fixes: list | None = None,
+                    note: str = "") -> dict:
         """Cut, frame, subtitle and render one moment. Pure: returns the reel's new fields, the caller stores them."""
         import cv2
 
         from . import reels as R
-        from . import subs
-        from .config import ASSETS
         n = cand["n"]
         work = ep.dir / "reels" / f"r{n:02d}"
         work.mkdir(parents=True, exist_ok=True)
@@ -411,8 +410,16 @@ class Pipeline:
             finally:
                 self.asr_release()
             wj.write_text(json.dumps([w.__dict__ for w in words]))
-        if ep.file("captions_davinci.srt").exists():           # Loïc's SRT corrects the words (names, mishearings)
-            words = R.correct_with_srt(words, self.cues(ep), dl_a + off)
+        # Loïc's DaVinci SRT and the speech model are compared; where they differ, Claude picks one of the two
+        diffs, picks = [], {}
+        if ep.file("captions_davinci.srt").exists():
+            words, diffs = R.compare_with_srt(words, self.cues(ep), dl_a + off)
+            if diffs:
+                try:
+                    picks = self.llm.reel_arbitrate(ep.get("guest_name", ""), self.reel_title(ep), diffs)
+                except Exception:  # noqa: BLE001
+                    picks = {}
+                words = R.apply_choices(words, diffs, picks)
         i0, i1, conf = R.locate(words, cand.get("first_words", ""), cand.get("last_words", ""))
         i1 = R.finish_sentence(words, i1)
         energy = R.Energy(wav)
@@ -429,29 +436,54 @@ class Pipeline:
         if not pcs:
             raise RuntimeError("extrait vide après le montage")
         video = R.render_video(clip, pcs, info, work / "pieces")
-        audio = R.render_audio(clip, pcs, info["fps"], work, off)
-        total = sum(p["frames"] for p in pcs) / info["fps"]
-        ow = R.out_words(words, pcs, info["fps"])
+        video.replace(work / "base.mp4")                         # the picture without subtitles, kept for subtitle fixes
+        R.render_audio(clip, pcs, info["fps"], work, off)
+        import shutil
+        shutil.rmtree(work / "pieces", ignore_errors=True)
+        doubts = [f"« {d['audio'] or '—'} » (audio) / « {d['srt']} » (SRT) → {d['srt'] if picks.get(k) == 'srt' else d['audio'] or '—'}"
+                  for k, d in enumerate(diffs) if a - 0.2 <= d["t"] <= b + 0.2]
+        edit = {"fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "confidence": round(conf),
+                "missing_cuts": missing, "words": [w.__dict__ for w in R.out_words(words, pcs, info["fps"])],
+                "layout": [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs]}
+        (work / "edit.json").write_text(json.dumps(edit))
+        kinds = [p["kind"] for p in pcs]
+        return {**self.reel_subtitles(ep, cand, fixes or [], note), "status": "preview", "confidence": round(conf),
+                "shots": {k: kinds.count(k) for k in set(kinds)}, "missing_cuts": missing, "doubts": doubts}
+
+    def reel_subtitles(self, ep: Episode, cand: dict, fixes: list, note: str = "") -> dict:
+        """Subtitles + final file from the kept edit (base picture + sound): a few seconds, no new cut.
+        Loïc's word fixes are applied here; `note` = his remark on the layout, passed to the layout model."""
+        from . import reels as R
+        from . import subs
+        from .config import ASSETS
+        n = cand["n"]
+        work = ep.dir / "reels" / f"r{n:02d}"
+        edit = json.loads((work / "edit.json").read_text())
+        if not (work / "base.mp4").exists() or not (work / "audio.m4a").exists():
+            raise RuntimeError("le montage de ce reel n'est plus sur le serveur : il faut le refaire en entier")
+        ow, not_found = R.apply_fixes([R.Word(**w) for w in edit["words"]], fixes)
+        total = edit["frames"] / edit["fps"]
         stats: dict = {}
         try:
-            blocks = subs.parse_blocks(self.llm.reel_blocks([w.text for w in ow]), ow, stats=stats)
+            blocks = subs.parse_blocks(self.llm.reel_blocks([w.text for w in ow], note), ow, stats=stats)
         except Exception:  # noqa: BLE001
             blocks = []
         if not blocks or stats.get("reinserted", 0) > 0.15 * len(ow):   # the model's layout misses too much
             blocks = subs.auto_blocks(ow)
-        subs.timeline(blocks, total, lambda t: R.layout_at(pcs, t))
+        subs.timeline(blocks, total, lambda t: R.layout_at(edit["layout"], t))
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
         ass = subs.write_ass(blocks, fonts, work / "subs.ass")
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
-        out = R.final_mux(video, audio, ass, fonts, work / f"BTR_reel_{n:02d}_{slug}.mp4", total,
-                          sum(p["frames"] for p in pcs))
-        import shutil
-        shutil.rmtree(work / "pieces", ignore_errors=True)        # ~400 MB of intermediate 1080p pieces
-        kinds = [p["kind"] for p in pcs]
-        return {"file": str(out), "duration": round(total, 1), "status": "preview", "confidence": round(conf),
-                "shots": {k: kinds.count(k) for k in set(kinds)}, "said": " ".join(w.text for w in ow)[:1500],
-                "shown": len(subs.shown_words(blocks)), "spoken": len(ow), "missing_cuts": missing,
+        out = R.final_mux(work / "base.mp4", work / "audio.m4a", ass, fonts, work / f"BTR_reel_{n:02d}_{slug}.mp4",
+                          total, edit["frames"])
+        return {"file": str(out), "duration": round(total, 1), "said": " ".join(w.text for w in ow)[:1500],
+                "shown": len(subs.shown_words(blocks)), "spoken": len(ow), "fixes_not_found": not_found,
+                "on_screen": [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in blocks][:40],
                 "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
+    def reel_feedback(self, item: dict, feedback: str) -> dict:
+        """What Loïc's remark about the subtitles means: word fixes and/or a layout note (Claude reads the reel)."""
+        return self.llm.reel_sub_feedback(str(item.get("said", "")).split(), item.get("on_screen") or [], feedback)
 
     def reel_captions(self, ep: Episode, said: str) -> dict:
         """Instagram without hashtags (enforced), TikTok / Shorts with some."""

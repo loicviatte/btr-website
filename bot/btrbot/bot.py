@@ -778,8 +778,6 @@ def tool_handlers(ctx, images: list) -> dict:
         if not reel_cand(ep, n) or not RS(ep).data["items"].get(str(n), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
         item = reel_item(ep, n)
-        if item.get("status") in ("queued", "rendering"):
-            return f"le reel {n} est déjà en cours de montage : je prendrai la retouche après"
         sh = item["shift"]
         sh[0] = round(sh[0] + float(start_shift or 0), 2)
         sh[1] = round(sh[1] + float(end_shift or 0), 2)
@@ -789,9 +787,27 @@ def tool_handlers(ctx, images: list) -> dict:
             item["cuts"].append(str(cut)[:200])
         if cut or uncut or start_shift or end_shift:
             item.pop("captions", None)                 # the words changed: the captions are written again
-        item["status"] = "queued"
-        RS(ep).save()
-        return bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, RS(ep).data.get("id"), [n]))
+        return queue_reel(ctx, ep, n, "full")
+
+    async def reel_subtitles(n, feedback):
+        ep = reels_or_fail()
+        n = int(n)
+        item = RS(ep).data["items"].get(str(n)) or {}
+        if not item.get("file"):
+            return f"le reel {n} n'est pas encore monté"
+        res = await run(pipe.reel_feedback, dict(item), str(feedback))
+        fixes = [f for f in res.get("fixes") or [] if f.get("from") and f.get("to")]
+        it = reel_item(ep, n)
+        if fixes:
+            it.setdefault("fixes", []).extend(fixes)
+            it.pop("captions", None)                   # a corrected word must not stay wrong in the captions
+        if res.get("relayout") and res.get("layout_note"):
+            it["sub_note"] = str(res["layout_note"])[:400]
+        if not fixes and not res.get("relayout"):
+            RS(ep).save()
+            return "rien à changer compris. Réponse à transmettre à Loïc : " + str(res.get("reply", ""))
+        out = queue_reel(ctx, ep, n, "subs")
+        return f"{out}. À dire à Loïc : {res.get('reply', '')}"
 
     async def reel_validate(n):
         ep = reels_or_fail()
@@ -804,6 +820,7 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
+            "reel_subtitles": reel_subtitles,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -986,6 +1003,11 @@ def reel_caption(ep, n: int) -> str:
         notes.append("⚠️ début ou fin repérés avec un doute")
     if item.get("missing_cuts"):
         notes.append("⚠️ pas trouvé, donc pas coupé : " + " / ".join(f"« {x} »" for x in item["missing_cuts"]))
+    if item.get("fixes_not_found"):
+        notes.append("⚠️ correction pas trouvée dans le texte : " + " / ".join(f"« {x} »" for x in item["fixes_not_found"]))
+    if item.get("doubts"):
+        notes.append("🔎 Mots où ton SRT et l'audio ne disent pas pareil (mon choix après →) :\n"
+                     + "\n".join(item["doubts"][:4]) + (f"\n(+{len(item['doubts']) - 4} autres)" if len(item["doubts"]) > 4 else ""))
     return (f"🎞️ Reel {n} · {item.get('duration')} s · {str(c.get('title'))[:80]}\n“{str(c.get('hook', ''))[:200]}”\n"
             f"Plans : {shots}" + ("\n" + "\n".join(notes) if notes else "")
             + "\nDis-moi en texte s'il faut changer quelque chose (« commence 2 s plus tôt », « coupe la dernière phrase »).")
@@ -1010,17 +1032,48 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     if d.get("id") != list_id or not cand or item.get("status") != "queued":
         return False                                   # replaced list, dropped, or already taken by another chain
     item["status"] = "rendering"
-    res = await run(pipe.render_reel, ep, dict(cand), list(item["shift"]), list(item["cuts"]))
+    need = item.pop("need", None) or ("subs" if item.get("file") else "full")
+    if need == "subs":
+        res = await run(pipe.reel_subtitles, ep, dict(cand), list(item.get("fixes") or []), item.get("sub_note", ""))
+    else:
+        res = await run(pipe.render_reel, ep, dict(cand), list(item["shift"]), list(item["cuts"]),
+                        list(item.get("fixes") or []), item.get("sub_note", ""))
     if RS(ep).data.get("id") != list_id:                  # a new list arrived during the render
         return False
     if item.get("status") == "dropped":
         return False
     item.update(res)
+    item["status"] = "preview"
     if not item.get("captions"):
         item["captions"] = await run(pipe.reel_captions, ep, res["said"])
+    if item.pop("redo", False):                           # Loïc asked for another change during this render
+        item["status"] = "queued"
+        RS(ep).save()
+        bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, list_id, [n]))
+        await say(ctx, f"Reel {n} : je refais tout de suite avec ta dernière demande.")
+        return True
     RS(ep).save()
     await send_reel(ctx, ep, n)
     return True
+
+
+def queue_reel(ctx, ep, n: int, need: str) -> str:
+    """(Re)make reel n: the whole edit ("full") or only its subtitles ("subs"). Never two jobs for one reel:
+    a change asked while it is being made is done right after."""
+    it = reel_item(ep, n)
+    want = "full" if "full" in (need, it.get("need")) else "subs"
+    if it.get("status") == "rendering":
+        it["redo"], it["need"] = True, want
+        RS(ep).save()
+        return f"reel {n} en cours de montage : je prends ta demande juste après"
+    it["need"] = want
+    if it.get("status") == "queued":
+        RS(ep).save()
+        return f"reel {n} déjà en file d'attente : ta demande est prise en compte"
+    it["status"] = "queued"
+    RS(ep).save()
+    what = "les sous-titres (quelques secondes)" if want == "subs" else "le montage (quelques minutes)"
+    return bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, RS(ep).data.get("id"), [n])) + f" · je refais {what}"
 
 
 async def reel_chain(ctx, ep, list_id: int, nums: list[int], done: int = 0, total: int | None = None):
@@ -1054,7 +1107,7 @@ def start_reels(ctx, ep, nums: list[int]) -> str:
         it = reel_item(ep, n)
         if it.get("status") in ("queued", "rendering", "preview", "ok"):
             continue
-        it["status"] = "queued"
+        it["status"], it["need"] = "queued", "full"
         todo.append(n)
     RS(ep).save()
     if not todo:

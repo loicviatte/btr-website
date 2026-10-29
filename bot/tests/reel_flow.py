@@ -54,7 +54,7 @@ p.reel_candidates = cands
 rendered = []
 
 
-def render(ep, cand, shift, cuts):
+def render(ep, cand, shift, cuts, fixes=(), note=""):
     rendered.append((cand["n"], tuple(shift), tuple(cuts)))
     f = Path(bot.cfg.data_dir) / f"reel_{cand['n']}.mp4"
     shutil.copy(VIDEO, f)
@@ -63,6 +63,20 @@ def render(ep, cand, shift, cuts):
 
 
 p.render_reel = render
+subbed = []
+
+
+def resub(ep, cand, fixes, note=""):
+    subbed.append((cand["n"], tuple((f["from"], f["to"]) for f in fixes), note))
+    f = Path(bot.cfg.data_dir) / f"reel_{cand['n']}.mp4"
+    return {"file": str(f), "duration": 15.4, "said": "and Motsi", "shown": 2, "spoken": 2, "fixes_not_found": [],
+            "on_screen": ["and / MOTSI"]}
+
+
+p.reel_subtitles = resub
+p.reel_feedback = lambda item, fb: ({"fixes": [{"from": "Muti", "to": "Motsi"}], "relayout": False, "reply": "Je remplace Muti par Motsi."}
+                                    if "Motsi" in fb else {"fixes": [], "relayout": True, "layout_note": "keep the question on one line",
+                                                           "reply": "Je remets la question sur une ligne."})
 p.reel_captions = lambda ep, said: {"instagram": "Hook IG", "tiktok": "Hook TT #dancesport"}
 slim_calls = []
 R.slim = lambda work, keep_final=True: slim_calls.append(keep_final)
@@ -140,12 +154,31 @@ async def main():
     assert [r[0] for r in rendered[before:]] == [6], rendered[before:]
     await press("rgo")                          # a button from before the list ids
     assert "ancienne liste" in sent[-1][1], sent[-1]
+    # subtitles feedback: only the subtitles are redone, the word fix is kept for later full edits
+    before_full = len(rendered)
+    out4 = await h["reel_subtitles"](6, "c'est Motsi pas Muti")
+    await settle()
+    out5 = await h["reel_subtitles"](6, "problème de sous-titre à why are you here")
+    await settle()
+    assert len(rendered) == before_full, rendered
+    assert subbed[0] == (6, (("Muti", "Motsi"),), ""), subbed
+    assert subbed[1] == (6, (("Muti", "Motsi"),), "keep the question on one line"), subbed
+    out6 = await h["reel_adjust"](6, end_shift=0.4)
+    await settle()
+    assert len(rendered) == before_full + 1 and rendered[-1][1] == (0.0, 0.4), rendered
+    print("subtitles →", out4, "|", out5)
     print("context:\n" + bot.reels_context())
     print("select →", out2, "|", out3)
     assert slim_calls == [True, False], slim_calls        # reel 5 had no file to clean
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except Exception:
+    print("--- last messages ---")
+    for x in sent[-8:]:
+        print(x)
+    raise
 for s in sent:
     print(s)
 print("OK")
