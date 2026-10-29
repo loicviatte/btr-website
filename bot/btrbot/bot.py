@@ -945,7 +945,7 @@ def reel_list_parts(ep) -> list[str]:
     """The list as Telegram messages under 4096 characters, split between moments, never inside a tag."""
     from .srt import fmt
     cands = RS(ep).data["cands"]
-    head = (f"🎞️ <b>{len(cands)} moments pour les reels</b> · {esc(str(ep.get('title'))[:120])}\n"
+    head = (f"🎞️ <b>{len(cands)} moments pour les reels</b> · {esc(str(pipe.reel_title(ep))[:120])}\n"
             "Coche ceux que tu veux (6 par semaine), puis « Monter la sélection ».\n")
     parts, cur = [], head
     for c in cands:
@@ -964,7 +964,7 @@ def reel_list_parts(ep) -> list[str]:
 async def propose_reels(ctx, vid: str | None = None):
     active = reg.episode(reg.active) if reg.active else None
     ep = await run(pipe.reel_episode, vid, active)
-    await say(ctx, f"🎞️ Je relis « {esc(ep.get('title'))} » et je cherche les 10 meilleurs moments pour des reels…")
+    await say(ctx, f"🎞️ Je relis « {esc(pipe.reel_title(ep))} » et je cherche les 10 meilleurs moments pour des reels…")
     data = await run(pipe.reel_candidates, ep)
     if not data["cands"]:
         await say(ctx, "Je n'ai trouvé aucun moment exploitable dans ce transcript.")
@@ -1135,7 +1135,7 @@ def reels_context() -> str:
     rs = RS(ep).data
     status = {"preview": "envoyé, en attente de son avis", "ok": "validé", "dropped": "jeté", "rendering": "en cours de montage",
               "queued": "en file d'attente", "failed": "échec"}
-    lines = [f"Reels de « {ep.get('title')} » ({ep.video_id}) : moments proposés "
+    lines = [f"Reels de « {pipe.reel_title(ep)} » ({ep.video_id}) : moments proposés "
              + " | ".join(f"{c['n']}. {c.get('title')} ({int(c['end_s'] - c['start_s'])} s)" for c in rs["cands"]),
              "Cochés : " + (", ".join(map(str, sorted(rs.get("sel") or []))) or "aucun")]
     for k, it in sorted(rs.get("items", {}).items(), key=lambda kv: int(kv[0])):

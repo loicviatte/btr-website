@@ -41,3 +41,24 @@ try:
 except RuntimeError as e:
     print("impossible retouche →", e)
 print("OK")
+
+# a breath after the last word when the pause allows it, never into the next word
+r, _ = R.keep_ranges(words, 0, 7, E)
+assert 11.85 <= r[-1][1] <= 11.95, r                 # "seven" ends 11.5 → +0.4 s
+r, _ = R.keep_ranges(words, 0, 4, E)
+assert r[-1][1] <= 6.40, r                           # "five" starts at 6.45: stop just before it
+# finish the sentence when the model stops one word short
+fw = [R.Word(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate("nothing left to give me. So then".split())]
+assert R.finish_sentence(fw, 3) == 4, R.finish_sentence(fw, 3)
+assert R.finish_sentence(fw, 4) == 4
+fw2 = [R.Word(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate("and then we went on and on and on and on".split())]
+assert R.finish_sentence(fw2, 2) == 2                # no sentence end nearby: unchanged
+# the SRT corrects names and mishearings, keeps the timing
+from btrbot.srt import Cue  # noqa: E402
+asr = [R.Word(t, 1 + i * 0.4, 1 + i * 0.4 + 0.35) for i, t in enumerate("and I had to impress muti and craig its a check list".split())]
+cues = [Cue(100.0, 102.0, "And I had to impress Motsi"), Cue(102.0, 105.0, "and Craig, it's a checklist.")]
+fixed = R.correct_with_srt(asr, cues, 99.0)
+print("SRT-corrected:", " ".join(w.text for w in fixed))
+assert [w.text for w in fixed] == ["And", "I", "had", "to", "impress", "Motsi", "and", "Craig,", "it's", "a", "checklist."], fixed
+assert abs(fixed[5].start - asr[5].start) < 0.01
+print("OK 2")

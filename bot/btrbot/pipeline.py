@@ -323,12 +323,32 @@ class Pipeline:
                 raise RuntimeError("aucun épisode public trouvé sur la chaîne")
             vid = refs[0]["id"]
         ep = Episode(self.cfg.data_dir, vid)
+        ep["public_title"] = self.yt.video(vid)["snippet"]["title"]   # the published title, not the upload name
         if not ep.get("title"):
-            ep["title"] = self.yt.video(vid)["snippet"]["title"]
+            ep["title"] = ep["public_title"]
+        self._attach_srt(ep)
         if not self.cues(ep) and not self.fetch_transcript(ep):
             raise RuntimeError("pas encore de transcript pour cette vidéo (ni SRT DaVinci, ni sous-titres YouTube)")
         ep.save()
         return ep
+
+    def _attach_srt(self, ep: Episode) -> None:
+        """Loïc's DaVinci SRT for this video, if it is still waiting in data/pending_srt (copied, not moved)."""
+        import shutil
+
+        from . import drive
+        if ep.file("captions_davinci.srt").exists():
+            return
+        pending = sorted((self.cfg.data_dir / "pending_srt").glob("*.srt"), key=lambda p: -p.stat().st_mtime)
+        for title in (ep.get("public_title"), ep.get("title")):
+            hit = next((p for p in pending if title and drive.matches(p.name, title)), None)
+            if hit:
+                shutil.copy(hit, ep.file("captions_davinci.srt"))
+                return
+
+    @staticmethod
+    def reel_title(ep: Episode) -> str:
+        return ep.get("public_title") or (ep.get("final") or {}).get("title") or ep.get("title", "")
 
     def reel_candidates(self, ep: Episode, n: int = 10) -> dict:
         """10 moments proposed by Claude, checked against the transcript. Returns the new reels list (not saved)."""
@@ -339,7 +359,7 @@ class Pipeline:
         cues = self.cues(ep)
         final = ep.get("final") or {}
         avoid = f"\"{final.get('quote')}\" at {final.get('timestamp')}" if final.get("quote") else ""
-        raw = self.llm.reel_candidates(ep.get("title", ""), ep.get("guest_name", ""), avoid, srt.timed_text(cues, 15), n)
+        raw = self.llm.reel_candidates(self.reel_title(ep), ep.get("guest_name", ""), avoid, srt.timed_text(cues, 15), n)
         out = []
         for c in raw:
             a, b = mmss(c.get("start")), mmss(c.get("end"))
@@ -391,7 +411,10 @@ class Pipeline:
             finally:
                 self.asr_release()
             wj.write_text(json.dumps([w.__dict__ for w in words]))
+        if ep.file("captions_davinci.srt").exists():           # Loïc's SRT corrects the words (names, mishearings)
+            words = R.correct_with_srt(words, self.cues(ep), dl_a + off)
         i0, i1, conf = R.locate(words, cand.get("first_words", ""), cand.get("last_words", ""))
+        i1 = R.finish_sentence(words, i1)
         energy = R.Energy(wav)
         ranges, missing = R.keep_ranges(words, i0, i1, energy, s0, s1, cuts)
         a, b = ranges[0][0], ranges[-1][1]
@@ -433,7 +456,7 @@ class Pipeline:
     def reel_captions(self, ep: Episode, said: str) -> dict:
         """Instagram without hashtags (enforced), TikTok / Shorts with some."""
         try:
-            c = self.llm.reel_captions(ep.get("guest_name", ""), ep.get("title", ""), said)
+            c = self.llm.reel_captions(ep.get("guest_name", ""), self.reel_title(ep), said)
         except Exception:  # noqa: BLE001
             return {}
         ig = re.sub(r"[ \t]*#[\w-]+", "", c.get("instagram") or "").strip()

@@ -26,6 +26,7 @@ OUT_W, OUT_H = 1080, 1920
 PAD = 6.0                 # seconds downloaded before/after the moment, to find the exact words
 MIN_LEN, MAX_LEN = 15.0, 90.0
 GAP_CUT, GAP_KEEP = 0.40, 0.14   # silences longer than GAP_CUT are cut down to GAP_KEEP
+END_TAIL = 0.40           # a breath after the last word (~10 frames) instead of a dry cut, if the pause allows it
 LOCATE_MIN = 70           # below this fuzzy score the moment is not in the clip: fail instead of cutting elsewhere
 TARGET_LUFS = -14.0
 TG_LIMIT = 49 * 2 ** 20   # Telegram bots cannot send files over 50 MB
@@ -242,6 +243,66 @@ def locate(words: list[Word], first_words: str, last_words: str) -> tuple[int, i
     return i0, i1, min(s0, s1)
 
 
+def finish_sentence(words: list[Word], i1: int, max_words: int = 8, max_gap: float = 0.30) -> int:
+    """The model's last words can stop one word short of the end of the sentence ("give" instead of "give me"):
+    carry on to the end of the sentence while the speech flows (no pause), at most a few words."""
+    k = i1
+    for _ in range(max_words):
+        if re.search(r"[.?!…]$", words[k].text) or k + 1 >= len(words) or words[k + 1].start - words[k].end > max_gap:
+            break
+        k += 1
+    if k != i1 and not re.search(r"[.?!…]$", words[k].text):
+        return i1                       # no sentence end close by: keep the model's end
+    return k
+
+
+def correct_with_srt(words: list[Word], cues: list, t0: float) -> list[Word]:
+    """Loïc's own DaVinci SRT is the reference for the words (names like Motsi, mishearings): the speech model gives
+    the timing, the SRT the text. `t0` = episode time of the clip's 0. Outside the stretch both agree on, nothing
+    changes; a word the SRT has and the audio-model missed is added only where there is time for it."""
+    from difflib import SequenceMatcher
+    if not words or not cues:
+        return words
+    a, b = t0 + words[0].start - 3, t0 + words[-1].end + 3
+    ref: list[tuple[str, float, float]] = []
+    for c in cues:
+        if c.end < a or c.start > b:
+            continue
+        toks = c.text.split()
+        step = (c.end - c.start) / max(len(toks), 1)
+        ref += [(t, c.start + i * step - t0, c.start + (i + 1) * step - t0) for i, t in enumerate(toks)]
+    if not ref:
+        return words
+    ka, kb = [norm(w.text) for w in words], [norm(t) for t, _, _ in ref]
+    ops = SequenceMatcher(None, ka, kb, autojunk=False).get_opcodes()
+    eq = [o for o in ops if o[0] == "equal"]
+    if not eq or sum(o[2] - o[1] for o in eq) < 0.5 * len(words):
+        return words                    # the SRT does not cover this clip well: keep the audio model's words
+    lo, hi = eq[0][1], eq[-1][2]        # only inside the stretch both agree on
+    out: list[Word] = list(words[:lo])
+    for tag, i1, i2, j1, j2 in ops:
+        if i2 <= lo and i1 < lo or i1 >= hi:
+            continue
+        if tag == "equal":
+            out += [Word(ref[j][0], words[i].start, words[i].end) for i, j in zip(range(i1, i2), range(j1, j2))]
+        elif tag == "delete":
+            out += words[i1:i2]          # said but not in the SRT (stutters): kept, the subtitles skip fillers
+        elif tag == "replace":
+            span_a, span_b = words[i1].start, words[i2 - 1].end
+            n = j2 - j1
+            out += [Word(ref[j][0], span_a + (span_b - span_a) * k / n, span_a + (span_b - span_a) * (k + 1) / n)
+                    for k, j in enumerate(range(j1, j2))]
+        elif tag == "insert":
+            prev_end = out[-1].end if out else 0.0
+            nxt = words[i1].start if i1 < len(words) else prev_end
+            n = j2 - j1
+            if nxt - prev_end >= 0.12 * n:
+                out += [Word(ref[j][0], prev_end + (nxt - prev_end) * k / n, prev_end + (nxt - prev_end) * (k + 1) / n)
+                        for k, j in enumerate(range(j1, j2))]
+    out += words[hi:]
+    return out
+
+
 def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift: float = 0.0, end_shift: float = 0.0,
                 cut_phrases: list[str] = ()) -> tuple[list[tuple[float, float]], list[str]]:
     """Time ranges of the clip to keep, and the asked phrases that were not found. Long silences (measured on the
@@ -277,7 +338,9 @@ def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift
     if start_shift:
         a = energy.quiet(first.start + start_shift - 0.3, first.start + start_shift + 0.3)
     s_end, nxt_start = after(idx[-1])
-    b = max(energy.quiet(s_end, min(s_end + 0.18, max(nxt_start, s_end + 0.02))), last.end - 0.03)
+    # the end: a breath after the last word's sound, unless the next word comes sooner (then just before it)
+    room = nxt_start - 0.06 if idx[-1] + 1 < len(words) else s_end + END_TAIL
+    b = max(min(s_end + END_TAIL, room), s_end + 0.04, last.end - 0.03)
     if end_shift:
         b = energy.quiet(b + end_shift - 0.3, b + end_shift + 0.3)
     # inner cuts: long pauses, removed phrases
