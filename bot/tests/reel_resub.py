@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from btrbot.config import Settings  # noqa: E402
 from btrbot.pipeline import Pipeline  # noqa: E402
 from btrbot.state import Episode  # noqa: E402
+from btrbot import reels as R  # noqa: E402
 
 src = Path(sys.argv[1])
 cfg = Settings()
@@ -28,7 +29,7 @@ frames = int(subprocess.run(["ffprobe", "-v", "error", "-count_frames", "-select
                             capture_output=True, text=True).stdout.strip())
 words = [{"text": t, "start": 0.5 + i * 0.45, "end": 0.9 + i * 0.45}
          for i, t in enumerate("and the key was to impress Muti and Craig, it's a checklist.".split())]
-(work / "edit.json").write_text(json.dumps({"fps": 25.0, "frames": frames, "doubts": [], "confidence": 95, "missing_cuts": [],
+(work / "edit.json").write_text(json.dumps({"framing": R.FRAMING, "fps": 25.0, "frames": frames, "doubts": [], "confidence": 95, "missing_cuts": [],
                                             "words": words, "layout": [{"out": 0.0, "frames": frames, "kind": "guest"}]}))
 res = pipe.reel_subtitles(ep, {"n": 5}, [{"from": "Muti", "to": "Motsi"}, {"from": "zebra", "to": "x"}], "")
 print(res["said"], "|", res["fixes_not_found"], "|", res["on_screen"][:3])

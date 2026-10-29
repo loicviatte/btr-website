@@ -29,14 +29,15 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
 - Reels (workflow: claude/btr-reels-workflow.md in the Claude project): `btrbot/reels.py` (section download in 4K,
   word timings with Parakeet via sherpa-onnx in `models/`, silence cuts, shot-by-shot framing from the source edit:
   guest / Marius close-up 9:16 alternating wide/tight at jump cuts, wide shot of both → split screen guest top /
-  Marius bottom, frame-exact render, −14 LUFS, no music), `btrbot/subs.py` (v3 subtitles as ASS: Regular/Heavy,
+  Marius bottom, frame-exact render, −14 LUFS, no music; the tight zoom never cuts the head: `reels.single_box`, bump
+  `reels.FRAMING` when the picture changes so kept edits are made again), `btrbot/subs.py` (v3 subtitles as ASS: Regular/Heavy,
   gold, italic, tighten; words only from the transcription, never added), state in `data/episodes/<id>/reels.json`
   (`state.Reels`, one shared object per process). Telegram: `/reels [lien]`, list of 10 moments with tick buttons,
   previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_subtitles / reels_resend / reel_validate /
   reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
   placement (`vary` + `place`: mostly centred, 2 pages off-centre every 8 (l / r / lower / stair), a page never starts below the last word of the previous one nor in the bottom third). A restart resumes interrupted reels; when the reel rules
   change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
-  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels).
+  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

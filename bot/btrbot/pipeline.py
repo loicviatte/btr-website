@@ -458,7 +458,7 @@ class Pipeline:
         doubts = [f"« {d['audio'] or '—'} » (audio) / « {d['srt']} » (SRT) → {d['srt'] if picks.get(k) == 'srt' else d['audio'] or '—'}"
                   for k, d in enumerate(diffs) if a - 0.2 <= d["t"] <= b + 0.2]
         alts = [{"audio": d["audio"], "srt": d["srt"]} for d in diffs if a - 0.2 <= d["t"] <= b + 0.2]
-        edit = {"fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "alts": alts,
+        edit = {"framing": R.FRAMING, "fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "alts": alts,
                 "confidence": round(conf),
                 "missing_cuts": missing, "words": [w.__dict__ for w in R.out_words(words, pcs, info["fps"])],
                 "layout": [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs]}
@@ -502,8 +502,14 @@ class Pipeline:
 
     def reel_edit_kept(self, ep: Episode, n: int) -> bool:
         """The edit of reel n (picture, sound, word timings) is still here: subtitles alone can be redone."""
+        from . import reels as R
         work = ep.dir / "reels" / f"r{n:02d}"
-        return all((work / f).exists() for f in ("edit.json", "base.mp4", "audio.m4a"))
+        if not all((work / f).exists() for f in ("edit.json", "base.mp4", "audio.m4a")):
+            return False
+        try:
+            return json.loads((work / "edit.json").read_text()).get("framing", 1) == R.FRAMING
+        except Exception:  # noqa: BLE001
+            return False
 
     def reel_feedback(self, ep: Episode, n: int, item: dict, feedback: str) -> dict:
         """What Loïc's remark about the subtitles means: word fixes and/or a layout note (Claude reads the reel).

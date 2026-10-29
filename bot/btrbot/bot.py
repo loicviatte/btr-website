@@ -1029,9 +1029,9 @@ async def send_reel(ctx, ep, n: int):
 
 
 # bump the id when the reel rules change: after the deploy, Loïc gets one button to get his chosen reels again
-REELS_RULES = ("2026-10-29-pos", "sous-titres surtout au centre, peu de changements de place (2 pages à gauche / droite / "
-                                 "plus bas de temps en temps), une page ne commence jamais plus bas que le dernier mot de "
-                                 "la précédente ni en bas de l'écran. 4 lignes max, aucune expression coupée.")
+REELS_RULES = ("2026-10-29-face", "le zoom ne coupe plus jamais la tête (sur un gros plan il ne zoome plus), et les "
+                                  "sous-titres ont plus de marge sur les côtés pour la vue reel d'Instagram. Les reels sont "
+                                  "remontés en entier (même début, fin, coupes et corrections).")
 
 
 def loic_wrote(words: str) -> bool:

@@ -23,6 +23,7 @@ import numpy as np
 
 YT = "https://www.youtube.com/watch?v={}"
 OUT_W, OUT_H = 1080, 1920
+FRAMING = 2           # bump when the picture of the edit changes: kept edits of an older framing are made again
 PAD = 6.0                 # seconds downloaded before/after the moment, to find the exact words
 MIN_LEN, MAX_LEN = 15.0, 90.0
 GAP_CUT, GAP_KEEP = 0.40, 0.14   # silences longer than GAP_CUT are cut down to GAP_KEEP
@@ -512,7 +513,11 @@ def shot_layouts(samples: list[tuple[float, dict]], cuts: list[float], a: float,
         else:
             faces_ = [c["face"] for c in inside if c["kind"] in (kind, "unsure") and "face" in c] or \
                      [c["face"] for c in inside if "face" in c]
-            shots.append({"a": s, "b": e, "kind": kind, **{k: _median(faces_, k) for k in ("cx", "cy", "fh")}})
+            xs = [f["cx"] for f in faces_]
+            shots.append({"a": s, "b": e, "kind": kind, **{k: _median(faces_, k) for k in ("cx", "cy", "fh")},
+                          "cx_lo": float(np.percentile(xs, 5)), "cx_hi": float(np.percentile(xs, 95)),
+                          "cy_top": float(min(f["cy"] - f["fh"] / 2 for f in faces_)),
+                          "fh_max": float(max(f["fh"] for f in faces_))})
     merged: list[dict] = []
     for sh in shots:   # a mis-detected flash (< 0.35 s) joins the previous shot: no flickering framing
         if merged and sh["b"] - sh["a"] < 0.35:
@@ -575,6 +580,31 @@ def crop_box(W: int, H: int, cx: float, cy: float, w: float, h: float, head: flo
     return w, h, x, y
 
 
+TIGHT = 0.74          # the tight framing shows 74 % of the source height (×1.35)...
+HEAD_W, HEAD_H = 1.9, 2.7   # ...but never less than the whole head with its hair and some air: the face box (eyes to
+                            # chin, from YuNet) × these, plus how far the person moves during the shot
+TOP_AIR = 0.35        # room kept above the top of the face box (forehead + hair), in face heights
+
+
+def single_box(p: dict, W: int, H: int, tight: bool) -> tuple[int, int, int, int]:
+    """9:16 window on one person. Wide = full source height. Tight = closer, unless the head (and its movement in the
+    shot) would not fit whole: then only as close as it fits, or no closer at all (Loïc 29.10.2026: Oti's face was cut)."""
+    fh = p.get("fh_max", p["fh"]) * H
+    lo, hi = p.get("cx_lo", p["cx"]) * W, p.get("cx_hi", p["cx"]) * W
+    need_w = (hi - lo) + fh * HEAD_W
+    h = H
+    if tight:
+        h = max(TIGHT * H, fh * HEAD_H, need_w * OUT_H / OUT_W)
+        if h > 0.9 * H:                        # barely closer: not worth a zoom that may cut the head
+            h = H
+    w = h * OUT_W / OUT_H
+    cx = (lo + hi) / 2 / W
+    w, h, x, y = crop_box(W, H, cx, p["cy"], w, h, 0.36 if h < H else 0.5)
+    top = p.get("cy_top", p["cy"] - p["fh"] / 2) * H - TOP_AIR * fh
+    y = int(np.clip(min(y, top), 0, H - h))   # the top of the head stays inside the frame
+    return w, h, x, y
+
+
 def vfilter(p: dict, W: int, H: int) -> str:
     tail = "setsar=1,tpad=stop_mode=clone:stop_duration=2"
     if p["kind"] == "split":
@@ -592,9 +622,7 @@ def vfilter(p: dict, W: int, H: int) -> str:
     if p["kind"] == "center":
         w, h, x, y = crop_box(W, H, 0.5, 0.5, H * OUT_W / OUT_H, H, 0.5)
     else:
-        tight = p.get("zoom") == "tight"
-        h = H * (0.74 if tight else 1.0)
-        w, h, x, y = crop_box(W, H, p["cx"], p["cy"], h * OUT_W / OUT_H, h, 0.36 if tight else 0.5)
+        w, h, x, y = single_box(p, W, H, p.get("zoom") == "tight")
     return f"crop={w}:{h}:{x}:{y},scale={OUT_W}:{OUT_H}:flags=lanczos,{tail}"
 
 

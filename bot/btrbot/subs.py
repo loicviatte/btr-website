@@ -17,7 +17,8 @@ from PIL import ImageFont
 W, H = 1080, 1920
 SMALL, BIG = 82, 150          # ASS sizes (= 165 / 300 px on the 4K master)
 LINE_GAP = 30                 # 60 px on the 4K master
-MARGIN = 60
+MARGIN = 170                  # side margin: Instagram's reel view crops ~100 px a side on tall phones (Loïc 29.10.2026)
+MARGIN_R = 200                # right edge of a right-aligned page: clear of Instagram's like / comment / share column
 EM = 1000 / (1040 + 320)      # libass scales the font so ascent+descent = size: 1 em = 0.735 × size
 CAP = 0.72 * EM               # cap height in units of the size
 DESC = 0.32 * EM              # descender, below the baseline
@@ -389,7 +390,7 @@ def block_events(b: Block, m: Measure) -> list[str]:
         if b.align == "c":
             an, x = 2, W / 2
         elif b.align == "r":
-            an, x = 3, W - MARGIN
+            an, x = 3, W - MARGIN_R
         else:
             an, x = 1, MARGIN + (STAIR * li if b.align == "stair" else 0)
             x = min(x, W - MARGIN - _line_sizes(line, m)[1])
