@@ -11,7 +11,7 @@ jobs:
     env:
       VID: PjDZ8X_JWY0
       # start-end windows (seconds), frames every second
-      WINDOWS: "2722-2723 2724-2725 2726-2727 2728-2729 4912-4913 4914-4915 4916-4917 4918-4919 2895-2896 2900-2901"
+      WINDOWS: "4554-4563 4567-4575 4594-4600 4605-4619"
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
