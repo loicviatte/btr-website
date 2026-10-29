@@ -1537,6 +1537,10 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
     if not code and not token:
         return False
+    for m in MEMORY._list():                       # never keep a code / token in the chat history (old pastes too)
+        c = re.sub(r"(code=)[^&\s]+", r"\1[effacé]", m.get("content", ""))
+        m["content"] = re.sub(r"\bpk_[A-Za-z0-9_]{20,}", "pk_[effacé]", c)
+    reg.save()
     try:
         await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
     except Exception:  # noqa: BLE001

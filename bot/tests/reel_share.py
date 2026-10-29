@@ -49,6 +49,8 @@ assert "```\nLine 1\nLine 2\n```" in d2
 # pasted Google address
 assert share.code_from("http://127.0.0.1:8765/?code=4/0Ab_x-y&scope=https://www.googleapis.com/auth/drive.file") == "4/0Ab_x-y"
 assert share.code_from("salut") is None
+assert share.code_from("127.0.0.1:8765/?iss=https://accounts.google.com&code=4/0AUn6Hd_x-Y&scope=https://www.googleapis.com/auth/drive.file") == "4/0AUn6Hd_x-Y"
+assert share.code_from("http://127.0.0.1:8765/?code=4%2F0AbC&scope=x") == "4/0AbC"
 # cover words must be said, in order
 said = "And I was like, they just don't care. When you are on these shows, people care."
 assert cover_hook({"small": "They just", "big": "don't", "gold": "care."}, said) == {"small": "They just", "big": "DON'T", "gold": "CARE."}

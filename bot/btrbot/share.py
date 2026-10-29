@@ -67,12 +67,13 @@ def drive_auth_url(client_id: str) -> str:
 
 
 def code_from(text: str) -> str | None:
-    """The code in the address Loïc pastes back (http://127.0.0.1:8765/?code=…&scope=…), or None."""
-    m = re.search(r"https?://(?:127\.0\.0\.1|localhost)\S*", text or "")
-    if not m:
+    """The code in the address Loïc pastes back (http://127.0.0.1:8765/?code=…&scope=…), with or without « http:// »
+    (Safari and Telegram drop it when copying), or None."""
+    t = text or ""
+    if "127.0.0.1" not in t and "localhost" not in t:
         return None
-    q = urllib.parse.parse_qs(urllib.parse.urlparse(m.group(0)).query)
-    return (q.get("code") or [None])[0]
+    m = re.search(r"[?&]code=([^&\s]+)", t)
+    return urllib.parse.unquote(m.group(1)) if m else None
 
 
 def drive_connect(secrets: Secrets, client: tuple[str, str], code: str) -> None:
