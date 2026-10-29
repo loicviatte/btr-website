@@ -140,6 +140,26 @@ class LLM:
         ], max_tokens=300, tier="vision_cheap", task="reels (cover)")
         return [int(i) for i in r.get("best", []) if str(i).isdigit()]
 
+    def reel_names(self, guest: str, title: str, text: str, context: str) -> dict:
+        """Proper nouns of a reel checked against the episode's own texts and the web (server-side web search)."""
+        kw = dict(model=MODELS["work"], max_tokens=4000, system=prompts.SYSTEM,
+                  tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+                  messages=[{"role": "user", "content": prompts.REEL_NAMES.format(
+                      guest=guest or "the guest", title=title, text=text[:3000], context=context[:6000])}])
+        try:
+            msg = self.create("reels (noms propres)", **kw)
+        except anthropic.BadRequestError:                    # web search not enabled for the API key: context only
+            kw.pop("tools")
+            msg = self.create("reels (noms propres)", **kw)
+        for _ in range(3):                                   # long searches pause; the API resumes where it stopped
+            if getattr(msg, "stop_reason", "") != "pause_turn":
+                break
+            kw["messages"] = kw["messages"][:1] + [{"role": "assistant", "content": msg.content}]
+            msg = self.create("reels (noms propres)", **kw)
+        text_out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        found = re.findall(r"\{[^{}]*\"fixes\"\s*:\s*\[.*?\]\s*\}", text_out, re.S)
+        return json.loads(found[-1]) if found else {"fixes": []}
+
     def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
                                                        text=text[:4000]), 1500, task="reels (légendes)")

@@ -22,6 +22,22 @@ def clean_quote(a: dict) -> dict:
     return {"top": _clean(a.get("top")), "key": _clean(a.get("key")).upper(), "bottom": _clean(a.get("bottom"))}
 
 
+def apply_all(words: list, fixes: list[dict]) -> tuple[list, list[str]]:
+    """Each fix applied wherever it occurs (a name can come back several times in a reel)."""
+    from . import reels as R
+    missing = []
+    for fx in fixes or ():
+        a = "".join(R.norm(t) for t in str(fx.get("from", "")).split())
+        b = "".join(R.norm(t) for t in str(fx.get("to", "")).split())
+        for k in range(8 if a not in b else 1):              # « Mac » → « Danny Mac » must not loop
+            words, miss = R.apply_fixes(words, [fx])
+            if miss:
+                if k == 0:
+                    missing += miss
+                break
+    return words, missing
+
+
 def cover_hook(c, said: str, fallback: bool = False) -> dict | None:
     """The cover words, only if they are words really said, consecutively (« They just / DON'T / CARE. »)."""
     def key(w):
@@ -505,7 +521,14 @@ class Pipeline:
         if not self.reel_edit_kept(ep, n):
             raise RuntimeError("le montage de ce reel n'est plus sur le serveur : il faut le refaire en entier")
         edit = json.loads((work / "edit.json").read_text())
-        ow, not_found = R.apply_fixes([R.Word(**w) for w in edit["words"]], fixes)
+        words = [R.Word(**w) for w in edit["words"]]
+        if "names" not in edit:                                   # proper nouns checked once per edit (context + web)
+            names = self.reel_names(ep, words)
+            if names is not None:                                 # a failed check is tried again next time
+                edit["names"] = names
+                (work / "edit.json").write_text(json.dumps(edit))
+        words, _ = apply_all(words, edit.get("names") or [])
+        ow, not_found = R.apply_fixes(words, fixes)               # Loïc's own fixes come last: his version wins
         total = edit["frames"] / edit["fps"]
         stats: dict = {}
         try:
@@ -514,9 +537,13 @@ class Pipeline:
             blocks = []
         if not blocks or stats.get("reinserted", 0) > 0.15 * len(ow):   # the model's layout misses too much
             blocks = subs.auto_blocks(ow)
-        blocks = subs.cap_lines(subs.keep_phrases(blocks))       # ≤ 4 lines a page, no expression cut in two
+        # ≤ 4 lines a page, no expression cut in two, no sentence tail on the next sentence's page
+        blocks = subs.cap_lines(subs.merge_flashes(subs.sentence_seams(subs.keep_phrases(blocks))))
         subs.vary(blocks)                                         # not always centred, not always at the same height
         subs.timeline(blocks, total, lambda t: R.layout_at(edit["layout"], t))
+        vis = subs.visibility(blocks)                             # every word readable ≥ 0.5 s: checked on each reel
+        if vis["short"]:
+            log.warning("reel %s: words shown too briefly %s", n, vis["short"])
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
         ass = subs.write_ass(blocks, fonts, work / "subs.ass")
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
@@ -525,7 +552,42 @@ class Pipeline:
         return {"file": str(out), "duration": round(total, 1), "said": " ".join(w.text for w in ow)[:1500],
                 "shown": len(subs.shown_words(blocks)), "spoken": len(ow), "fixes_not_found": not_found,
                 "on_screen": [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in blocks][:40],
+                "names": [f"{x['from']} → {x['to']}" for x in edit.get("names") or []], "visibility": vis,
                 "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
+    def reel_names(self, ep: Episode, words: list) -> list[dict] | None:
+        """Spelling of the names said in the reel, checked by Claude against the episode's own texts (title, YouTube
+        description, chapters) and the web. A fix is kept only for a name that sounds like what was heard."""
+        from rapidfuzz import fuzz
+
+        from . import reels as R
+        text = " ".join(w.text for w in words)
+        if not ep.get("names_context"):
+            parts = [self.reel_title(ep), ep.get("title", "")]
+            try:
+                parts.append(self.yt.video(ep.video_id)["snippet"].get("description", ""))
+            except Exception:  # noqa: BLE001
+                pass
+            for c in ep.get("chapters") or (ep.get("final") or {}).get("chapters") or []:
+                parts.append(" ".join(map(str, c)) if isinstance(c, (list, tuple)) else str(c))
+            ep["names_context"] = "\n".join(p for p in parts if p)[:8000]
+            ep.save()
+        try:
+            res = self.llm.reel_names(ep.get("guest_name", ""), self.reel_title(ep), text, ep["names_context"])
+        except Exception:  # noqa: BLE001
+            log.exception("reel names")
+            return None
+        heard = {R.norm(w.text) for w in words}
+        keep = []
+        for f in res.get("fixes") or []:
+            src, dst = str(f.get("from", "")).strip(), str(f.get("to", "")).strip()
+            a, b = "".join(R.norm(t) for t in src.split()), "".join(R.norm(t) for t in dst.split())
+            if not a or not b or a == b or not any(R.norm(t) in heard for t in src.split()):
+                continue
+            if len(b) > 1.5 * len(a) + 2 or len(a) > 1.5 * len(b) + 2 or fuzz.ratio(a, b) < 50:
+                continue                                           # not the same spoken name (or words added): refused
+            keep.append({"from": src, "to": dst, "source": str(f.get("source", ""))[:200]})
+        return keep
 
     def reel_edit_kept(self, ep: Episode, n: int) -> bool:
         """The edit of reel n (picture, sound, word timings) is still here: subtitles alone can be redone."""

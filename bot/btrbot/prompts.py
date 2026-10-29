@@ -130,6 +130,8 @@ Group them into blocks (pages) of short lines (1 to 3 words per line) that follo
   article/preposition + its noun). If in doubt, keep the words together in the same block.
 - Vary the rhythm so it never feels monotonous: mix very short punch blocks (1-2 lines, a single huge word on its own for an
   accent) with longer flowing blocks; vary how many punch words each block has.
+- Never put the last 1-2 words of a sentence on the same block as the start of the next sentence: finish the sentence
+  on its block, start the next sentence on a new block (only a block that holds both sentences whole may mix them).
 - 4 lines per block at most (a hard limit). When a phrase is too long for 4 lines, end the block where its clause ends and
   continue the phrase on the next block; 1-2 lines is fine for an accent.
 Notation for each token:
@@ -187,3 +189,24 @@ Decide what to change:
 - "reply": one short French sentence for Loïc saying exactly what you will change (or asking ONE question if you
   really cannot tell what he means).
 Return ONLY JSON: {{"fixes": [{{"from": "...", "to": "..."}}], "relayout": false, "layout_note": "", "reply": "..."}}"""
+
+
+REEL_NAMES = """You check the spelling of the proper nouns in the subtitles of a short clip from Break The Routine, a DanceSport
+podcast hosted by Marius Iepure. Guest: {guest}. Episode: "{title}".
+What the speech recognition wrote for the clip:
+<clip>
+{text}
+</clip>
+Context written by the producers (episode title, YouTube description, chapters), names are spelled right there:
+<context>
+{context}
+</context>
+Find every proper noun in the clip: people (dancers, partners, judges, celebrities, family members), TV shows,
+competitions, dance studios, places, brands. Check each spelling, first against the context, then with web search
+whenever you are not certain (search the name with the guest, e.g. "Oti Mabuse sister", "Strictly 2019 Kelvin
+Fletcher partner"). Also catch names the recognizer wrote as ordinary words or split oddly ("Muti" for Motsi, "danny
+mack" for Danny Mac, "black pool" for Blackpool).
+Rules: only change a word into the correct spelling of the SAME spoken name (it sounds the same); never touch ordinary
+words; never add or remove words; if you cannot confirm a spelling, leave it as it is.
+Return ONLY JSON, after your searches: {{"fixes": [{{"from": "words exactly as in the clip", "to": "correct spelling",
+"source": "context" or a URL}}]}}"""

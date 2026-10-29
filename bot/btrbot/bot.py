@@ -1044,6 +1044,11 @@ def reel_caption(ep, n: int) -> str:
         notes.append("⚠️ pas trouvé, donc pas coupé : " + " / ".join(f"« {x} »" for x in item["missing_cuts"]))
     if item.get("fixes_not_found"):
         notes.append("⚠️ correction pas trouvée dans le texte : " + " / ".join(f"« {x} »" for x in item["fixes_not_found"]))
+    if item.get("names"):
+        notes.append("🔎 Noms vérifiés (texte de l'épisode + web) : " + " / ".join(item["names"][:6]))
+    vis = item.get("visibility") or {}
+    if vis.get("short"):
+        notes.append("⚠️ mots affichés trop brièvement : " + ", ".join(f"« {w} » {s} s" for w, s in vis["short"][:5]))
     if item.get("doubts"):
         notes.append("🔎 Mots où ton SRT et l'audio ne disent pas pareil (mon choix après →) :\n"
                      + "\n".join(item["doubts"][:4]) + (f"\n(+{len(item['doubts']) - 4} autres)" if len(item["doubts"]) > 4 else ""))
@@ -1069,9 +1074,10 @@ async def send_reel(ctx, ep, n: int):
 
 
 # bump the id when the reel rules change: after the deploy, Loïc gets one button to get his chosen reels again
-REELS_RULES = ("2026-10-29-face", "le zoom ne coupe plus jamais la tête (sur un gros plan il ne zoome plus), et les "
-                                  "sous-titres ont plus de marge sur les côtés pour la vue reel d'Instagram. Les reels sont "
-                                  "remontés en entier (même début, fin, coupes et corrections).")
+REELS_RULES = ("2026-10-29-names", "chaque mot reste au moins 0,5 s à l'écran (fini les mots de fin de phrase qui "
+                                   "flashent), la fin d'une phrase n'est plus collée au début de la suivante sur une "
+                                   "page, et les noms propres sont vérifiés avec le texte de l'épisode et le web. Les "
+                                   "reels déjà validés le restent.")
 
 
 REELS_FILES = "guest-folders-1"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
@@ -1109,8 +1115,10 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     if need != "subs":
         for k in ("cover", "cover_pick", "cover_count"):          # new stills: the cover is made again
             item.pop(k, None)
+    if item.get("said") and res.get("said") != item.get("said"):
+        item.pop("captions", None)                        # words changed (names fixed): captions written again
     item.update(res)
-    item["status"] = "preview"
+    item["status"] = "ok" if item.pop("keep_ok", False) else "preview"
     if not item.get("captions"):
         item["captions"] = await run(pipe.reel_captions, ep, res["said"])
     if item.pop("redo", False):                           # Loïc asked for another change during this render
@@ -1121,6 +1129,8 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
         return True
     RS(ep).save()
     await send_reel(ctx, ep, n)
+    if item.get("filed") and item["status"] == "ok":    # already on Drive / ClickUp: the new version replaces it
+        await say(ctx, await share_reel(ctx, ep, n, quiet=True))
     return True
 
 
@@ -1161,6 +1171,9 @@ async def reel_chain(ctx, ep, list_id: int, nums: list[int], done: int = 0, tota
     if rest and RS(ep).data.get("id") == list_id:
         bg(ctx, f"Reel {rest[0]}", reel_chain(ctx, ep, list_id, rest, done, total))
     elif not rest:
+        if not reels_pending(ep):                         # all decided already (validated reels redone)
+            await maybe_dispatch(ctx, ep)
+            return
         await say(ctx, f"✅ {done} reel(s) prêt(s) sur {total}. Valide ou jette chacun : quand tout est décidé, je te "
                        "demande lesquels vont en feed Instagram, puis je fais les covers et je range tout sur Drive et ClickUp.")
 
@@ -1194,6 +1207,8 @@ def resend_reels(ctx, ep, nums: list[int] | None = None) -> str:
         if it.get("status") in ("dropped", "queued", "rendering") or not reel_cand(ep, n):
             continue
         it["need"] = "subs" if it.get("status") in ("preview", "ok") and pipe.reel_edit_kept(ep, n) else "full"
+        if it.get("status") == "ok":
+            it["keep_ok"] = True                          # already validated: stays validated with the new version
         it["status"] = "queued"
         it.pop("redo", None)
         todo.append(n)

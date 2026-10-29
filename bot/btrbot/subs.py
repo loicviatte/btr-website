@@ -317,16 +317,125 @@ def auto_blocks(words: list) -> list[Block]:
     return blocks
 
 
+MIN_SEEN = 0.5      # every word stays on screen at least this long after it appears (190 ms blur-in + ~0.3 s to read)
+MIN_PAGE = 0.8      # shortest page
+
+
 def timeline(blocks: list[Block], total: float, layout_at) -> None:
-    """Block start/end on the reel, and where it sits (full frame or split screen)."""
+    """Page start/end on the reel, and where it sits (full frame or split screen). A page never leaves before its last
+    word has been readable for MIN_SEEN: when the next words come right after a sentence's last word, the next page
+    starts a little later (its words appear as soon as it starts) instead of wiping that word after a flash."""
+    prev_end = 0.0
     for i, b in enumerate(blocks):
-        b.start = b.lines[0][0].start
-        last = b.lines[-1][-1].end
+        toks = [t for line in b.lines for t in line]
+        b.start = max(toks[0].start, prev_end)
+        latest = max(max(t.start for t in toks), b.start)          # when the last word of the page appears
+        last = max(t.end for t in toks)
         nxt = blocks[i + 1].lines[0][0].start if i + 1 < len(blocks) else total
-        b.end = min(nxt, max(last + 0.35, b.start + 0.6), total)
+        b.end = min(max(latest + MIN_SEEN, min(nxt, max(last + 0.35, b.start + MIN_PAGE))), total)
+        prev_end = b.end
         split = any(layout_at(t) == "split" for t in (b.start + 0.05, (b.start + b.end) / 2, b.end - 0.05))
         b.y_center = Y_SPLIT if split else Y_FULL
         b.meta["split"] = split
+
+
+def appear(t: Tok, b: Block) -> float:
+    """When word t shows up: as it is spoken, but never before its page, and early enough to be readable MIN_SEEN
+    before the page goes (at the very end of a reel the last words come up a little ahead of the voice)."""
+    return max(b.start, min(t.start, b.end - MIN_SEEN))
+
+
+def visibility(blocks: list[Block]) -> dict:
+    """Check of the timing: how long each word is readable (page end − the moment it appears) and how late it appears
+    after it is spoken. {"short": [(word, seconds)], "min_seen": s, "max_late": s}"""
+    short, seen_all, late_all = [], [], []
+    for b in blocks:
+        for line in b.lines:
+            for t in line:
+                shown = appear(t, b)
+                seen = b.end - shown
+                seen_all.append(seen)
+                late_all.append(shown - t.start)
+                if seen < MIN_SEEN - 0.02:
+                    short.append((t.text, round(seen, 2)))
+    return {"short": short, "min_seen": round(min(seen_all, default=0), 2), "max_late": round(max(late_all, default=0), 2)}
+
+
+def merge_flashes(blocks: list[Block], span: float = 0.3) -> list[Block]:
+    """A page of 1-2 words spoken in a flash (< 0.3 s) cannot stay readable without pushing every next page late: it
+    joins the next page (or the one before, when the next is full)."""
+    out: list[Block] = []
+    i = 0
+    while i < len(blocks):
+        b = blocks[i]
+        toks = [t for line in b.lines for t in line]
+        quick = len(toks) <= 2 and toks and toks[-1].start - toks[0].start < span
+        if quick and i + 1 < len(blocks) and len(blocks[i + 1].lines) + len(b.lines) <= MAX_LINES:
+            blocks[i + 1].lines[:0] = b.lines
+        elif quick and out and len(out[-1].lines) + len(b.lines) <= MAX_LINES:
+            out[-1].lines.extend(b.lines)
+        else:
+            out.append(b)
+        i += 1
+    return out
+
+
+SENT_END = re.compile(r"[.?!…]['”\"]?$")
+
+
+def sentence_seams(blocks: list[Block], tail: int = 2) -> list[Block]:
+    """A page never holds the last 1-2 words of a sentence followed by the start of the next one (« …care. When
+    you »): those last words go back to the end of the page before; and a page never ends on the first 1-2 words of
+    a new sentence: they go to the next page."""
+    blocks = [b for b in blocks if any(b.lines)]
+
+    def flat(b):
+        return [t for line in b.lines for t in line]
+
+    def take_first(b, k):
+        out = []
+        while k and b.lines:
+            out.append(b.lines[0].pop(0))
+            k -= 1
+            if not b.lines[0]:
+                b.lines.pop(0)
+        return out
+
+    def take_last(b, k):
+        out = []
+        while k and b.lines:
+            out.insert(0, b.lines[-1].pop())
+            k -= 1
+            if not b.lines[-1]:
+                b.lines.pop()
+        return out
+    for i, b in enumerate(blocks):
+        toks = flat(b)
+        ends = [k for k, t in enumerate(toks) if SENT_END.search(t.text)]
+        if i > 0 and ends and ends[0] < tail and ends[0] < len(toks) - 1 and blocks[i - 1].lines:
+            prev = blocks[i - 1]
+            if not SENT_END.search(prev.lines[-1][-1].text):            # it continues the sentence of the page before
+                moved = take_first(b, ends[0] + 1)
+                last = prev.lines[-1]
+                if len(last) + len(moved) <= 3 and not any(t.big for t in moved + last):
+                    last.extend(moved)
+                else:
+                    prev.lines.append(moved)
+                toks = flat(b)
+                ends = [k for k, t in enumerate(toks) if SENT_END.search(t.text)]
+        if i + 1 < len(blocks) and not ends and len(toks) <= tail and b.lines \
+                and len(blocks[i + 1].lines) + len(b.lines) <= MAX_LINES:
+            blocks[i + 1].lines[:0] = b.lines                    # what is left (« When you ») joins its sentence
+            b.lines = []
+            continue
+        if i + 1 < len(blocks) and ends and len(toks) - 1 - ends[-1] in range(1, tail + 1):
+            moved = take_last(b, len(toks) - 1 - ends[-1])
+            nxt = blocks[i + 1]
+            if nxt.lines and len(nxt.lines[0]) + len(moved) <= 3 and not any(t.big for t in moved + nxt.lines[0]):
+                nxt.lines[0][:0] = moved
+            else:
+                nxt.lines.insert(0, moved)
+    return [b for b in blocks if b.lines]
 
 
 # ---------------------------------------------------------------- ASS
@@ -398,7 +507,7 @@ def block_events(b: Block, m: Measure) -> list[str]:
         for i, t in enumerate(line):
             kind = "big" if t.big else "small"
             size = round((BIG if t.big else SMALL) * s, 1)
-            t0 = max(0, int(round((t.start - b.start) * 1000)))
+            t0 = max(0, int(round((appear(t, b) - b.start) * 1000)))
             col = GOLD if t.gold else WHITE
             style = f"\\fn{FONT_NAMES[kind]}\\fs{size}\\i{1 if t.italic else 0}"
             fsp = ""

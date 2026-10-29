@@ -50,9 +50,12 @@ def main(models, clip, work):
     total = sum(p["frames"] for p in pcs) / info["fps"]
     ow = R.out_words(words, pcs, info["fps"])
     assert len(ow) == len(words) - 2, (len(ow), len(words))          # "observed Phebe" removed once
-    blocks = subs.cap_lines(subs.keep_phrases(subs.auto_blocks(ow)))
+    blocks = subs.cap_lines(subs.merge_flashes(subs.sentence_seams(subs.keep_phrases(subs.auto_blocks(ow)))))
     subs.vary(blocks)
     subs.timeline(blocks, total, lambda t: R.layout_at(pcs, t))
+    vis = subs.visibility(blocks)
+    print("visibility", vis)
+    assert not vis["short"], vis
     fonts = subs.prepare_fonts(ASSETS, work / "fonts")
     out = R.final_mux(video, audio, subs.write_ass(blocks, fonts, work / "subs.ass"), fonts, work / "final.mp4", total,
                       sum(p["frames"] for p in pcs))

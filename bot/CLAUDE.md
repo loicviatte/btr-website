@@ -35,6 +35,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (`state.Reels`, one shared object per process). Telegram: `/reels [lien]`, list of 10 moments with tick buttons,
   previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_subtitles / reels_resend / reel_validate /
   reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
+  no sentence tail on the next sentence's page (`sentence_seams`), flash pages merged (`merge_flashes`), every word
+  readable ≥ MIN_SEEN 0.5 s (`timeline` delays the next page, `appear`, checked by `visibility` → preview warning);
+  proper nouns checked once per edit by `pipeline.reel_names` (Sonnet + server web search, context = title, YouTube
+  description, chapters; a fix must sound like the heard word; cached in edit.json["names"], shown in the preview),
   placement (`vary` + `place`: mostly centred, 2 pages off-centre every 8 (l / r / lower / stair), a page never starts below the last word of the previous one nor in the bottom third). A restart resumes interrupted reels; when the reel rules
   change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
   the reels himself: the bot never posts them. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
@@ -52,7 +56,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   changing the choice later (reel_validate instagram=…) gives the slot back / deletes the bot's own task; renamed, status approved,
   description block below « ———— BTR Studio ———— » with links + captions, cover attached). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
-  sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description).
+  sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules
