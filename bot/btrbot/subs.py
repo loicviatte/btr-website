@@ -1,6 +1,6 @@
 """BTR v3 animated subtitles (style of claude/btr-subtitles-workflow.md), as an ASS file burned by libass.
 
-Blocks of 2-7 stacked lines; small linking words in Monument Extended Regular, punch words in Heavy, gold
+Pages of 1-7 stacked lines (about 3-4, varied; a phrase is never cut between two pages); small linking words in Monument Extended Regular, punch words in Heavy, gold
 #FCDF9A on key words, synthetic italic on punchlines. Each word comes out of a blur when it is spoken (190 ms),
 the block leaves with a 120 ms blur + fade. Soft black shadow offset 5 px. No landing effect, no text behind the
 head, no camera shake (all rejected by Loïc).
@@ -187,15 +187,62 @@ def parse_blocks(spec: list[dict], words: list, max_shift: int = 6, stats: dict 
     return blocks
 
 
+# words that cannot end a page (they lead into the next word) / cannot start one (they close the previous word)
+LEADS = {"a", "an", "the", "to", "of", "in", "on", "at", "for", "with", "from", "by", "into", "about", "my", "your",
+         "his", "her", "our", "their", "its", "this", "that", "these", "those", "and", "but", "or", "so", "because",
+         "if", "when", "than", "very", "really", "give", "why", "how", "what", "come", "let", "i", "you", "we", "they",
+         "he", "she", "it's", "i'm", "you're", "we're", "they're", "don't", "can't", "didn't", "doesn't", "won't",
+         "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did", "can", "could", "will",
+         "would", "should", "must", "no", "more", "most", "such", "kind", "sort", "lot", "bit", "going"}
+TAILS = {"not", "me", "it", "him", "her", "them", "us", "up", "out", "on", "off", "down", "back", "too", "there",
+         "away", "yet", "anyway", "though"}
+
+
+def _open_end(tok: Tok, nxt: Tok) -> bool:
+    """The page ends on `tok` and the next one starts with `nxt`: are they one expression cut in two?"""
+    if re.search(r"[.?!,:;…]['”\"]?$", tok.text):
+        return False                                     # the speaker closed the phrase there
+    return _key(tok.text) in LEADS or _key(nxt.text) in TAILS
+
+
+def keep_phrases(blocks: list[Block]) -> list[Block]:
+    """Never cut a phrase between two pages (« why | not », « give | me », « a lot | of »): the dangling words move to
+    the next page, or, when the next page starts with a closing word, that word joins the previous page."""
+    blocks = [b for b in blocks if any(b.lines)]
+    for i in range(len(blocks) - 1):
+        a, b = blocks[i], blocks[i + 1]
+        for _ in range(3):                               # at most 3 words moved per seam
+            if not a.lines or not b.lines or not _open_end(a.lines[-1][-1], b.lines[0][0]):
+                break
+            if _key(b.lines[0][0].text) in TAILS and sum(map(len, b.lines)) > 1:
+                a.lines[-1].append(b.lines[0].pop(0))    # « give | me » → « give me | »
+            elif sum(map(len, a.lines)) > 1:
+                b.lines[0].insert(0, a.lines[-1].pop())  # « a lot of | sugar » → « | of sugar »… then « a lot »
+            else:
+                b.lines[:0], a.lines = a.lines, []       # a one-word page leading into the next: one page
+                break
+            a.lines = [ln for ln in a.lines if ln]
+            b.lines = [ln for ln in b.lines if ln]
+    return [b for b in blocks if b.lines]
+
+
 def auto_blocks(words: list) -> list[Block]:
-    """Fallback without the model: 2-3 lines of 1-3 words, the longest word of each block big."""
+    """Fallback without the model: pages of varied length (a short accent after a long one), 1-3 words per line,
+    the longest word of each page big, never cut inside an expression."""
     blocks: list[Block] = []
     cur: list = []
     for i, w in enumerate(words):
         cur.append(w)
         end_sentence = bool(re.search(r"[.?!]$", w.text))
         gap = i + 1 < len(words) and words[i + 1].start - w.end > 0.35
-        if len(cur) >= 7 or ((end_sentence or gap) and len(cur) >= 3) or i == len(words) - 1:
+        short = len(blocks) % 3 == 2                     # every third page is a short accent
+        nxt = words[i + 1].text if i + 1 < len(words) else ""
+        open_end = bool(nxt) and (_open_end(Tok(w.text, 0, 0), Tok(nxt, 0, 0)) or _key(nxt) == "of"
+                                  or (w.text[:1].isupper() and nxt[:1].isupper() and not end_sentence
+                                      and _key(w.text) != "i" and _key(nxt) != "i"))   # a name: Danny Mac
+        if i == len(words) - 1 or (not open_end and (len(cur) >= (3 if short else 7)
+                                                     or ((end_sentence or gap) and len(cur) >= (1 if short else 3)))) \
+                or len(cur) >= 10:
             longest = max(cur, key=lambda x: len(_key(x.text)))
             toks = [Tok(x.text.upper() if x is longest else x.text, x.start, x.end, big=x is longest) for x in cur]
             lines, line = [], []
@@ -209,7 +256,7 @@ def auto_blocks(words: list) -> list[Block]:
                     line = []
             if line:
                 lines.append(line)
-            blocks.append(Block(lines, "c"))
+            blocks.append(Block(lines, ("c", "l", "c", "stair")[len(blocks) % 4]))
             cur = []
     return blocks
 

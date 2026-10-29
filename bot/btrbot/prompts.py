@@ -124,7 +124,14 @@ REEL_BLOCKS = """Lay out animated subtitles for a vertical reel of a DanceSport 
 Here are the words actually spoken in the reel, in order (index:word):
 {words}
 
-Group them into blocks of 2 to 7 short lines (1 to 3 words per line) that follow the speech. Notation for each token:
+Group them into blocks (pages) of short lines (1 to 3 words per line) that follow the speech.
+- NEVER split a phrase or an expression across two blocks: a block ends where the speaker's thought or clause ends, never
+  between words that belong together ("why not", "give me", "a lot of", "I don't know", "come on", verb + its object,
+  article/preposition + its noun). If in doubt, keep the words together in the same block.
+- Vary the rhythm so it never feels monotonous: mix very short punch blocks (1-2 lines, a single huge word on its own for an
+  accent) with longer flowing blocks; vary the alignment and how many punch words each block has.
+- About 3-4 lines per block is a guide, not a rule: go to 5-7 lines when a phrase needs it to stay whole, or 1 line for an accent.
+Notation for each token:
 - lower-case = small linking word; UPPER-CASE = punch word shown huge (one or two per block, the words that carry the meaning)
 - prefix * = gold (key words, about one per block), / = italic (punchlines), ~ = letters that tighten (use 1 or 2 times in the whole reel)
 - a prefix applies to ONE word only. Put “ ” around words the speaker quotes or paraphrases from someone else.

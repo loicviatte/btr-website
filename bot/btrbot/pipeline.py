@@ -485,6 +485,7 @@ class Pipeline:
             blocks = []
         if not blocks or stats.get("reinserted", 0) > 0.15 * len(ow):   # the model's layout misses too much
             blocks = subs.auto_blocks(ow)
+        blocks = subs.keep_phrases(blocks)
         subs.timeline(blocks, total, lambda t: R.layout_at(edit["layout"], t))
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
         ass = subs.write_ass(blocks, fonts, work / "subs.ass")
