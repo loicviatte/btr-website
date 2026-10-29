@@ -4,7 +4,7 @@ on:
   push:
     branches: ['frames-*']
 permissions:
-  contents: read
+  contents: write
 jobs:
   frames:
     runs-on: ubuntu-latest
@@ -13,6 +13,7 @@ jobs:
       # start-end windows (seconds), frames every second
       WINDOWS: "145-165 405-445 704-724 1283-1303 2050-2095 2125-2200 2891-2911 4133-4153 4647-4667 920-940"
     steps:
+      - uses: actions/checkout@v4
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null && pip install -q -U yt-dlp
       - name: Download windows and extract frames
         env:
@@ -24,14 +25,14 @@ jobs:
             a=${w%-*}; b=${w#*-}
             yt-dlp -q --cookies cookies.txt -f "bv*[height<=1080][ext=mp4]/bv*[height<=1080]" \
               --download-sections "*${a}-${b}" --force-keyframes-at-cuts -o "clips/w${a}.%(ext)s" \
-              "https://www.youtube.com/watch?v=$VID" || echo "fail $w"
+              "https://www.youtube.com/watch?v=$VID" >> frames/log.txt 2>&1 || echo "fail $w" >> frames/log.txt
             f=$(ls clips/w${a}.* 2>/dev/null | head -1)
             [ -n "$f" ] && ffmpeg -loglevel error -i "$f" -vf fps=1 -q:v 2 "frames/t${a}_%03d.jpg"
           done
           rm -f cookies.txt
           ls frames | wc -l
-      - uses: actions/upload-artifact@v4
-        with:
-          name: frames
-          path: frames/
-          retention-days: 3
+      - name: Save frames to the branch
+        run: |
+          mkdir -p tools/frames-out && mv frames/* tools/frames-out/
+          git config user.name "btr-bot"; git config user.email "btr-bot@users.noreply.github.com"
+          git add tools/frames-out && git commit -q -m "Frames for Instagram posts" && git push
