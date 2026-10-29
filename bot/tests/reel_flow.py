@@ -3,13 +3,15 @@
     TELEGRAM_BOT_TOKEN=x ANTHROPIC_API_KEY=x DATA_DIR=/tmp/btr-test python tests/reel_flow.py <some.mp4>
 """
 import asyncio
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace as NS
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import btrbot.bot as bot  # noqa: E402
-from btrbot.state import Reels as R2  # noqa: E402
+import btrbot.reels as R  # noqa: E402
+from btrbot.state import Reels  # noqa: E402
 
 VIDEO = sys.argv[1]
 sent = []
@@ -37,34 +39,37 @@ EP["title"] = "Oti Mabuse Part 2"
 EP["guest_name"] = "Oti Mabuse"
 EP.save()
 p.reel_episode = lambda vid, active: EP
+LIST_ID = [100]
 
 
 def cands(ep, n=10):
-    R2.of(ep).data = {"cands": [{"n": i, "start_s": 60.0 * i, "end_s": 60.0 * i + 40, "title": f"Moment {i}",
-                              "hook": "I got a yacht for my husband", "why": "ça fait débat", "verified": i != 3}
-                             for i in range(1, 11)], "sel": [], "items": {}}
-    R2.of(ep).save()
-    return R2.of(ep).data["cands"]
+    LIST_ID[0] += 1
+    return {"id": LIST_ID[0], "sel": [], "items": {},
+            "cands": [{"n": i, "start_s": 60.0 * i, "end_s": 60.0 * i + 40, "title": f"Moment {i}", "first_words": "a",
+                       "last_words": "b", "hook": "I got a yacht for my husband", "why": "ça fait débat " * 30,
+                       "verified": i != 3} for i in range(1, 11)]}
 
 
 p.reel_candidates = cands
 rendered = []
 
 
-def render(ep, n):
-    rendered.append(n)
-    item = R2.of(ep).data["items"].setdefault(str(n), {"shift": [0.0, 0.0], "cuts": []})
-    item.update(file=VIDEO, duration=15.4, status="preview", confidence=95, shots={"guest": 2, "split": 1},
-                said="I got a yacht", shown=40, spoken=51, captions={"instagram": "Hook IG", "tiktok": "Hook TT #dancesport"})
-    R2.of(ep).save()
-    return item
+def render(ep, cand, shift, cuts):
+    rendered.append((cand["n"], tuple(shift), tuple(cuts)))
+    f = Path(bot.cfg.data_dir) / f"reel_{cand['n']}.mp4"
+    shutil.copy(VIDEO, f)
+    return {"file": str(f), "duration": 15.4, "status": "preview", "confidence": 95, "shots": {"guest": 2, "split": 1},
+            "said": "I got a yacht", "shown": 40, "spoken": 51, "missing_cuts": list(cuts[1:])}
 
 
 p.render_reel = render
-p.asr_release = lambda: None
+p.reel_captions = lambda ep, said: {"instagram": "Hook IG", "tiktok": "Hook TT #dancesport"}
 slim_calls = []
-import btrbot.reels as R  # noqa: E402
 R.slim = lambda work, keep_final=True: slim_calls.append(keep_final)
+
+
+def store():
+    return Reels.of(EP).data
 
 
 async def press(data):
@@ -78,36 +83,57 @@ async def press(data):
 
 
 async def settle():
-    for _ in range(50):
+    for _ in range(200):
         await asyncio.sleep(0.02)
-        if not bot.RUNNING and not bot.LOCK.locked():
+        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        if not pending and not bot.LOCK.locked():
             break
     await asyncio.sleep(0.05)
 
 
 async def main():
     await bot.propose_reels(ctx)
+    lid = store()["id"]
     for n in (1, 3, 4, 3):          # 3 ticked then unticked
-        await press(f"rsel:{n}")
-    assert R2.of(EP).data["sel"] == [1, 4], R2.of(EP).data["sel"]
-    await press("rgo")
+        await press(f"rsel:{lid}:{n}")
+    assert store()["sel"] == [1, 4], store()["sel"]
+    await press(f"rgo:{lid}")
     await settle()
-    assert rendered == [1, 4], rendered
-    await press("rok:1")
-    await press("rno:4")
-    assert R2.of(EP).data["items"]["1"]["status"] == "ok" and R2.of(EP).data["items"]["4"]["status"] == "dropped"
+    assert [r[0] for r in rendered] == [1, 4], rendered
+    await press(f"rok:{lid}:1")
+    await press(f"rno:{lid}:4")
+    await settle()
+    assert store()["items"]["1"]["status"] == "ok" and store()["items"]["4"]["status"] == "dropped", store()["items"]
     h = bot.tool_handlers(ctx, [])
     out = await h["reel_adjust"](1, start_shift=-2, end_shift=1.5, cut="you know")
     await settle()
-    it = R2.of(EP).data["items"]["1"]
-    assert it["shift"] == [-2.0, 1.5] and it["cuts"] == ["you know"], it
-    assert rendered == [1, 4, 1], rendered
-    out2 = await h["reels_select"]([2, 99])
+    out = await h["reel_adjust"](1, cut="nowhere")
     await settle()
-    assert rendered[-1] == 2, rendered
+    it = store()["items"]["1"]
+    assert it["shift"] == [-2.0, 1.5] and it["cuts"] == ["you know", "nowhere"], it
+    assert rendered[-1] == (1, (-2.0, 1.5), ("you know", "nowhere")), rendered
+    assert it["missing_cuts"] == ["nowhere"]
+    # a dropped reel queued again is rendered; an old button from a previous list is refused
+    out2 = await h["reels_select"]([2, 4, 99])
+    await settle()
+    assert [r[0] for r in rendered[-2:]] == [2, 4], rendered
+    await bot.propose_reels(ctx)               # a new list
+    before = len(rendered)
+    await press(f"rok:{lid}:2")
+    await press(f"rgo:{lid}")
+    await settle()
+    assert len(rendered) == before and store()["id"] != lid
+    assert "ancienne liste" in sent[-1][1], sent[-1]
+    # dropping a reel that was never rendered, then selecting it, does not crash
+    lid2 = store()["id"]
+    await press(f"rno:{lid2}:5")
+    await settle()
+    out3 = await h["reels_select"]([5])
+    await settle()
+    assert rendered[-1][0] == 5, rendered
     print("context:\n" + bot.reels_context())
-    print("adjust →", out, "| select →", out2)
-    assert slim_calls == [True, False], slim_calls
+    print("select →", out2, "|", out3)
+    assert slim_calls == [True, False], slim_calls        # reel 5 had no file to clean
 
 
 asyncio.run(main())

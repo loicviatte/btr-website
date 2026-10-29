@@ -90,48 +90,79 @@ class Measure:
 
 # ---------------------------------------------------------------- notation → blocks
 WORD_RE = re.compile(r"[A-Za-zÀ-ÿ0-9']")
+TOKEN_RE = re.compile(r"^([“”\"'(]*)([*/~#^!%]*)([“”\"'(]*)(.*?)([”“\"')?.!,:;…]*)$")
+FILLERS = {"um", "uh", "uhm", "erm", "er", "ah", "eh", "hmm", "mm", "mhm", "oh"}
 
 
 def _key(s: str) -> str:
     return re.sub(r"[^a-z0-9']", "", s.lower().replace("’", "'"))
 
 
+def _same(a: str, b: str) -> bool:
+    """Same spoken word: identical letters, apostrophes aside (dont = don't). NEVER ≠ ever, LOVED ≠ love."""
+    ka, kb = _key(a), _key(b)
+    return bool(ka) and (ka == kb or ka.replace("'", "") == kb.replace("'", ""))
+
+
+def _shown(core: str, spoken: str) -> str:
+    """The spoken word's own letters, in the model's case (UPPER for a punch word)."""
+    letters = re.sub(r"^[^\w']+|[^\w']+$", "", spoken.replace("’", "'"))
+    if core.isupper() and len(re.sub(r"[^A-Za-zÀ-ÿ]", "", core)) > 1:
+        return letters.upper()
+    return letters                      # small word: the spoken casing (names keep their capital)
+
+
 def parse_blocks(spec: list[dict], words: list, max_shift: int = 6) -> list[Block]:
-    """Blocks from the model's notation, each token matched IN ORDER to a word really said.
-    A token that does not match a spoken word is dropped: the subtitles never add words."""
-    from rapidfuzz import fuzz
-    blocks: list[Block] = []
-    k = 0                                         # next spoken word available
-    for b in spec:
-        lines: list[list[Tok]] = []
-        for line in b.get("lines") or []:
-            toks: list[Tok] = []
+    """Blocks from the model's notation. Each token must be the SAME word as the next words really said (in order);
+    its letters always come from the transcription, the model only brings case, emphasis and punctuation. A token
+    that does not match is dropped; a spoken word the model skipped is put back as a small word, unless it is a
+    filler (um, uh…) or a repetition. So the subtitles can neither add, change nor silently drop a meaningful word."""
+    placed: list[tuple[int, int, int, Tok]] = []     # (block, line, word index, token)
+    meta: list[str] = []
+    k = 0
+    for bi, b in enumerate(spec):
+        meta.append(b.get("align", "c") if b.get("align") in ("c", "l", "stair") else "c")
+        for li, line in enumerate(b.get("lines") or []):
             for raw in str(line).split():
-                gold, italic, tight = "*" in raw[:3], "/" in raw[:3], "~" in raw[:3]
-                text = raw.lstrip("*/~#^!%")
-                if not WORD_RE.search(text):
+                m = TOKEN_RE.match(raw)
+                if not m:
                     continue
-                key = _key(text)
-                hit = None
-                for j in range(k, min(len(words), k + max_shift)):
-                    wk = _key(words[j].text)
-                    if wk == key or (key and wk and fuzz.ratio(wk, key) >= 80):
-                        hit = j
-                        break
+                lead, flags, lead2, core, trail = m.groups()
+                if not WORD_RE.search(core):
+                    continue
+                hit = next((j for j in range(k, min(len(words), k + max_shift)) if _same(core, words[j].text)), None)
                 if hit is None:
                     continue
                 w = words[hit]
                 k = hit + 1
-                letters = re.sub(r"[^A-Za-zÀ-ÿ]", "", text)
+                letters = re.sub(r"[^A-Za-zÀ-ÿ]", "", core)
                 big = bool(letters) and letters.isupper() and (len(letters) > 1 or letters not in ("I", "A"))
-                # keep the model's capitalisation/quotes/punctuation, but the letters must be the spoken word
-                shown = text if fuzz.ratio(_key(text), _key(w.text)) >= 80 else w.text
-                toks.append(Tok(shown, w.start, w.end, big, gold, italic, tight))
-            if toks:
-                lines.append(toks)
-        if lines:
-            align = b.get("align", "c") if b.get("align") in ("c", "l", "stair") else "c"
-            blocks.append(Block(lines, align))
+                text = (lead + lead2) + _shown(core, w.text) + trail
+                placed.append((bi, li, hit, Tok(text, w.start, w.end, big, "*" in flags, "/" in flags, "~" in flags)))
+    # put back the meaningful words the model skipped
+    used = {p[2] for p in placed}
+    fixed = list(placed)
+    for j, w in enumerate(words):
+        if j in used:
+            continue
+        kw = _key(w.text)
+        repeat = (j + 1 < len(words) and _key(words[j + 1].text) == kw) or (j > 0 and _key(words[j - 1].text) == kw)
+        if not kw or kw in FILLERS or repeat:
+            continue
+        before = [p for p in fixed if p[2] < j]
+        anchor = max(before, key=lambda p: p[2]) if before else (min(fixed, key=lambda p: p[2]) if fixed else None)
+        bi, li = (anchor[0], anchor[1]) if anchor else (0, 0)
+        if not meta:
+            meta.append("c")
+        word = re.sub(r"^[^\w']+|[^\w']+$", "", w.text.replace("’", "'"))
+        fixed.append((bi, li, j, Tok(word, w.start, w.end)))
+    fixed.sort(key=lambda p: p[2])
+    blocks: list[Block] = []
+    for bi in sorted({p[0] for p in fixed}):
+        lines = []
+        for li in sorted({p[1] for p in fixed if p[0] == bi}):
+            lines.append([p[3] for p in fixed if p[0] == bi and p[1] == li])
+        blocks.append(Block(lines, meta[bi] if bi < len(meta) else "c"))
     return blocks
 
 
@@ -226,7 +257,7 @@ def block_events(b: Block, m: Measure) -> list[str]:
             word = _esc(t.text)
             parts_txt.append(f"{{{style}\\c{col}\\alpha&HFF&\\blur7{fsp}\\t({t0},{t0 + 190},\\alpha&H00&\\blur0)}}{sep}{word}")
             parts_sh.append(f"{{{style}\\c&H000000&\\alpha&HFF&{fsp}\\t({t0},{t0 + 190},\\alpha&H70&)}}{sep}{word}")
-        out_fx = f"\\t({max(0, dur_ms - 120)},{dur_ms},\\blur8\\alpha&HFF&)"
+        out_fx = "\\fad(0,120)"
         head = f"{{\\an{an}\\pos({x:.0f},{y:.0f}){out_fx}\\bord0\\shad0}}"
         head_sh = f"{{\\an{an}\\pos({x + 5:.0f},{y + 5:.0f}){out_fx}\\bord0\\shad0\\blur5}}"
         ev.append(f"Dialogue: 0,{_ts(b.start)},{_ts(b.end)},Base,,0,0,0,,{head_sh}{''.join(parts_sh)}")

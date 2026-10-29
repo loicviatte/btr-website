@@ -19,8 +19,10 @@ def clean_quote(a: dict) -> dict:
     return {"top": _clean(a.get("top")), "key": _clean(a.get("key")).upper(), "bottom": _clean(a.get("bottom"))}
 
 
-def mmss(t: str) -> float:
-    parts = [int(p) for p in re.findall(r"\d+", t or "0")] or [0]
+def mmss(t) -> float:
+    if isinstance(t, (int, float)):
+        return float(t)
+    parts = [int(p) for p in re.findall(r"\d+", str(t or "0"))] or [0]
     sec = 0
     for p in parts:
         sec = sec * 60 + p
@@ -307,7 +309,7 @@ class Pipeline:
         return self._asr
 
     def asr_release(self) -> None:
-        """The speech model takes ~0.7 GB of RAM: free it once a batch of reels is done."""
+        """The speech model takes ~1 GB of RAM: freed as soon as a clip is transcribed (the words are cached)."""
         self._asr = None
 
     def reel_episode(self, vid: str | None, active: Episode | None) -> Episode:
@@ -328,7 +330,11 @@ class Pipeline:
         ep.save()
         return ep
 
-    def reel_candidates(self, ep: Episode, n: int = 10) -> list[dict]:
+    def reel_candidates(self, ep: Episode, n: int = 10) -> dict:
+        """10 moments proposed by Claude, checked against the transcript. Returns the new reels list (not saved)."""
+        import shutil
+        import time
+
         from . import reels as R
         cues = self.cues(ep)
         final = ep.get("final") or {}
@@ -337,61 +343,65 @@ class Pipeline:
         out = []
         for c in raw:
             a, b = mmss(c.get("start")), mmss(c.get("end"))
-            if b <= a:
+            if b <= a or not c.get("first_words") or not c.get("last_words"):
                 continue
-            b = min(b, a + R.MAX_LEN)
-            t = srt.find_quote(cues, c.get("first_words") or c.get("hook") or "")
-            if t is not None and abs(t - a) < 30:     # the transcript knows better than the model where it starts
-                a = t
-            c.update(start_s=a, end_s=max(b, a + R.MIN_LEN), verified=t is not None)
+            t = srt.find_quote(cues, c["first_words"])
+            if t is not None and abs(t - a) <= 8:     # the transcript knows better than the model where it starts
+                b, a = b + (t - a), t
+            c.update(start_s=a, end_s=min(max(b, a + R.MIN_LEN), a + 120), verified=t is not None)
             out.append(c)
         out.sort(key=lambda c: c["start_s"])
         for i, c in enumerate(out, 1):
             c["n"] = i
         R.cleanup(self.cfg.data_dir)
-        import shutil
         shutil.rmtree(ep.dir / "reels", ignore_errors=True)       # a new list replaces the previous one
-        rs = Reels.of(ep)
-        rs.data = {"cands": out, "sel": [], "items": {}}
-        rs.save()
-        return out
+        return {"id": int(time.time()) % 1_000_000, "cands": out, "sel": [], "items": {}}
 
-    def render_reel(self, ep: Episode, n: int) -> dict:
-        """Cut, frame, subtitle and render reel n. Returns its item (file, duration, captions, notes)."""
+    def render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list) -> dict:
+        """Cut, frame, subtitle and render one moment. Pure: returns the reel's new fields, the caller stores them."""
         import cv2
 
         from . import reels as R
         from . import subs
         from .config import ASSETS
-        store = Reels.of(ep)
-        cand = next(c for c in store.data["cands"] if c["n"] == n)
-        item = store.data["items"].setdefault(str(n), {"shift": [0.0, 0.0], "cuts": []})
+        n = cand["n"]
         work = ep.dir / "reels" / f"r{n:02d}"
         work.mkdir(parents=True, exist_ok=True)
-        # the section downloaded grows if Loïc asks to start earlier / end later than the margin allows
-        s0, s1 = item["shift"]
-        dl_a, dl_b = cand["start_s"] + min(0.0, s0), cand["end_s"] + max(0.0, s1)
-        tag = f"{int(dl_a)}_{int(dl_b + 0.999)}"
-        for old in work.glob("clip_*.mp4"):
-            if old.name != f"clip_{tag}.mp4":
+        s0, s1 = float(shift[0]), float(shift[1])
+        # the 6 s margin covers most adjustments; beyond it, the section downloaded grows
+        a0 = cand["start_s"] + min(0.0, s0 + R.PAD - 1)
+        b0 = cand["end_s"] + max(0.0, s1 - R.PAD + 1)
+        dl_a, dl_b = R.section_bounds(a0, b0)
+        tag = f"{dl_a}_{dl_b}"
+        for old in list(work.glob("clip_*.mp4")) + list(work.glob("words_*.json")):
+            if tag not in old.name:
                 old.unlink()
         clip = R.download_section(ep.video_id, dl_a, dl_b, work / f"clip_{tag}.mp4", self.cfg.ytdlp_cookies)
         info = R.probe(clip)
+        wav = work / f"clip_{tag}.wav"
+        if not wav.exists():
+            R.extract_wav(clip, wav)
         wj = work / f"words_{tag}.json"
         if wj.exists():
             words = [R.Word(**w) for w in json.loads(wj.read_text())]
         else:
-            words = self.asr().words(R.extract_wav(clip, work / "clip.wav"))
+            try:
+                words = self.asr().words(wav)
+            finally:
+                self.asr_release()
             wj.write_text(json.dumps([w.__dict__ for w in words]))
         i0, i1, conf = R.locate(words, cand.get("first_words", ""), cand.get("last_words", ""))
-        if i1 <= i0:
-            raise RuntimeError("début et fin de l'extrait mal repérés")
-        ranges = R.keep_ranges(words, i0, i1, *item["shift"], cut_phrases=item.get("cuts") or [])
+        energy = R.Energy(wav)
+        ranges, missing = R.keep_ranges(words, i0, i1, energy, s0, s1, cuts)
         a, b = ranges[0][0], ranges[-1][1]
-        cuts = R.scene_cuts(clip, a, b)
+        scene = R.scene_cuts(clip, max(0.0, a - 0.5), b + 0.5)
+        ranges = R.snap_to_cuts(ranges, scene, words)
+        a, b = ranges[0][0], ranges[-1][1]
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in R.sample_frames(clip, a, b, work / "frames")]
-        shots = R.shot_layouts(samples, cuts, a, b)
+        shots = R.shot_layouts(samples, scene, a, b)
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
+        if not pcs:
+            raise RuntimeError("extrait vide après le montage")
         video = R.render_video(clip, pcs, info, work / "pieces")
         audio = R.render_audio(clip, pcs, info["fps"], work)
         total = sum(p["frames"] for p in pcs) / info["fps"]
@@ -400,22 +410,30 @@ class Pipeline:
             blocks = subs.parse_blocks(self.llm.reel_blocks([w.text for w in ow]), ow)
         except Exception:  # noqa: BLE001
             blocks = []
-        if len(subs.shown_words(blocks)) < 0.6 * len(ow):      # the model skipped too much: plain automatic layout
+        if not blocks:
             blocks = subs.auto_blocks(ow)
         subs.timeline(blocks, total, lambda t: R.layout_at(pcs, t))
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
         ass = subs.write_ass(blocks, fonts, work / "subs.ass")
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
-        out = R.final_mux(video, audio, ass, fonts, work / f"BTR_reel_{n:02d}_{slug}.mp4", total)
-        said = " ".join(w.text for w in ow)
-        if not item.get("captions"):
-            try:
-                item["captions"] = self.llm.reel_captions(ep.get("guest_name", ""), ep.get("title", ""), said)
-            except Exception:  # noqa: BLE001
-                item["captions"] = {}
+        out = R.final_mux(video, audio, ass, fonts, work / f"BTR_reel_{n:02d}_{slug}.mp4", total,
+                          sum(p["frames"] for p in pcs))
+        import shutil
+        shutil.rmtree(work / "pieces", ignore_errors=True)        # ~400 MB of intermediate 1080p pieces
         kinds = [p["kind"] for p in pcs]
-        item.update(file=str(out), duration=round(total, 1), status="preview", confidence=round(conf),
-                    shots={k: kinds.count(k) for k in set(kinds)}, said=said[:1500],
-                    shown=len(subs.shown_words(blocks)), spoken=len(ow))
-        store.save()
-        return item
+        return {"file": str(out), "duration": round(total, 1), "status": "preview", "confidence": round(conf),
+                "shots": {k: kinds.count(k) for k in set(kinds)}, "said": " ".join(w.text for w in ow)[:1500],
+                "shown": len(subs.shown_words(blocks)), "spoken": len(ow), "missing_cuts": missing,
+                "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
+    def reel_captions(self, ep: Episode, said: str) -> dict:
+        """Instagram without hashtags (enforced), TikTok / Shorts with some."""
+        try:
+            c = self.llm.reel_captions(ep.get("guest_name", ""), ep.get("title", ""), said)
+        except Exception:  # noqa: BLE001
+            return {}
+        ig = re.sub(r"[ \t]*#[\w-]+", "", c.get("instagram") or "").strip()
+        tt = (c.get("tiktok") or ig).strip()
+        if "#" not in tt:
+            tt += "\n\n#dancesport #ballroom #latindance #breaktheroutine"
+        return {"instagram": ig, "tiktok": tt}

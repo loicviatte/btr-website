@@ -572,7 +572,6 @@ def assistant_context(ep) -> str:
         lines.append("SRT en attente de leur vidéo : " + ", ".join(p.name for p in PENDING.glob("*.srt")))
     if SHOTS:
         lines.append(f"{len(SHOTS)} capture(s) d'écran reçue(s) en attente d'explication.")
-    lines.append(reels_context())
     lines.append(design_context())
     lines.append("Vidéos récentes de la chaîne (id, statut, titre) :\n" + recent_videos())
     return "\n".join(lines)
@@ -596,7 +595,7 @@ def tool_handlers(ctx, images: list) -> dict:
         extra = ""
         if ep and ep.get("chapters"):
             extra = "\nChapitres actuels :\n" + "\n".join(f"{t} {x}" for t, x in ep["chapters"])
-        return await run(assistant_context, ep) + extra
+        return await run(assistant_context, ep) + "\n" + reels_context() + extra
 
     async def title_chat(message):
         ep = need(("axes_proposed", "frames_proposed", "thumbs_proposed"))
@@ -771,39 +770,34 @@ def tool_handlers(ctx, images: list) -> dict:
             return f"numéros invalides (1 à {len(valid)})"
         RS(ep).data["sel"] = nums
         RS(ep).save()
-        return bg(ctx, f"Reels {', '.join(map(str, nums))}", make_reels(ctx, ep, nums))
+        return start_reels(ctx, ep, nums)
 
     async def reel_adjust(n, start_shift=0, end_shift=0, cut=None, uncut=False):
         ep = reels_or_fail()
-        item = RS(ep).data["items"].get(str(int(n)))
-        if not item:
+        n = int(n)
+        if not reel_cand(ep, n) or not RS(ep).data["items"].get(str(n), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
-        sh = item.setdefault("shift", [0.0, 0.0])
+        item = reel_item(ep, n)
+        sh = item["shift"]
         sh[0] = round(sh[0] + float(start_shift or 0), 2)
         sh[1] = round(sh[1] + float(end_shift or 0), 2)
         if uncut:
             item["cuts"] = []
         if cut:
-            item.setdefault("cuts", []).append(str(cut))
+            item["cuts"].append(str(cut)[:200])
+        item["status"] = "queued"
         RS(ep).save()
-
-        async def redo():
-            try:
-                await make_reel(ctx, ep, int(n))
-            finally:
-                pipe.asr_release()
-        return bg(ctx, f"Reel {n} (retouche)", redo())
+        return bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, RS(ep).data["id"], [n]))
 
     async def reel_validate(n):
         ep = reels_or_fail()
-        if str(int(n)) not in RS(ep).data["items"]:
+        if not RS(ep).data["items"].get(str(int(n)), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
         return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, int(n)))
 
     async def reel_drop(n):
         ep = reels_or_fail()
-        await drop_reel(ctx, ep, int(n))
-        return f"reel {n} jeté"
+        return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
@@ -833,7 +827,7 @@ async def ask_assistant(ctx, text: str, images: list | None = None):
                                                 "data": base64.standard_b64encode(open(p, "rb").read()).decode()}}
                    for p in images[:4]] + [{"type": "text", "text": text or "(capture sans texte)"}]
         try:
-            ctx_text = await run(assistant_context, ep)
+            ctx_text = await run(assistant_context, ep) + "\n" + reels_context()
             hist = MEMORY.history()
             reply, actions = await assistant.converse(pipe.llm, CHAT_MODEL, ctx_text, hist, content, tool_handlers(ctx, images))
         except Exception as e:  # noqa: BLE001
@@ -908,6 +902,8 @@ async def couts_cmd(update: Update, ctx):
 
 
 # ---------------------------------------------------------------- reels (claude/btr-reels-workflow.md)
+# The reels store (state.Reels) is only changed here, on the event loop; the render runs in a worker thread and
+# returns its results. Buttons carry the list id, so a button from an older list can never act on a newer one.
 SHOT_NAMES = {"guest": "guest", "marius": "Marius", "unsure": "guest", "split": "écran scindé", "center": "plan centré"}
 
 
@@ -920,94 +916,151 @@ def reel_ep():
     return reg.episode(vid) if vid else None
 
 
-def reel_cand(ep, n: int) -> dict:
-    return next(c for c in RS(ep).data["cands"] if c["n"] == n)
+def reel_cand(ep, n: int) -> dict | None:
+    return next((c for c in RS(ep).data["cands"] if c["n"] == n), None)
+
+
+def reel_item(ep, n: int) -> dict:
+    it = RS(ep).data["items"].setdefault(str(n), {})
+    it.setdefault("shift", [0.0, 0.0])
+    it.setdefault("cuts", [])
+    return it
 
 
 def reel_kb(ep):
-    rs = RS(ep).data
-    sel = set(rs.get("sel") or [])
-    nums = [c["n"] for c in rs["cands"]]
-    rows = [[B(("✅ " if n in sel else "") + str(n), callback_data=f"rsel:{n}") for n in nums[i:i + 5]]
+    d = RS(ep).data
+    sel = set(d.get("sel") or [])
+    nums = [c["n"] for c in d["cands"]]
+    rows = [[B(("✅ " if n in sel else "") + str(n), callback_data=f"rsel:{d['id']}:{n}") for n in nums[i:i + 5]]
             for i in range(0, len(nums), 5)]
-    rows.append([B(f"🎬 Monter la sélection ({len(sel)})", callback_data="rgo")])
+    rows.append([B(f"🎬 Monter la sélection ({len(sel)})", callback_data=f"rgo:{d['id']}")])
     return K(rows)
 
 
-def reel_list_text(ep) -> str:
+def reel_list_parts(ep) -> list[str]:
+    """The list as Telegram messages under 4096 characters, split between moments, never inside a tag."""
     from .srt import fmt
     cands = RS(ep).data["cands"]
-    out = [f"🎞️ <b>{len(cands)} moments pour les reels</b> · {esc(ep.get('title'))}",
-           "Coche ceux que tu veux (6 par semaine), puis « Monter la sélection ».", ""]
+    head = (f"🎞️ <b>{len(cands)} moments pour les reels</b> · {esc(str(ep.get('title'))[:120])}\n"
+            "Coche ceux que tu veux (6 par semaine), puis « Monter la sélection ».\n")
+    parts, cur = [], head
     for c in cands:
         d = int(c["end_s"] - c["start_s"])
         warn = "" if c.get("verified") else " ⚠️ début pas retrouvé mot pour mot dans le transcript"
-        out.append(f"<b>{c['n']}.</b> {fmt(c['start_s'])} · {d} s · <b>{esc(c.get('title'))}</b>\n"
-                   f"“{esc(str(c.get('hook', ''))[:150])}”\n<i>{esc(c.get('why'))}</i>{warn}")
-    return "\n".join(out)[:4000]
+        entry = (f"\n<b>{c['n']}.</b> {fmt(c['start_s'])} · {d} s · <b>{esc(str(c.get('title'))[:80])}</b>\n"
+                 f"“{esc(str(c.get('hook', ''))[:200])}”\n<i>{esc(str(c.get('why'))[:200])}</i>{warn}\n")
+        if len(cur) + len(entry) > 3900:
+            parts.append(cur)
+            cur = ""
+        cur += entry
+    parts.append(cur)
+    return parts
 
 
 async def propose_reels(ctx, vid: str | None = None):
     active = reg.episode(reg.active) if reg.active else None
     ep = await run(pipe.reel_episode, vid, active)
     await say(ctx, f"🎞️ Je relis « {esc(ep.get('title'))} » et je cherche les 10 meilleurs moments pour des reels…")
-    await run(pipe.reel_candidates, ep)
+    data = await run(pipe.reel_candidates, ep)
+    if not data["cands"]:
+        await say(ctx, "Je n'ai trouvé aucun moment exploitable dans ce transcript.")
+        return
+    RS(ep).data = data
+    RS(ep).save()
     reg.data["reels_vid"] = ep.video_id
     reg.save()
-    await say(ctx, reel_list_text(ep), reply_markup=reel_kb(ep))
+    parts = reel_list_parts(ep)
+    for i, part in enumerate(parts):
+        await say(ctx, part, **({"reply_markup": reel_kb(ep)} if i == len(parts) - 1 else {}))
 
 
 def reel_caption(ep, n: int) -> str:
-    c, item = reel_cand(ep, n), RS(ep).data["items"][str(n)]
+    c, item = reel_cand(ep, n) or {}, reel_item(ep, n)
     shots = ", ".join(f"{SHOT_NAMES.get(k, k)} ×{v}" for k, v in (item.get("shots") or {}).items())
     notes = []
     if (item.get("confidence") or 100) < 85:
         notes.append("⚠️ début ou fin repérés avec un doute")
-    if item.get("spoken") and item.get("shown", 0) < 0.7 * item["spoken"]:
-        notes.append(f"sous-titres : {item['shown']} mots affichés sur {item['spoken']} dits")
-    return (f"🎞️ Reel {n} · {item['duration']} s · {c.get('title')}\n“{str(c.get('hook', ''))[:200]}”\nPlans : {shots}"
-            + ("\n" + "\n".join(notes) if notes else "")
+    if item.get("missing_cuts"):
+        notes.append("⚠️ pas trouvé, donc pas coupé : " + " / ".join(f"« {x} »" for x in item["missing_cuts"]))
+    return (f"🎞️ Reel {n} · {item.get('duration')} s · {str(c.get('title'))[:80]}\n“{str(c.get('hook', ''))[:200]}”\n"
+            f"Plans : {shots}" + ("\n" + "\n".join(notes) if notes else "")
             + "\nDis-moi en texte s'il faut changer quelque chose (« commence 2 s plus tôt », « coupe la dernière phrase »).")
 
 
 async def send_reel(ctx, ep, n: int):
-    item = RS(ep).data["items"][str(n)]
-    kb = K([[B("✅ Valider", callback_data=f"rok:{n}"), B("🗑 Jeter", callback_data=f"rno:{n}")]])
+    d = RS(ep).data
+    item = reel_item(ep, n)
+    kb = K([[B("✅ Valider", callback_data=f"rok:{d['id']}:{n}"), B("🗑 Jeter", callback_data=f"rno:{d['id']}:{n}")]])
     with open(item["file"], "rb") as f:
         await ctx.bot.send_video(cfg.chat_id, f, caption=reel_caption(ep, n)[:1000], supports_streaming=True,
                                  width=1080, height=1920, duration=int(item["duration"]), reply_markup=kb,
                                  read_timeout=300, write_timeout=300)
-    MEMORY.add("assistant", f"[vidéo envoyée : reel {n} ({item['duration']} s), {reel_cand(ep, n).get('title')}]")
+    MEMORY.add("assistant", f"[vidéo envoyée : reel {n} ({item['duration']} s), {(reel_cand(ep, n) or {}).get('title')}]")
 
 
-async def make_reel(ctx, ep, n: int):
-    await run(pipe.render_reel, ep, n)
+async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
+    """Render reel n of list `list_id` (skipped if that list was replaced or the reel dropped meanwhile)."""
+    d = RS(ep).data
+    item = reel_item(ep, n)
+    cand = reel_cand(ep, n)
+    if d.get("id") != list_id or not cand or item.get("status") == "dropped":
+        return False
+    item["status"] = "rendering"
+    res = await run(pipe.render_reel, ep, dict(cand), list(item["shift"]), list(item["cuts"]))
+    if RS(ep).data.get("id") != list_id:                  # a new list arrived during the render
+        return False
+    if item.get("status") == "dropped":
+        return False
+    item.update(res)
+    if not item.get("captions"):
+        item["captions"] = await run(pipe.reel_captions, ep, res["said"])
+    RS(ep).save()
     await send_reel(ctx, ep, n)
+    return True
 
 
-async def make_reels(ctx, ep, nums: list[int]):
-    await say(ctx, f"🎬 Je monte {len(nums)} reel(s) : {', '.join(map(str, nums))}. Compte quelques minutes par reel, "
-                   "je t'envoie chacun dès qu'il est prêt.")
-    ok = 0
+async def reel_chain(ctx, ep, list_id: int, nums: list[int], done: int = 0, total: int | None = None):
+    """One reel per heavy job: a new episode's thumbnails (or a click on Valider) can slot in between two reels."""
+    total = total or len(nums)
+    n, rest = nums[0], nums[1:]
+    ok = False
     try:
-        for n in nums:
-            try:
-                await make_reel(ctx, ep, n)
-                ok += 1
-            except Exception as e:  # noqa: BLE001
-                log.exception("reel %s", n)
-                await say(ctx, f"⚠️ Reel {n} : échec (<code>{esc(str(e)[-300:])}</code>). Je passe au suivant.")
-    finally:
-        pipe.asr_release()
-    await say(ctx, f"✅ {ok} reel(s) prêts sur {len(nums)}. Valide ceux qui te plaisent : je t'envoie alors le fichier "
-                   "final et les légendes Instagram et TikTok.")
+        ok = await make_reel(ctx, ep, list_id, n)
+    except Exception as e:  # noqa: BLE001
+        log.exception("reel %s", n)
+        it = reel_item(ep, n)
+        if it.get("status") == "rendering":
+            it["status"] = "failed"
+        RS(ep).save()
+        await say(ctx, f"⚠️ Reel {n} : échec (<code>{esc(str(e)[-300:])}</code>)." + (" Je passe au suivant." if rest else ""))
+    done += 1 if ok else 0
+    if rest and RS(ep).data.get("id") == list_id:
+        bg(ctx, f"Reel {rest[0]}", reel_chain(ctx, ep, list_id, rest, done, total))
+    elif not rest:
+        await say(ctx, f"✅ {done} reel(s) prêt(s) sur {total}. Valide ceux qui te plaisent : je t'envoie alors le fichier "
+                       "final et les légendes Instagram et TikTok.")
+
+
+def start_reels(ctx, ep, nums: list[int]) -> str:
+    d = RS(ep).data
+    for n in nums:
+        it = reel_item(ep, n)
+        if it.get("status") == "dropped":
+            it["status"] = "queued"
+    RS(ep).save()
+    asyncio.create_task(say(ctx, f"🎬 Je monte {len(nums)} reel(s) : {', '.join(map(str, nums))}. Compte quelques minutes "
+                                 "par reel, je t'envoie chacun dès qu'il est prêt."))
+    return bg(ctx, f"Reel {nums[0]}", reel_chain(ctx, ep, d["id"], nums))
 
 
 async def validate_reel(ctx, ep, n: int):
     from pathlib import Path
 
     from . import reels as R
-    item = RS(ep).data["items"][str(n)]
+    item = reel_item(ep, n)
+    if not item.get("file") or not Path(item["file"]).exists():
+        await say(ctx, f"Le reel {n} n'est plus disponible (liste remplacée ou fichier supprimé).")
+        return
     item["status"] = "ok"
     RS(ep).save()
     with open(item["file"], "rb") as f:
@@ -1020,12 +1073,12 @@ async def validate_reel(ctx, ep, n: int):
 
 
 async def drop_reel(ctx, ep, n: int):
+    """Runs under the global lock: never while this reel's files are being written."""
     from pathlib import Path
 
     from . import reels as R
-    item = RS(ep).data["items"].get(str(n)) or {}
+    item = reel_item(ep, n)
     item["status"] = "dropped"
-    RS(ep).data["items"][str(n)] = item
     RS(ep).save()
     if item.get("file"):
         R.slim(Path(item["file"]).parent, keep_final=False)
@@ -1034,16 +1087,16 @@ async def drop_reel(ctx, ep, n: int):
 
 async def on_reel_button(ctx, q, d: str):
     if d == "reels:propose":
-        vid = reg.active
-        await say(ctx, esc(bg(ctx, "Moments pour les reels", propose_reels(ctx, vid))))
+        await say(ctx, esc(bg(ctx, "Moments pour les reels", propose_reels(ctx, reg.active))))
         return
     ep = reel_ep()
-    if not ep or not RS(ep):
-        await say(ctx, "Je n'ai plus cette liste de reels : demande-moi d'en proposer de nouveaux.")
+    parts = d.split(":")
+    if not ep or not RS(ep) or len(parts) < 2 or not parts[1].isdigit() or int(parts[1]) != RS(ep).data.get("id"):
+        await say(ctx, "Ce bouton vient d'une ancienne liste de reels : demande-moi la liste actuelle ou une nouvelle.")
         return
     rs = RS(ep).data
-    if d.startswith("rsel:"):
-        n = int(d.split(":")[1])
+    n = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
+    if parts[0] == "rsel" and n:
         sel = rs.setdefault("sel", [])
         sel.remove(n) if n in sel else sel.append(n)
         RS(ep).save()
@@ -1051,29 +1104,31 @@ async def on_reel_button(ctx, q, d: str):
             await q.edit_message_reply_markup(reel_kb(ep))
         except Exception:  # noqa: BLE001
             pass
-    elif d == "rgo":
+    elif parts[0] == "rgo":
         nums = sorted(rs.get("sel") or [])
         if not nums:
             await say(ctx, "Coche d'abord au moins un moment.")
             return
-        await say(ctx, esc(bg(ctx, f"Reels {', '.join(map(str, nums))}", make_reels(ctx, ep, nums))))
-    elif d.startswith("rok:"):
-        await guarded(ctx, "Reel validé", validate_reel(ctx, ep, int(d.split(":")[1])))
-    elif d.startswith("rno:"):
-        await drop_reel(ctx, ep, int(d.split(":")[1]))
+        await say(ctx, esc(start_reels(ctx, ep, nums)))
+    elif parts[0] == "rok" and n:
+        await say(ctx, esc(bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))))
+    elif parts[0] == "rno" and n:
+        await say(ctx, esc(bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, n))))
 
 
 def reels_context() -> str:
+    """For the chat model. Called on the event loop only (the store is never read from another thread)."""
     ep = reel_ep()
     if not ep or not RS(ep):
         return "Reels : aucune liste en cours."
     rs = RS(ep).data
-    status = {"preview": "envoyé, en attente de son avis", "ok": "validé", "dropped": "jeté"}
+    status = {"preview": "envoyé, en attente de son avis", "ok": "validé", "dropped": "jeté", "rendering": "en cours de montage",
+              "queued": "en file d'attente", "failed": "échec"}
     lines = [f"Reels de « {ep.get('title')} » ({ep.video_id}) : moments proposés "
              + " | ".join(f"{c['n']}. {c.get('title')} ({int(c['end_s'] - c['start_s'])} s)" for c in rs["cands"]),
              "Cochés : " + (", ".join(map(str, sorted(rs.get("sel") or []))) or "aucun")]
     for k, it in sorted(rs.get("items", {}).items(), key=lambda kv: int(kv[0])):
-        lines.append(f"Reel {k} : {status.get(it.get('status'), 'en cours')}, {it.get('duration', '?')} s, décalages début/fin "
+        lines.append(f"Reel {k} : {status.get(it.get('status'), 'en attente')}, {it.get('duration', '?')} s, décalages début/fin "
                      f"{it.get('shift')}, phrases coupées {it.get('cuts') or 'aucune'}. Dit : {str(it.get('said', ''))[:300]}")
     return "\n".join(lines)
 
@@ -1152,7 +1207,7 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
-    if q.data.startswith(("rsel:", "rok:", "rno:", "reels:")) or q.data == "rgo":
+    if q.data.startswith(("rsel:", "rok:", "rno:", "rgo:", "reels:")):
         await on_reel_button(ctx, q, q.data)
         return
     if q.data == "part:redo":
