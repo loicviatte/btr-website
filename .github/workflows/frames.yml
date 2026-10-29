@@ -11,7 +11,7 @@ jobs:
     env:
       VID: PjDZ8X_JWY0
       # start-end windows (seconds), frames every second
-      WINDOWS: "145-165 405-445 704-724 1283-1303 2050-2095 2125-2200 2891-2911 4133-4153 4647-4667 920-940"
+      WINDOWS: "161-162 417-418 713-714 1287-1288 2058-2059 4144-4145 2905-2906 2163-2164 2084-2085 2135-2136 2137-2138 2141-2142 2145-2146 2177-2178 2189-2190"
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -26,7 +26,7 @@ jobs:
           mkdir -p frames clips
           for w in $WINDOWS; do
             a=${w%-*}; b=${w#*-}
-            yt-dlp -q --remote-components ejs:github --cookies cookies.txt -f "bv*[height<=1080][ext=mp4]/bv*[height<=1080]" \
+            yt-dlp -q --remote-components ejs:github --cookies cookies.txt -f "bv*[height<=2160]" \
               --download-sections "*${a}-${b}" --force-keyframes-at-cuts -o "clips/w${a}.%(ext)s" \
               "https://www.youtube.com/watch?v=$VID" >> frames/log.txt 2>&1 || echo "fail $w" >> frames/log.txt
             f=$(ls clips/w${a}.* 2>/dev/null | head -1)
