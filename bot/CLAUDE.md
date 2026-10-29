@@ -32,8 +32,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Marius bottom, frame-exact render, −14 LUFS, no music), `btrbot/subs.py` (v3 subtitles as ASS: Regular/Heavy,
   gold, italic, tighten; words only from the transcription, never added), state in `data/episodes/<id>/reels.json`
   (`state.Reels`, one shared object per process). Telegram: `/reels [lien]`, list of 10 moments with tick buttons,
-  previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_validate / reel_drop. Loïc publishes
-  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram).
+  previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_subtitles / reels_resend / reel_validate /
+  reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
+  position varies (`vary`: c / l / r / stair, some pages lower). A restart resumes interrupted reels; when the reel rules
+  change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
+  the reels himself: the bot never posts them. Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

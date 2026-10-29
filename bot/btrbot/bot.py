@@ -796,7 +796,7 @@ def tool_handlers(ctx, images: list) -> dict:
         if not item.get("file"):
             return f"le reel {n} n'est pas encore monté"
         res = await run(pipe.reel_feedback, ep, n, dict(item), str(feedback))
-        fixes = [f for f in res.get("fixes") or [] if f.get("from") and f.get("to")]
+        fixes = [{**f, "ok": 1} for f in res.get("fixes") or [] if f.get("from") and f.get("to")]
         it = reel_item(ep, n)
         if fixes:
             it.setdefault("fixes", []).extend(fixes)
@@ -819,8 +819,12 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
+    async def reels_resend(nums=None):
+        ep = reels_or_fail()
+        return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
+
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
-            "reel_subtitles": reel_subtitles,
+            "reel_subtitles": reel_subtitles, "reels_resend": reels_resend,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1024,6 +1028,19 @@ async def send_reel(ctx, ep, n: int):
     MEMORY.add("assistant", f"[vidéo envoyée : reel {n} ({item['duration']} s), {(reel_cand(ep, n) or {}).get('title')}]")
 
 
+# bump the id when the reel rules change: after the deploy, Loïc gets one button to get his chosen reels again
+REELS_RULES = ("2026-10-29-4l", "sous-titres à 4 lignes max, jamais une expression coupée entre deux pages, position qui "
+                                "varie (gauche / droite / plus bas). Les corrections inventées sont retirées.")
+
+
+def loic_wrote(words: str) -> bool:
+    """Every word of a correction appears in one of Loïc's own messages (old fixes made before the guard)."""
+    norm = lambda t: re.sub(r"[^a-z0-9]", "", t.lower())            # noqa: E731
+    his = {norm(t) for m in MEMORY._list() if m["role"] == "user" for t in m["content"].split()}
+    new = {norm(t) for t in str(words).split()} - {""}
+    return bool(new) and new <= his
+
+
 async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     """Render reel n of list `list_id` (skipped if that list was replaced or the reel dropped meanwhile)."""
     d = RS(ep).data
@@ -1033,6 +1050,9 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
         return False                                   # replaced list, dropped, or already taken by another chain
     item["status"] = "rendering"
     need = item.pop("need", None) or ("subs" if item.get("file") else "full")
+    if need == "subs" and not pipe.reel_edit_kept(ep, n):
+        need = "full"                                  # edit made before the subtitles-only redo, or cleaned up
+    item["fixes"] = [f for f in item.get("fixes") or [] if f.get("ok") or loic_wrote(f.get("to", ""))]
     if need == "subs":
         res = await run(pipe.reel_subtitles, ep, dict(cand), list(item.get("fixes") or []), item.get("sub_note", ""))
     else:
@@ -1117,6 +1137,27 @@ def start_reels(ctx, ep, nums: list[int]) -> str:
     return bg(ctx, f"Reel {todo[0]}", reel_chain(ctx, ep, d.get("id"), todo))
 
 
+def resend_reels(ctx, ep, nums: list[int] | None = None) -> str:
+    """Make again the chosen reels (all ticked ones by default, never the dropped ones) with the current rules: the
+    subtitles only when the edit is still here, the whole edit otherwise (failed, interrupted, cleaned up)."""
+    d = RS(ep).data
+    todo = []
+    for n in nums or sorted(d.get("sel") or []):
+        it = reel_item(ep, n)
+        if it.get("status") in ("dropped", "queued", "rendering") or not reel_cand(ep, n):
+            continue
+        it["need"] = "subs" if it.get("status") in ("preview", "ok") and pipe.reel_edit_kept(ep, n) else "full"
+        it["status"] = "queued"
+        it.pop("redo", None)
+        todo.append(n)
+    RS(ep).save()
+    if not todo:
+        return "aucun reel à renvoyer (déjà en cours, ou jetés)"
+    asyncio.create_task(say(ctx, f"🎬 Je refais les reels {', '.join(map(str, todo))} avec les règles actuelles et je te "
+                                 "les renvoie un par un."))
+    return bg(ctx, f"Reel {todo[0]}", reel_chain(ctx, ep, d.get("id"), todo))
+
+
 async def validate_reel(ctx, ep, n: int):
     from pathlib import Path
 
@@ -1174,6 +1215,8 @@ async def on_reel_button(ctx, q, d: str):
             await say(ctx, "Coche d'abord au moins un moment.")
             return
         await say(ctx, esc(start_reels(ctx, ep, nums)))
+    elif parts[0] == "rall":
+        await say(ctx, esc(resend_reels(ctx, ep)))
     elif parts[0] == "rok" and n:
         await say(ctx, esc(bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))))
     elif parts[0] == "rno" and n:
@@ -1466,14 +1509,25 @@ async def on_boot(app):
             await app.bot.send_message(cfg.chat_id, "🔄 BTR bot (re)démarré, je surveille YouTube.")
             ep = reel_ep()
             if ep and RS(ep):
-                stuck = [k for k, it in RS(ep).data["items"].items() if it.get("status") in ("queued", "rendering")]
-                for k in stuck:
-                    RS(ep).data["items"][k]["status"] = "failed"
+                rs = RS(ep).data
+                stuck = sorted((int(k) for k, it in rs["items"].items() if it.get("status") in ("queued", "rendering")))
+                for k in stuck:                                 # a restart (deploy) stopped them: start again
+                    it = rs["items"][str(k)]
+                    it["status"], it["need"] = "queued", ("full" if it.get("need") == "full" or it.get("redo") else
+                                                          it.get("need") or "full")
+                    it.pop("redo", None)
                 if stuck:
                     RS(ep).save()
-                    await app.bot.send_message(cfg.chat_id, f"⚠️ Redémarrage pendant le montage des reels {', '.join(sorted(stuck, key=int))} : "
-                                               "ils n'ont pas été finis. Redemande-les (« remonte les reels "
-                                               f"{', '.join(sorted(stuck, key=int))} »).")
+                    await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
+                    bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("reels_rules") != REELS_RULES[0] and rs.get("sel"):
+                    reg.data["reels_rules"] = REELS_RULES[0]
+                    reg.save()
+                    sel = [n for n in sorted(rs["sel"]) if n not in stuck
+                           and (rs["items"].get(str(n)) or {}).get("status") != "dropped"]
+                    if sel:
+                        await say(app, f"✨ Reels : {REELS_RULES[1]}", reply_markup=K([[B(
+                            f"🎬 Renvoyer les reels {', '.join(map(str, sel))}", callback_data=f"rall:{rs.get('id')}")]]))
             err = cfg.data_dir / "last_deploy_error.txt"
             if err.exists():
                 reg.data["deploy_error"] = err.read_text()[-3000:]

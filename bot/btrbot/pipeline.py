@@ -475,9 +475,9 @@ class Pipeline:
         from .config import ASSETS
         n = cand["n"]
         work = ep.dir / "reels" / f"r{n:02d}"
-        edit = json.loads((work / "edit.json").read_text())
-        if not (work / "base.mp4").exists() or not (work / "audio.m4a").exists():
+        if not self.reel_edit_kept(ep, n):
             raise RuntimeError("le montage de ce reel n'est plus sur le serveur : il faut le refaire en entier")
+        edit = json.loads((work / "edit.json").read_text())
         ow, not_found = R.apply_fixes([R.Word(**w) for w in edit["words"]], fixes)
         total = edit["frames"] / edit["fps"]
         stats: dict = {}
@@ -487,7 +487,8 @@ class Pipeline:
             blocks = []
         if not blocks or stats.get("reinserted", 0) > 0.15 * len(ow):   # the model's layout misses too much
             blocks = subs.auto_blocks(ow)
-        blocks = subs.keep_phrases(blocks)
+        blocks = subs.cap_lines(subs.keep_phrases(blocks))       # ≤ 4 lines a page, no expression cut in two
+        subs.vary(blocks)                                         # not always centred, not always at the same height
         subs.timeline(blocks, total, lambda t: R.layout_at(edit["layout"], t))
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
         ass = subs.write_ass(blocks, fonts, work / "subs.ass")
@@ -498,6 +499,11 @@ class Pipeline:
                 "shown": len(subs.shown_words(blocks)), "spoken": len(ow), "fixes_not_found": not_found,
                 "on_screen": [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in blocks][:40],
                 "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
+    def reel_edit_kept(self, ep: Episode, n: int) -> bool:
+        """The edit of reel n (picture, sound, word timings) is still here: subtitles alone can be redone."""
+        work = ep.dir / "reels" / f"r{n:02d}"
+        return all((work / f).exists() for f in ("edit.json", "base.mp4", "audio.m4a"))
 
     def reel_feedback(self, ep: Episode, n: int, item: dict, feedback: str) -> dict:
         """What Loïc's remark about the subtitles means: word fixes and/or a layout note (Claude reads the reel).

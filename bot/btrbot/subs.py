@@ -24,6 +24,9 @@ DESC = 0.32 * EM              # descender, below the baseline
 GOLD = "&H9ADFFC&"            # #FCDF9A in ASS (BGR)
 WHITE = "&HFFFFFF&"
 Y_FULL, Y_SPLIT = 1160, 960   # block centre: under the face on a full frame, on the seam of a split screen
+Y_LOW, LOW_BOTTOM = 1380, 1540  # lower page (alternates with Y_FULL), its bottom always above the Instagram caption UI
+MAX_LINES = 4                 # hard limit per page (Loïc, 29.10.2026)
+ALIGNS = ("c", "l", "r", "stair")
 STAIR = 60                    # each line of a "stair" block is shifted right by 60 px (120 px on the 4K master)
 FONT_FILES = {"small": "BTRRegular.ttf", "big": "BTRHeavy.ttf"}
 FONT_NAMES = {"small": "BTR Regular", "big": "BTR Heavy"}
@@ -43,7 +46,7 @@ class Tok:
 @dataclass
 class Block:
     lines: list[list[Tok]]
-    align: str = "c"          # c | l | stair
+    align: str = "c"          # c | l | r | stair
     start: float = 0.0
     end: float = 0.0
     y_center: float = Y_FULL
@@ -121,7 +124,7 @@ def parse_blocks(spec: list[dict], words: list, max_shift: int = 6, stats: dict 
     toks: list[tuple[int, int, str]] = []            # (block, line, raw token), in reading order
     meta: list[str] = []
     for bi, b in enumerate(spec):
-        meta.append(b.get("align", "c") if b.get("align") in ("c", "l", "stair") else "c")
+        meta.append(b.get("align", "c") if b.get("align") in ALIGNS else "c")
         for li, line in enumerate(b.get("lines") or []):
             toks += [(bi, li, re.sub(r"^\d+:", "", raw)) for raw in str(line).split()]
     parsed = []
@@ -226,6 +229,60 @@ def keep_phrases(blocks: list[Block]) -> list[Block]:
     return [b for b in blocks if b.lines]
 
 
+def _cut_ok(a: list[Tok], b: list[Tok]) -> int:
+    """How good it is to start a new page between line `a` and line `b`: 2 = end of a sentence, 1 = a clause closes
+    (comma, or nothing ties the two words), 0 = it would split an expression."""
+    last, nxt = a[-1], b[0]
+    if re.search(r"[.?!…]['”\"]?$", last.text):
+        return 2
+    return 0 if _open_end(last, nxt) or (_key(nxt.text) == "of") else 1
+
+
+def cap_lines(blocks: list[Block], max_lines: int = MAX_LINES) -> list[Block]:
+    """At most `max_lines` lines per page, never by cutting an expression: a long page is cut at the best line boundary
+    (sentence end first, then a clause end, as balanced as possible); if no boundary is safe, its two shortest
+    neighbouring lines are joined instead (the line is scaled down to fit the width)."""
+    out: list[Block] = []
+    todo = list(blocks)
+    while todo:
+        b = todo.pop(0)
+        if len(b.lines) <= max_lines:
+            out.append(b)
+            continue
+        n = len(b.lines)
+        safe = []
+        for k in range(1, min(n, max_lines + 1)):            # the first page never goes over the limit
+            q = _cut_ok(b.lines[k - 1], b.lines[k])
+            if q:
+                both_fit = n - k <= max_lines
+                safe.append((both_fit, q, -abs(n - 2 * k), k))   # both pages fit > sentence end > balanced
+        if safe:
+            k = max(safe)[-1]
+            first, rest = Block(b.lines[:k], b.align, meta=dict(b.meta)), Block(b.lines[k:], b.align, meta=dict(b.meta))
+            todo[:0] = [first, rest]
+            continue
+        i = min(range(n - 1), key=lambda j: len(b.lines[j]) + len(b.lines[j + 1]))
+        b.lines[i:i + 2] = [b.lines[i] + b.lines[i + 1]]
+        todo.insert(0, b)
+    return out
+
+
+def vary(blocks: list[Block]) -> None:
+    """Not always in the centre: never more than two centred pages in a row (the next one goes left / right / stair in
+    turn), and on a full frame every few pages sits lower (Y_LOW), so the text moves around the picture."""
+    run, turn = 0, 0
+    for i, b in enumerate(blocks):
+        if b.align == "c":
+            run += 1
+            if run > 2:
+                b.align = ("l", "r", "stair")[turn % 3]
+                turn += 1
+                run = 0
+        else:
+            run = 0
+        b.meta["low"] = i % 5 in (2, 4)
+
+
 def auto_blocks(words: list) -> list[Block]:
     """Fallback without the model: pages of varied length (a short accent after a long one), 1-3 words per line,
     the longest word of each page big, never cut inside an expression."""
@@ -256,7 +313,7 @@ def auto_blocks(words: list) -> list[Block]:
                     line = []
             if line:
                 lines.append(line)
-            blocks.append(Block(lines, ("c", "l", "c", "stair")[len(blocks) % 4]))
+            blocks.append(Block(lines, ("c", "l", "c", "r", "c", "stair")[len(blocks) % 6]))
             cur = []
     return blocks
 
@@ -268,7 +325,8 @@ def timeline(blocks: list[Block], total: float, layout_at) -> None:
         last = b.lines[-1][-1].end
         nxt = blocks[i + 1].lines[0][0].start if i + 1 < len(blocks) else total
         b.end = min(nxt, max(last + 0.35, b.start + 0.6), total)
-        b.y_center = Y_SPLIT if layout_at(b.start + 0.05) == "split" else Y_FULL
+        split = any(layout_at(t) == "split" for t in (b.start + 0.05, (b.start + b.end) / 2, b.end - 0.05))
+        b.y_center = Y_SPLIT if split else (Y_LOW if b.meta.get("low") else Y_FULL)
 
 
 # ---------------------------------------------------------------- ASS
@@ -301,13 +359,18 @@ def block_events(b: Block, m: Measure) -> list[str]:
     scales = [_line_sizes(line, m)[0] for line in b.lines]
     heights = [max((BIG if t.big else SMALL) * s for t in line) for line, s in zip(b.lines, scales)]
     total = sum(h * CAP for h in heights) + LINE_GAP * (len(heights) - 1)
-    baseline = b.y_center - total / 2
+    center = b.y_center
+    if center == Y_LOW:
+        center = min(center, LOW_BOTTOM - total / 2 - heights[-1] * DESC)
+    baseline = center - total / 2
     dur_ms = int(round((b.end - b.start) * 1000))
     for li, (line, s, hmax) in enumerate(zip(b.lines, scales, heights)):
         baseline += hmax * CAP + (LINE_GAP if li else 0)
         y = baseline + hmax * DESC                       # \an1/2: the anchor is the bottom of the line box
         if b.align == "c":
             an, x = 2, W / 2
+        elif b.align == "r":
+            an, x = 3, W - MARGIN
         else:
             an, x = 1, MARGIN + (STAIR * li if b.align == "stair" else 0)
             x = min(x, W - MARGIN - _line_sizes(line, m)[1])

@@ -74,6 +74,7 @@ def resub(ep, cand, fixes, note=""):
 
 
 p.reel_subtitles = resub
+p.reel_edit_kept = lambda ep, n: Path(bot.cfg.data_dir, f"reel_{n}.mp4").exists()
 p.reel_feedback = lambda ep, n, item, fb: ({"fixes": [{"from": "Muti", "to": "Motsi"}], "relayout": False, "reply": "Je remplace Muti par Motsi."}
                                     if "Motsi" in fb else {"fixes": [], "relayout": True, "layout_note": "keep the question on one line",
                                                            "reply": "Je remets la question sur une ligne."})
@@ -170,6 +171,27 @@ async def main():
     print("context:\n" + bot.reels_context())
     print("select →", out2, "|", out3)
     assert slim_calls == [True, False], slim_calls        # reel 5 had no file to clean
+    # « renvoie-moi les reels »: the ticked ones, subtitles only where the edit is kept, full otherwise
+    lid3 = store()["id"]
+    store()["items"]["5"]["status"] = "failed"
+    store()["items"]["6"]["fixes"] = [{"from": "Muti", "to": "Motsi", "ok": 1}, {"from": "checklist", "to": "gone with a checklist"}]
+    nf, ns = len(rendered), len(subbed)
+    out7 = await h["reels_resend"]()
+    await settle()
+    assert [r[0] for r in rendered[nf:]] == [5], rendered[nf:]          # 5 failed → full edit
+    assert [x[0] for x in subbed[ns:]] == [6], subbed[ns:]              # 6 has its edit → subtitles only
+    assert subbed[-1][1] == (("Muti", "Motsi"),), subbed[-1]          # the invented fix is gone
+    # a restart in the middle of a render: the bot starts the reel again by itself
+    store()["items"]["6"]["status"] = "rendering"
+    Reels.of(EP).save()
+    bot.reg.data["reels_rules"] = None
+    bot.reel_ep = lambda: EP
+    nf = len(rendered) + len(subbed)
+    await bot.on_boot(NS(bot=ctx.bot, job_queue=NS(get_jobs_by_name=lambda n: [1])))
+    await settle()
+    assert len(rendered) + len(subbed) == nf + 1, (rendered, subbed)
+    assert any("Renvoyer les reels" in str(x) or "Reels :" in str(x) for x in sent[-6:]), sent[-6:]
+    print("resend →", out7)
 
 
 try:

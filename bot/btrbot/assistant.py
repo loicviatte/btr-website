@@ -122,6 +122,10 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "reels_resend", "description": "Refaire et renvoyer des reels déjà choisis avec les règles actuelles (« renvoie-moi "
+                                            "les reels », « remonte les reels 1 et 5 »), sans changer leur début/fin. "
+                                            "Sans liste = tous les reels cochés (sauf les jetés).",
+     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
     {"name": "start_episode", "description": "Traiter une vidéo précise (lien ou id YouTube) comme nouvel épisode.",
      "input_schema": {"type": "object", "properties": {"video": {"type": "string"}}, "required": ["video"]}},
     {"name": "scan_youtube", "description": "Vérifier tout de suite YouTube (nouvelles vidéos non répertoriées) et le dossier Drive des SRT.",
