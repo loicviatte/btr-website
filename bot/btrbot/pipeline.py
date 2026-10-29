@@ -625,9 +625,11 @@ class Pipeline:
         return len(share.free_slots(share.ClickUp(token).tasks(), label, guest, part, share.episode_date(video), taken))
 
     def reel_share(self, ep: Episode, n: int, item: dict, taken: set[str], instagram: bool = True) -> dict:
-        """Validated reel n → Drive (« BTR Reels / <episode> », video + cover, viewable by link) and its ClickUp
-        slot (the episode's next free « Reel k/N » task, else a new task): link, captions, cover, status approved.
-        Each part is independent: one failing does not block the other. Returns what was done and why not."""
+        """Validated reel n → its ClickUp place (Instagram: the episode's next free « Reel k/N » slot, else a new
+        « Reel · … » task; TikTok + Shorts only: a « Short · … » task), then Drive (« BTR Reels / <guest> », video +
+        cover named MMDD_EPn_GUEST_FEED|SHORTS_TITLE, MMDD = planned date of the ClickUp task, else today; viewable by
+        link), then the task gets the links, captions and cover, status approved. Drive and ClickUp are independent:
+        one failing does not block the other. Returns what was done and why not."""
         from . import share
         sec = share.Secrets(self.cfg.data_dir)
         client = self.cfg.youtube_client[:2]
@@ -635,21 +637,10 @@ class Pipeline:
         guest = ep.get("guest_name") or ""
         part = part_number(ep)
         label = share.episode_label(guest, part) or self.reel_title(ep)
-        out: dict = {"links": dict(item.get("links") or {})}
-        try:
-            d = share.Drive(sec, client)
-            root = sec.get("drive_root") or d.folder(share.FOLDER)
-            sec.set(drive_root=root)
-            sub = d.folder(f"{self.reel_title(ep)} ({ep.video_id})", root)
-            out["links"]["folder"] = d.folder_link(sub)
-            out["links"]["video"] = d.upload(Path(item["file"]), sub, "video/mp4")["webViewLink"]
-            if item.get("cover") and Path(item["cover"]).exists():
-                out["links"]["cover"] = d.upload(Path(item["cover"]), sub, "image/jpeg")["webViewLink"]
-        except share.NotConnected as e:
-            out["drive_error"] = str(e)
-        except Exception as e:  # noqa: BLE001
-            log.exception("drive")
-            out["drive_error"] = share.drive_error(e)
+        url = f"https://www.youtube.com/watch?v={ep.video_id}"
+        out: dict = {"links": dict(item.get("links") or {}), "drive_ids": dict(item.get("drive_ids") or {})}
+        cu = task = kind = None
+        # 1. ClickUp: where the reel goes (its date names the files)
         try:
             cu = share.ClickUp(sec.get("clickup_token"))
             try:
@@ -657,10 +648,7 @@ class Pipeline:
             except Exception:  # noqa: BLE001
                 video = {}
             ep_date = share.episode_date(video)
-            url = f"https://www.youtube.com/watch?v={ep.video_id}"
-            today = share.today_str()
             tid, kind = item.get("clickup_task"), item.get("clickup_kind")
-            task = None
             if tid:
                 try:
                     task = cu.task(tid)
@@ -689,40 +677,92 @@ class Pipeline:
             if task is None:
                 kind = "ig_new" if instagram else "short"
                 name = f"{'Reel' if instagram else 'Short'} · {label} · {title}"[:200]
-                desc = share.description(share.WHERE_IG if instagram else share.WHERE_SHORT, out["links"], item, title,
-                                         url, today, instagram)
                 fields = [{"id": share.F_EPISODE, "value": label}, {"id": share.F_FORMAT, "value": share.CLIP},
                           {"id": share.F_IG, "value": share.IG_TODO if instagram else share.IG_NO},
                           {"id": share.F_TT, "value": share.TT_TODO}, {"id": share.F_YT, "value": share.YT_TODO}]
                 if instagram:
                     fields.append({"id": share.F_PLACEMENT, "value": share.REELS_TAB})
-                task = cu.create(name=name, markdown_content=desc, status="approved", custom_fields=fields)
-                task["name"] = name
+                task = cu.create(name=name, markdown_content=share.WHERE_IG if instagram else share.WHERE_SHORT,
+                                 status="approved", custom_fields=fields)
+                task.setdefault("name", name)
+                task.setdefault("markdown_description", share.WHERE_IG if instagram else share.WHERE_SHORT)
                 out["clickup_new"] = True
-            else:
-                old = task.get("markdown_description") or task.get("description") or ""
-                name = share.slot_name(task.get("name", ""), label, title) if kind == "slot" else task.get("name", "")
-                cu.update(task["id"], name=name, status="approved",
-                          markdown_content=share.description(old, out["links"], item, title, url, today, instagram))
-                task["name"] = name
-                if kind == "slot" and (not share._field(task, share.F_EPISODE)
-                                       or "of " in str(share._field(task, share.F_EPISODE))):
-                    cu.set_field(task["id"], share.F_EPISODE, label)
-            if item.get("cover") and Path(item["cover"]).exists() and (
-                    item.get("cover_sent") != item.get("cover") or out.get("clickup_new") or item.get("clickup_task") != task["id"]):
-                try:
-                    cu.attach(task["id"], Path(item["cover"]))
-                    out["cover_sent"] = item["cover"]
-                except Exception:  # noqa: BLE001
-                    log.exception("clickup attach")
-            out.update(clickup_task=task["id"], clickup_kind=kind, clickup_name=task.get("name", ""),
-                       clickup_url=task.get("url") or f"https://app.clickup.com/t/{task['id']}")
         except share.NotConnected as e:
             out["clickup_error"] = str(e)
         except Exception as e:  # noqa: BLE001
             log.exception("clickup")
             out["clickup_error"] = str(e)[-300:]
+        # 2. Drive: one folder per guest, files named for the calendar
+        base = share.file_base(share.post_date(task), self.ep_number(ep), guest or self.reel_title(ep), instagram, title)
+        out["file_base"] = base
+        try:
+            d = share.Drive(sec, client)
+            root = sec.get("drive_root") or d.folder(share.FOLDER)
+            sec.set(drive_root=root)
+            sub = d.folder(guest or self.reel_title(ep), root)
+            out["links"]["folder"] = d.folder_link(sub)
+            ids = out["drive_ids"]
+            for key, link in out["links"].items():                 # files uploaded before their ids were kept
+                if key in ("video", "cover") and key not in ids and share.file_id(link):
+                    ids[key] = share.file_id(link)
+            f = d.put(Path(item["file"]), sub, f"{base}.mp4", "video/mp4", ids.get("video"))
+            ids["video"], out["links"]["video"] = f["id"], f["webViewLink"]
+            if item.get("cover") and Path(item["cover"]).exists():
+                f = d.put(Path(item["cover"]), sub, f"{base}_COVER.jpg", "image/jpeg", ids.get("cover"))
+                ids["cover"], out["links"]["cover"] = f["id"], f["webViewLink"]
+            d.drop_empty_folders(root, keep=sub)                    # the old per-episode folders
+        except share.NotConnected as e:
+            out["drive_error"] = str(e)
+        except Exception as e:  # noqa: BLE001
+            log.exception("drive")
+            out["drive_error"] = share.drive_error(e)
+        # 3. ClickUp: name, status, links, captions, cover
+        if task is not None:
+            try:
+                old = ((share.WHERE_IG if instagram else share.WHERE_SHORT) if out.get("clickup_new")
+                       else task.get("markdown_description") or task.get("description") or "")
+                name = share.slot_name(task.get("name", ""), label, title) if kind == "slot" else task.get("name", "")
+                cu.update(task["id"], name=name, status="approved",
+                          markdown_content=share.description(old, out["links"], item, title, url, share.today_str(),
+                                                             instagram, base))
+                task["name"] = name
+                if kind == "slot" and (not share._field(task, share.F_EPISODE)
+                                       or "of " in str(share._field(task, share.F_EPISODE))):
+                    cu.set_field(task["id"], share.F_EPISODE, label)
+                if item.get("cover") and Path(item["cover"]).exists() and (
+                        item.get("cover_sent") != item.get("cover") or out.get("clickup_new")
+                        or item.get("clickup_task") != task["id"]):
+                    try:
+                        cu.attach(task["id"], Path(item["cover"]))
+                        out["cover_sent"] = item["cover"]
+                    except Exception:  # noqa: BLE001
+                        log.exception("clickup attach")
+                out.update(clickup_task=task["id"], clickup_kind=kind, clickup_name=name,
+                           clickup_url=task.get("url") or f"https://app.clickup.com/t/{task['id']}")
+            except Exception as e:  # noqa: BLE001
+                log.exception("clickup")
+                out["clickup_error"] = str(e)[-300:]
         return out
+
+    def ep_number(self, ep: Episode) -> int | None:
+        """BTR episode number of the guest (Kiera Brunton = 1 … Oti Mabuse = 13; both parts share it). A new guest
+        gets the next number the first time a reel of theirs is filed; Loïc can correct it (ep["ep_number"])."""
+        from . import share
+        if ep.get("ep_number"):
+            return int(ep["ep_number"])
+        guest = ep.get("guest_name") or ""
+        if not guest:
+            return None
+        path = self.cfg.data_dir / "ep_numbers.json"
+        try:
+            nums = json.loads(path.read_text())
+        except Exception:  # noqa: BLE001
+            nums = dict(share.EP_NUMBERS)
+        key = share.guest_key(guest)
+        if key not in nums:
+            nums[key] = max(nums.values() or [0]) + 1
+            path.write_text(json.dumps(nums, ensure_ascii=False, indent=1))
+        return int(nums[key])
 
     def _cover_from_edit(self, work: Path, cdir: Path) -> list[dict]:
         """Fallback stills from the edit itself (1080×1920, no subtitles): guest frames only."""

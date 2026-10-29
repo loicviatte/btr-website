@@ -1061,6 +1061,9 @@ REELS_RULES = ("2026-10-29-face", "le zoom ne coupe plus jamais la tête (sur un
                                   "remontés en entier (même début, fin, coupes et corrections).")
 
 
+REELS_FILES = "guest-folders-1"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
+
+
 def loic_wrote(words: str) -> bool:
     """Every word of a correction appears in one of Loïc's own messages (old fixes made before the guard)."""
     norm = lambda t: re.sub(r"[^a-z0-9]", "", t.lower())            # noqa: E731
@@ -1273,13 +1276,14 @@ async def share_reel(ctx, ep, n: int):
     res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken,
                     item.get("instagram", True))
     item["links"] = res.get("links") or item.get("links") or {}
-    for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig"):
+    for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig", "drive_ids", "file_base"):
         if res.get(k):
             item[k] = res[k]
     RS(ep).save()
     lines = []
-    if item["links"].get("video"):
-        lines.append(f"📁 Drive : <a href=\"{item['links'].get('folder', item['links']['video'])}\">dossier du reel</a>")
+    if item["links"].get("video") and not res.get("drive_error"):
+        lines.append(f"📁 Drive : <a href=\"{item['links'].get('folder', item['links']['video'])}\">dossier du guest</a>, "
+                     f"{esc(res.get('file_base', ''))}.mp4")
     elif res.get("drive_error"):
         lines.append(f"📁 Drive : {esc(res['drive_error'])}")
     if res.get("clickup_url"):
@@ -1709,6 +1713,15 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("reels_files") != REELS_FILES:            # one folder per guest, calendar file names
+                    reg.data["reels_files"] = REELS_FILES
+                    reg.save()
+                    done = sorted(int(k) for k, it in rs["items"].items() if it.get("status") == "ok" and it.get("links"))
+                    if done:
+                        await say(app, f"📁 Je range les reels {', '.join(map(str, done))} dans le dossier du guest, "
+                                       "avec les nouveaux noms de fichiers.")
+                        for k in done:
+                            bg(app, f"Reel {k} → Drive + ClickUp", share_reel(app, ep, k))
                 if reg.data.get("reels_rules") != REELS_RULES[0] and rs.get("sel"):
                     reg.data["reels_rules"] = REELS_RULES[0]
                     reg.save()

@@ -140,3 +140,57 @@ r2b = p.reel_share(ep, 2, dict(it, title="Yacht", clickup_task=r2["clickup_task"
 assert r2["clickup_task"] not in DB and r2b["clickup_task"] == "p2" and r2b["clickup_kind"] == "slot", (r2b, LOG)
 assert "drive_error" in r1 and "pas encore connecté" in r1["drive_error"]
 print("OK clickup")
+
+# ---- Drive: one folder per guest, calendar names, same file (id) when re-filed
+from datetime import datetime as _dt  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
+assert share.file_base(_dt(2026, 10, 31, tzinfo=ZoneInfo("Europe/London")), 13, "Oti Mabuse", True,
+                       "Alone on Strictly: “why not?”") == "1031_EP13_OTI-MABUSE_FEED_ALONE-ON-STRICTLY-WHY-NOT"
+assert share.file_base(_dt(2026, 11, 2), 13, "Oti Mabuse", False, "Yacht").endswith("_SHORTS_YACHT")
+assert share.post_date({"due_date": "1793476800000"}).strftime("%m%d") == "10" + "31"
+assert share.file_id("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUv/view?usp=drivesdk") == "1AbCdEfGhIjKlMnOpQrStUv"
+FILES, FOLDERS = {}, {}
+
+
+class FakeDrive:
+    def __init__(self, secrets, client):
+        pass
+
+    def folder(self, name, parent=None):
+        return FOLDERS.setdefault((name, parent), f"fold{len(FOLDERS)}")
+
+    def folder_link(self, fid):
+        return f"https://drive.google.com/drive/folders/{fid}"
+
+    def put(self, path, folder_id, name, mime, fid=None):
+        fid = fid if fid in FILES else f"1file{len(FILES):020d}"
+        FILES[fid] = (folder_id, name)
+        return {"id": fid, "webViewLink": f"https://drive.google.com/file/d/{fid}/view"}
+
+    def drop_empty_folders(self, root, keep):
+        pass
+
+
+share.Drive = FakeDrive
+DB.clear()
+DB.update({t["id"]: copy.deepcopy(t) for t in TASKS})
+DB["p2"]["due_date"], DB["p3"]["due_date"] = "1793476800000", "1793563200000"   # 31 Oct / 1 Nov, 20:00 London
+assert p.ep_number(ep) == 13
+it2 = dict(it, file=__file__, title="Alone on Strictly")
+a = p.reel_share(ep, 1, dict(it2), set(), True)
+assert a["file_base"] == "1031_EP13_OTI-MABUSE_FEED_ALONE-ON-STRICTLY", a["file_base"]
+assert a["clickup_task"] == "p2", a
+vid = a["drive_ids"]["video"]
+assert FILES[vid] == (FOLDERS[("Oti Mabuse", "fold0")], a["file_base"] + ".mp4"), (FILES, FOLDERS)
+assert a["file_base"] + ".mp4" in DB["p2"]["markdown_description"]
+b = p.reel_share(ep, 1, dict(it2, **{k: a[k] for k in ("clickup_task", "clickup_kind", "clickup_orig", "drive_ids", "links")}),
+                 set(), False)                                       # now TikTok + Shorts only: same file, renamed
+assert b["drive_ids"]["video"] == vid and FILES[vid][1].split("_")[3] == "SHORTS", FILES[vid]
+ep2 = Episode(cfg.data_dir, "NEWGUEST001")
+ep2["guest_name"] = "Kiera Brunton"
+assert p.ep_number(ep2) == 1
+ep3 = Episode(cfg.data_dir, "NEWGUEST002")
+ep3["guest_name"] = "Someone New"
+assert p.ep_number(ep3) == 14 and p.ep_number(ep3) == 14
+print("OK drive")

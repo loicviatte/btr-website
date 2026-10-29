@@ -120,6 +120,44 @@ class Drive:
             body["parents"] = [parent]
         return self.svc.files().create(body=body, fields="id").execute()["id"]
 
+    def put(self, path: Path, folder_id: str, name: str, mime: str, fid: str | None = None) -> dict:
+        """Upload under `name` in `folder_id`; an existing file (its id kept from before) is replaced in place, renamed
+        and moved, so its link never changes. Anyone with the link can view it."""
+        from googleapiclient.http import MediaFileUpload
+        media = MediaFileUpload(str(path), mimetype=mime, resumable=True, chunksize=8 * 2 ** 20)
+        f = None
+        if fid:
+            try:
+                cur = self.svc.files().get(fileId=fid, fields="id,parents,trashed").execute()
+                if not cur.get("trashed"):
+                    olds = ",".join(p for p in cur.get("parents", []) if p != folder_id)
+                    kw = {"addParents": folder_id, "removeParents": olds} if olds else {}
+                    f = self.svc.files().update(fileId=fid, body={"name": name}, media_body=media,
+                                                fields="id,webViewLink", **kw).execute()
+            except Exception:  # noqa: BLE001
+                f = None                                   # deleted by hand: upload again
+        if f is None:
+            fid = self._find(name, folder_id, False)
+            if fid:
+                f = self.svc.files().update(fileId=fid, media_body=media, fields="id,webViewLink").execute()
+            else:
+                f = self.svc.files().create(body={"name": name, "parents": [folder_id]}, media_body=media,
+                                            fields="id,webViewLink").execute()
+        self.svc.permissions().create(fileId=f["id"], body={"type": "anyone", "role": "reader"}).execute()
+        return f
+
+    def drop_empty_folders(self, root: str, keep: str) -> None:
+        """Folders the bot made in « BTR Reels » that are now empty (the old one-per-episode layout) go to the bin."""
+        r = self.svc.files().list(q=f"'{root}' in parents and mimeType = 'application/vnd.google-apps.folder' "
+                                    "and trashed = false", fields="files(id)", pageSize=100).execute()
+        for f in r.get("files", []):
+            if f["id"] == keep:
+                continue
+            inside = self.svc.files().list(q=f"'{f['id']}' in parents and trashed = false", fields="files(id)",
+                                           pageSize=1).execute().get("files")
+            if not inside:
+                self.svc.files().update(fileId=f["id"], body={"trashed": True}).execute()
+
     def upload(self, path: Path, folder_id: str, mime: str) -> dict:
         """Upload (or replace, same link) a file; anyone with the link can view it."""
         from googleapiclient.http import MediaFileUpload
@@ -283,7 +321,7 @@ def slot_name(old: str, label: str, title: str) -> str:
 
 
 def description(old: str, links: dict, item: dict, title: str, video_url: str, today: str,
-                instagram: bool = True) -> str:
+                instagram: bool = True, base: str = "") -> str:
     """The task's own lines (where / when / cover rules) kept, then the bot's block, rewritten at each validation:
     links, and the captions in code blocks (exact text, line breaks kept, copy button in ClickUp)."""
     keep = (old or "").split(MARK)[0].rstrip()
@@ -294,11 +332,54 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
     where = "Instagram + TikTok + Shorts" if instagram else "TikTok + Shorts seulement (pas Instagram)"
     lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s) · {where}", "",
              f"- Vidéo : {links.get('video', '—')}", f"- Cover : {links.get('cover', '—')}",
-             f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}", ""]
+             f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}"]
+    if base:
+        lines.append(f"- Fichier : {base}.mp4")
+    lines.append("")
     if instagram:
         lines += ["**Légende Instagram** (sans hashtags)", "", fence(caps.get("instagram")), ""]
     lines += ["**Légende TikTok / Shorts** (avec hashtags)", "", fence(caps.get("tiktok"))]
     return (keep + "\n\n" if keep else "") + "\n".join(lines)
+
+
+# BTR episode numbers (order of the guests' first episode on the channel); new guests get the next one automatically
+EP_NUMBERS = {"kiera brunton": 1, "michael shelton": 2, "jaime dieguez": 3, "nicole cutler": 4, "james wilson": 5,
+              "anthony rutherford": 6, "phemelo mabuse": 7, "ian waite": 8, "oskar odiakosa": 9, "peter nash": 10,
+              "peter maxwell": 11, "leila stewart": 12, "oti mabuse": 13}
+
+
+def guest_key(guest: str) -> str:
+    return _norm(guest)
+
+
+def _slug(s: str, n: int = 40) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").upper()[:n].strip("-")
+
+
+def post_date(task: dict | None) -> datetime:
+    """The day the reel is planned (the ClickUp task's due date, London time), else today."""
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("Europe/London")
+    due = (task or {}).get("due_date")
+    if due:
+        try:
+            return datetime.fromtimestamp(int(due) / 1000, tz)
+        except (TypeError, ValueError):
+            pass
+    return datetime.now(tz)
+
+
+def file_base(day: datetime, ep_no: int | None, guest: str, instagram: bool, title: str) -> str:
+    """MMDD_EP13_OTI-MABUSE_FEED_ALONE-ON-STRICTLY (FEED = on Instagram too, SHORTS = TikTok + Shorts only)."""
+    return "_".join([day.strftime("%m%d"), f"EP{ep_no}" if ep_no else "EP", _slug(guest, 30) or "GUEST",
+                     "FEED" if instagram else "SHORTS", _slug(title, 50) or "REEL"])
+
+
+def file_id(link: str) -> str | None:
+    m = re.search(r"/d/([A-Za-z0-9_-]{20,})", link or "")
+    return m.group(1) if m else None
 
 
 def episode_label(guest: str, part: str | None) -> str:

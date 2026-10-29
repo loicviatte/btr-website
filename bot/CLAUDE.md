@@ -40,7 +40,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   the reels himself: the bot never posts them. On ✅ Valider: cover (`pipeline.reel_cover`: 4K guest stills kept at
   render time in `reels/rNN/cover/`, best face chosen by Haiku, hook = consecutive words really said, template
   `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):
-  Drive (Loïc's own Drive, scope drive.file, folder « BTR Reels / <episode> », files viewable by link) and ClickUp
+  ClickUp place first, then Drive (scope drive.file, folder « BTR Reels / <guest> », files named
+  MMDD_EPn_GUEST_FEED|SHORTS_TITLE.mp4 + _COVER.jpg, MMDD = due date of the ClickUp task else today, EP numbers in
+  `share.EP_NUMBERS` + data/ep_numbers.json (new guest = next number); file ids kept so a re-file renames/moves the same
+  file; bump `bot.REELS_FILES` to re-file validated reels at boot; viewable by link), then the ClickUp task
   (list « Content calendar »; preview buttons « ✅ Insta + TikTok + Shorts » (rok) / « ✅ TikTok + Shorts » (rsh), the
   preview says how many Instagram slots of the episode are still free; Insta → the episode's next free « Reel k/N »
   slot, else a new « Reel · … » task; TikTok + Shorts only → a new « Short · … » task (Instagram field Not planned);
