@@ -242,6 +242,46 @@ def _cut_ok(a: list[Tok], b: list[Tok]) -> int:
     return 0 if _open_end(last, nxt) or (_key(nxt.text) == "of") else 1
 
 
+def _seam_ok(first: list[list[Tok]], rest: list[list[Tok]], tail: int = 2) -> int:
+    """1 unless cutting here would leave the last 1-2 words of a sentence at the top of the next page (« TIME. You
+    know… ») or the first 1-2 words of a new sentence at the bottom of this one (« …care. When »)."""
+    a = [t for line in first for t in line]
+    b = [t for line in rest for t in line]
+    if any(SENT_END.search(t.text) for t in b[:tail]) and not SENT_END.search(a[-1].text):
+        return 0
+    ends = [k for k, t in enumerate(a) if SENT_END.search(t.text)]
+    if ends and 1 <= len(a) - 1 - ends[-1] <= tail:
+        return 0
+    return 1
+
+
+def keep_together(blocks: list[Block], phrases: list[str]) -> list[Block]:
+    """Words Loïc wants on the same page (« good time »): if a page break falls inside, the part after the break
+    comes back to the page before (lines joined if that page would go over MAX_LINES)."""
+    for ph in phrases or ():
+        want = [_key(w) for w in str(ph).split() if _key(w)]
+        if len(want) < 2:
+            continue
+        for i in range(len(blocks) - 1):
+            a, b = blocks[i], blocks[i + 1]
+            ta, tb = [t for line in a.lines for t in line], [t for line in b.lines for t in line]
+            seq = [_key(t.text) for t in ta + tb]
+            for cut in range(1, len(want)):              # the phrase straddles the break after `cut` words
+                if seq[len(ta) - cut:len(ta)] == want[:cut] and seq[len(ta):len(ta) + len(want) - cut] == want[cut:]:
+                    moved = []
+                    for _ in range(len(want) - cut):
+                        moved.append(b.lines[0].pop(0))
+                        if not b.lines[0]:
+                            b.lines.pop(0)
+                    a.lines[-1].extend(moved)
+                    while len(a.lines) > MAX_LINES:
+                        j = min(range(len(a.lines) - 1), key=lambda x: len(a.lines[x]) + len(a.lines[x + 1]))
+                        a.lines[j:j + 2] = [a.lines[j] + a.lines[j + 1]]
+                    break
+        blocks = [x for x in blocks if x.lines]
+    return blocks
+
+
 def cap_lines(blocks: list[Block], max_lines: int = MAX_LINES) -> list[Block]:
     """At most `max_lines` lines per page, never by cutting an expression: a long page is cut at the best line boundary
     (sentence end first, then a clause end, as balanced as possible); if no boundary is safe, its two shortest
@@ -256,7 +296,7 @@ def cap_lines(blocks: list[Block], max_lines: int = MAX_LINES) -> list[Block]:
         n = len(b.lines)
         safe = []
         for k in range(1, min(n, max_lines + 1)):            # the first page never goes over the limit
-            q = _cut_ok(b.lines[k - 1], b.lines[k])
+            q = _cut_ok(b.lines[k - 1], b.lines[k]) and _seam_ok(b.lines[:k], b.lines[k:])
             if q:
                 both_fit = n - k <= max_lines
                 safe.append((both_fit, q, -abs(n - 2 * k), k))   # both pages fit > sentence end > balanced
@@ -412,7 +452,7 @@ def sentence_seams(blocks: list[Block], tail: int = 2) -> list[Block]:
     for i, b in enumerate(blocks):
         toks = flat(b)
         ends = [k for k, t in enumerate(toks) if SENT_END.search(t.text)]
-        if i > 0 and ends and ends[0] < tail and ends[0] < len(toks) - 1 and blocks[i - 1].lines:
+        if i > 0 and ends and ends[0] < tail and blocks[i - 1].lines:
             prev = blocks[i - 1]
             if not SENT_END.search(prev.lines[-1][-1].text):            # it continues the sentence of the page before
                 moved = take_first(b, ends[0] + 1)
@@ -423,6 +463,8 @@ def sentence_seams(blocks: list[Block], tail: int = 2) -> list[Block]:
                     prev.lines.append(moved)
                 toks = flat(b)
                 ends = [k for k, t in enumerate(toks) if SENT_END.search(t.text)]
+                if not toks:
+                    continue
         if i + 1 < len(blocks) and not ends and len(toks) <= tail and b.lines \
                 and len(blocks[i + 1].lines) + len(b.lines) <= MAX_LINES:
             blocks[i + 1].lines[:0] = b.lines                    # what is left (« When you ») joins its sentence

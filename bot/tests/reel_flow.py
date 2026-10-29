@@ -170,7 +170,7 @@ async def main():
     print("subtitles →", out4, "|", out5)
     print("context:\n" + bot.reels_context())
     print("select →", out2, "|", out3)
-    assert slim_calls == [True, False], slim_calls        # reel 5 had no file to clean
+    assert slim_calls == [True, True], slim_calls          # dropping keeps the edit (undo); reel 5 had no file
     # « renvoie-moi les reels »: the ticked ones, subtitles only where the edit is kept, full otherwise
     lid3 = store()["id"]
     store()["items"]["5"]["status"] = "failed"
@@ -225,6 +225,15 @@ async def main():
     out8 = await h["reel_validate"](2, instagram=False)                          # change of mind after filing
     await settle()
     assert filed[-1] == (2, False), filed
+    # dropped by mistake → « Annuler »: back to « à valider » with the same file
+    store()["items"]["5"].update(status="preview", filed=False)
+    Reels.of(EP).save()
+    await press(f"rno:{lid4}:5")
+    await settle()
+    assert store()["items"]["5"]["status"] == "dropped" and Path(store()["items"]["5"]["file"]).exists()
+    await press(f"rund:{lid4}:5")
+    await settle()
+    assert store()["items"]["5"]["status"] == "preview", store()["items"]["5"]["status"]
 
 
 try:

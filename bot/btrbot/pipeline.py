@@ -539,6 +539,7 @@ class Pipeline:
             blocks = subs.auto_blocks(ow)
         # ≤ 4 lines a page, no expression cut in two, no sentence tail on the next sentence's page
         blocks = subs.cap_lines(subs.merge_flashes(subs.sentence_seams(subs.keep_phrases(blocks))))
+        blocks = subs.keep_together(blocks, cand.get("together") or [])   # Loïc's « laisse X ensemble », always last
         subs.vary(blocks)                                         # not always centred, not always at the same height
         subs.timeline(blocks, total, lambda t: R.layout_at(edit["layout"], t))
         vis = subs.visibility(blocks)                             # every word readable ≥ 0.5 s: checked on each reel

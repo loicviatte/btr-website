@@ -48,6 +48,8 @@ Comment tu travailles :
   · Déroulé : 1) il valide ou jette chaque reel ; 2) quand tout est décidé, le bot lui demande lesquels vont en feed
     Instagram (boutons) ; 3) « Ranger » : covers + Drive + ClickUp. « le 2 et le 5 en feed » = reels_file(feed=[2, 5]) ;
     sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
+  · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces
+    mots sur le même bloc). « j'ai jeté par erreur », « reviens en arrière » sur un reel jeté = reel_undrop.
   · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
   · Les reels rangés vont sur Drive (dossier du guest) et dans ClickUp (lien, légendes, cover). Si Drive ou ClickUp ne
     sont pas connectés, dis-lui d'envoyer /connect.
@@ -129,6 +131,9 @@ TOOLS = [
                                          "seulement TikTok + Shorts ; sur un reel déjà rangé, le déplace.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "instagram": {"type": "boolean"}},
                       "required": ["n"]}},
+    {"name": "reel_undrop", "description": "Annuler « jeter » sur le reel n (jeté par erreur, « reviens en arrière ») : "
+                                          "il revient à valider, avec le même fichier.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reels_file", "description": "Ranger les reels validés (covers, Drive, ClickUp). feed = numéros qui vont "
                                          "aussi sur Instagram, dans l'ordre de publication (« le 2 et le 5 en feed, "
                                          "range »). Les autres vont sur TikTok + Shorts seulement.",

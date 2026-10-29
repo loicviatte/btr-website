@@ -44,3 +44,26 @@ fixed, miss = apply_all(words, [{"from": "Muti", "to": "Motsi"}, {"from": "danny
 print(" ".join(x.text for x in fixed))
 assert " ".join(x.text for x in fixed) == "me and Motsi we danced with Danny Mac at Blackpool", fixed
 print("OK")
+
+# reel 3 (29.10.2026): « Easy. Then / WE'RE / gonna have a / good » then « TIME. / You / KNOW / what… »
+def T(w, t, big=False):
+    return Tok(w, t, t + 0.2, big=big)
+
+
+p1 = Block([[T("Easy.", 0), T("Then", 0.3)], [T("WE'RE", 0.5, True)], [T("gonna", 0.7), T("have", 0.9), T("a", 1.0)],
+            [T("good", 1.1)]], "c")
+p2 = Block([[T("TIME.", 1.3, True)], [T("You", 1.6)], [T("KNOW", 1.8, True)], [T("what", 2.0), T("I", 2.1),
+            T("mean?", 2.2)]], "c")
+out = subs.cap_lines(subs.merge_flashes(subs.sentence_seams(subs.keep_phrases([p1, p2]))))
+pages = [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in out]
+print(pages)
+assert any("good TIME." in pg or pg.endswith("good / TIME.") for pg in pages) and all(len(b.lines) <= 4 for b in out), pages
+assert not any(pg.startswith("TIME.") for pg in pages), pages
+# Loïc's « laisse good time ensemble » forces it even if the layout split it
+q1 = Block([[T("gonna", 0.7), T("have", 0.9)], [T("a", 1.0)], [T("good", 1.1)]], "c")
+q2 = Block([[T("TIME", 1.3, True)], [T("you", 1.6), T("know", 1.8)]], "c")
+out = subs.keep_together([q1, q2], ["good time"])
+pages = [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in out]
+print(pages)
+assert pages[0].endswith("good TIME") and pages[1] == "you know", pages
+print("OK seams")

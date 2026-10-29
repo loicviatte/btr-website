@@ -186,9 +186,12 @@ Decide what to change:
   no fix, and ask him in "reply" for the exact words. Never change words he did not question; never rephrase.
 - "relayout": true if the problem is the layout (cut in the wrong place, a word missing on screen, bad emphasis) rather than
   a word; then "layout_note" = a short English instruction for whoever redoes the layout.
+- "together": when Loïc wants words kept on the same block (« laisse good time ensemble », « le time est séparé de
+  good »), the exact words as they are on screen, e.g. ["good time"]. They will be forced onto one block.
 - "reply": one short French sentence for Loïc saying exactly what you will change (or asking ONE question if you
   really cannot tell what he means).
-Return ONLY JSON: {{"fixes": [{{"from": "...", "to": "..."}}], "relayout": false, "layout_note": "", "reply": "..."}}"""
+Return ONLY JSON: {{"fixes": [{{"from": "...", "to": "..."}}], "relayout": false, "layout_note": "", "together": [],
+"reply": "..."}}"""
 
 
 REEL_NAMES = """You check the spelling of the proper nouns in the subtitles of a short clip from Break The Routine, a DanceSport

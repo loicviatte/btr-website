@@ -801,9 +801,13 @@ def tool_handlers(ctx, images: list) -> dict:
         if fixes:
             it.setdefault("fixes", []).extend(fixes)
             it.pop("captions", None)                   # a corrected word must not stay wrong in the captions
-        if res.get("relayout") and res.get("layout_note"):
-            it["sub_note"] = str(res["layout_note"])[:400]
-        if not fixes and not res.get("relayout"):
+        if res.get("relayout") and res.get("layout_note"):    # notes add up: an earlier ask is not forgotten
+            notes = [x for x in str(it.get("sub_note", "")).split(" | ") if x] + [str(res["layout_note"])[:300]]
+            it["sub_note"] = " | ".join(dict.fromkeys(notes))[-900:]
+        together = [str(x) for x in res.get("together") or [] if len(str(x).split()) >= 2]
+        if together:
+            it["together"] = list(dict.fromkeys((it.get("together") or []) + together))
+        if not fixes and not res.get("relayout") and not together:
             RS(ep).save()
             return "rien à changer compris. Réponse à transmettre à Loïc : " + str(res.get("reply", ""))
         out = queue_reel(ctx, ep, n, "subs")
@@ -830,6 +834,10 @@ def tool_handlers(ctx, images: list) -> dict:
         if item.get("status") == "ok":
             return f"reel {n} déjà validé" + ("" if ig is None else " ; choix feed noté pour le rangement")
         return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))
+
+    async def reel_undrop(n):
+        ep = reels_or_fail()
+        return bg(ctx, f"Reel {n} récupéré", undrop_reel(ctx, ep, int(n)))
 
     async def reels_file(feed=None):
         ep = reels_or_fail()
@@ -859,7 +867,7 @@ def tool_handlers(ctx, images: list) -> dict:
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
-            "reels_file": reels_file,
+            "reels_file": reels_file, "reel_undrop": reel_undrop,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1103,6 +1111,7 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     if need == "subs" and not pipe.reel_edit_kept(ep, n):
         need = "full"                                  # edit made before the subtitles-only redo, or cleaned up
     item["fixes"] = [f for f in item.get("fixes") or [] if f.get("ok") or loic_wrote(f.get("to", ""))]
+    cand = dict(cand, together=list(item.get("together") or []))
     if need == "subs":
         res = await run(pipe.reel_subtitles, ep, dict(cand), list(item.get("fixes") or []), item.get("sub_note", ""))
     else:
@@ -1415,9 +1424,27 @@ async def drop_reel(ctx, ep, n: int):
     item["status"] = "dropped"
     RS(ep).save()
     if item.get("file"):
-        R.slim(Path(item["file"]).parent, keep_final=False)
-    await say(ctx, f"🗑 Reel {n} jeté.")
+        R.slim(Path(item["file"]).parent, keep_final=True)   # files kept (cleaned after 3 weeks): « Annuler » works
+    await say(ctx, f"🗑 Reel {n} jeté.", reply_markup=K([[B("↩️ Annuler", callback_data=f"rund:{RS(ep).data.get('id')}:{n}")]]))
     await maybe_dispatch(ctx, ep)
+
+
+async def undrop_reel(ctx, ep, n: int):
+    """Dropped by mistake: back to « à valider » with the same file, or made again if its files are gone."""
+    from pathlib import Path
+    item = reel_item(ep, n)
+    if item.get("status") != "dropped":
+        await say(ctx, f"Le reel {n} n'est pas jeté.")
+        return
+    if item.get("file") and Path(item["file"]).exists():
+        item["status"] = "preview"
+        RS(ep).save()
+        await say(ctx, f"↩️ Reel {n} récupéré.")
+        await send_reel(ctx, ep, n)
+    else:
+        item["status"] = "failed"
+        RS(ep).save()
+        await say(ctx, esc(start_reels(ctx, ep, [n])))
 
 
 async def on_reel_button(ctx, q, d: str):
@@ -1449,6 +1476,8 @@ async def on_reel_button(ctx, q, d: str):
         await say(ctx, esc(resend_reels(ctx, ep)))
     elif parts[0] in ("rok", "rsh") and n:                # rsh: button of the previous version
         await say(ctx, esc(bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))))
+    elif parts[0] == "rund" and n:
+        await say(ctx, esc(bg(ctx, f"Reel {n} récupéré", undrop_reel(ctx, ep, n))))
     elif parts[0] == "rfeed" and n:
         feed = rs.setdefault("feed", [])
         feed.remove(n) if n in feed else feed.append(n)
@@ -1554,7 +1583,7 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
-    if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rgo", "reels:", "rfeed:", "rfile:")):
+    if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:")):
         await on_reel_button(ctx, q, q.data)
         return
     if q.data == "part:redo":

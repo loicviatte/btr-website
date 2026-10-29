@@ -35,7 +35,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (`state.Reels`, one shared object per process). Telegram: `/reels [lien]`, list of 10 moments with tick buttons,
   previews with ✅/🗑, tools reels_propose / reels_select / reel_adjust / reel_subtitles / reels_resend / reel_validate /
   reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
-  no sentence tail on the next sentence's page (`sentence_seams`), flash pages merged (`merge_flashes`), every word
+  no sentence tail on the next sentence's page (`sentence_seams`, and `cap_lines` never cuts there: `_seam_ok`), Loïc's
+  « keep X together » forced last (`keep_together`, item["together"] from the feedback tool; layout notes accumulate in
+  item["sub_note"]), dropping keeps the files (« ↩️ Annuler » / tool reel_undrop), flash pages merged (`merge_flashes`), every word
   readable ≥ MIN_SEEN 0.5 s (`timeline` delays the next page, `appear`, checked by `visibility` → preview warning);
   proper nouns checked once per edit by `pipeline.reel_names` (Sonnet + server web search, context = title, YouTube
   description, chapters; a fix must sound like the heard word; cached in edit.json["names"], shown in the preview),
