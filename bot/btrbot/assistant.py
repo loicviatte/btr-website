@@ -45,11 +45,12 @@ Comment tu travailles :
     tel endroit », mise en page) = reel_subtitles avec son retour tel quel pour ce reel (il comprend et ne refait que les
     sous-titres). Un doute sur un nom (« je suis pas sûr, c'est peut-être Motsi ») : passe-le aussi, avec ses mots.
   · « good », « parfait », « ok » sur un reel = rien à faire (ne le valide pas sans qu'il le dise).
-  · « le 3 sur insta, le 5 que TikTok et Shorts » = reel_validate avec instagram true / false (tous vont sur TikTok et
-    Shorts ; l'épisode a souvent moins de cases Instagram que de reels).
+  · Déroulé : 1) il valide ou jette chaque reel ; 2) quand tout est décidé, le bot lui demande lesquels vont en feed
+    Instagram (boutons) ; 3) « Ranger » : covers + Drive + ClickUp. « le 2 et le 5 en feed » = reels_file(feed=[2, 5]) ;
+    sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
   · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
-  · Un reel validé part tout seul sur Drive (dossier BTR Reels) et dans sa tâche ClickUp (lien, légendes, cover). Si Drive
-    ou ClickUp ne sont pas connectés, dis-lui d'envoyer /connect.
+  · Les reels rangés vont sur Drive (dossier du guest) et dans ClickUp (lien, légendes, cover). Si Drive ou ClickUp ne
+    sont pas connectés, dis-lui d'envoyer /connect.
   · Une règle pour TOUS les futurs reels (« toujours laisser plus de temps à la fin ») : propose_claude_code.
   Termine par un récap court de ce qui est lancé, reel par reel.
 - Si c'est vraiment ambigu, pose UNE question courte. Sinon décide.
@@ -123,11 +124,15 @@ TOOLS = [
      "bizarre à un endroit, mise en page) : Claude relit le reel, corrige les mots visés, et seuls les sous-titres sont refaits.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "feedback": {"type": "string",
                       "description": "son retour sur ce reel, tel quel"}}, "required": ["n", "feedback"]}},
-    {"name": "reel_validate", "description": "Valider le reel n : cover, fichier final, légendes, puis Drive + ClickUp. "
-                                         "instagram=false = seulement TikTok + YouTube Shorts (« pas sur insta », « que "
-                                         "TikTok et Shorts »). Sur un reel déjà validé, change son choix Instagram.",
+    {"name": "reel_validate", "description": "Valider le reel n (étape 1 ; rien n'est rangé avant que tous les reels "
+                                         "soient validés ou jetés). instagram = true / false : en feed Instagram ou "
+                                         "seulement TikTok + Shorts ; sur un reel déjà rangé, le déplace.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "instagram": {"type": "boolean"}},
                       "required": ["n"]}},
+    {"name": "reels_file", "description": "Ranger les reels validés (covers, Drive, ClickUp). feed = numéros qui vont "
+                                         "aussi sur Instagram, dans l'ordre de publication (« le 2 et le 5 en feed, "
+                                         "range »). Les autres vont sur TikTok + Shorts seulement.",
+     "input_schema": {"type": "object", "properties": {"feed": {"type": "array", "items": {"type": "integer"}}}}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "

@@ -192,6 +192,39 @@ async def main():
     assert len(rendered) + len(subbed) == nf + 1, (rendered, subbed)
     assert any("Renvoyer les reels" in str(x) or "Reels :" in str(x) for x in sent[-6:]), sent[-6:]
     print("resend →", out7)
+    # validate all → feed question → tick 6 then 2 → « Ranger »: feed reels first, in tick order
+    filed = []
+    p.reel_ig_slots = lambda ep, taken: ["ven. 31.10", "sam. 01.11"]
+    p.reel_cover = lambda ep, n, item, *a: {"cover": "", "cover_text": {}}
+
+    def fake_share(ep, n, item, taken, ig):
+        filed.append((n, ig))
+        return {"links": {}, "clickup_task": f"t{n}", "clickup_kind": "slot" if ig else "short",
+                "clickup_url": f"https://app.clickup.com/t/t{n}", "clickup_name": f"Reel {n}"}
+    p.reel_share = fake_share
+    d = store()
+    d["sel"] = [2, 5, 6]
+    for k in ("2", "5", "6"):
+        d["items"].setdefault(k, {"shift": [0.0, 0.0], "cuts": []}).update(
+            status="preview", filed=False, file=str(Path(bot.cfg.data_dir) / "reel_6.mp4"), duration=15.4)
+    Reels.of(EP).save()
+    lid4 = d["id"]
+    await press(f"rok:{lid4}:2")
+    await settle()
+    assert not any("Lesquels vont aussi" in str(x) for x in sent[-3:]), sent[-3:]       # 5 and 6 still to decide
+    await press(f"rok:{lid4}:5")
+    await press(f"rno:{lid4}:6")
+    await settle()
+    assert any("Lesquels vont aussi sur Instagram" in str(x) for x in sent[-4:]), sent[-4:]
+    await press(f"rfeed:{lid4}:5")
+    await press(f"rfeed:{lid4}:2")
+    await press(f"rfile:{lid4}")
+    await settle()
+    assert filed == [(5, True), (2, True)], filed
+    assert store()["items"]["2"]["filed"] and store()["items"]["5"]["filed"]
+    out8 = await h["reel_validate"](2, instagram=False)                          # change of mind after filing
+    await settle()
+    assert filed[-1] == (2, False), filed
 
 
 try:

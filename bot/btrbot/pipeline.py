@@ -610,8 +610,8 @@ class Pipeline:
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
 
-    def reel_ig_slots(self, ep: Episode, taken: set[str]) -> int | None:
-        """How many Instagram reel slots of this episode are still free in ClickUp (None: not connected)."""
+    def reel_ig_slots(self, ep: Episode, taken: set[str]) -> list[str] | None:
+        """The days (« ven. 31.10 ») of this episode's Instagram reel slots still free in ClickUp (None: not connected)."""
         from . import share
         token = share.Secrets(self.cfg.data_dir).get("clickup_token")
         if not token:
@@ -622,7 +622,13 @@ class Pipeline:
             video = {}
         guest, part = ep.get("guest_name") or "", part_number(ep)
         label = share.episode_label(guest, part) or self.reel_title(ep)
-        return len(share.free_slots(share.ClickUp(token).tasks(), label, guest, part, share.episode_date(video), taken))
+        free = share.free_slots(share.ClickUp(token).tasks(), label, guest, part, share.episode_date(video), taken)
+        days = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
+        out = []
+        for t in free:
+            d = share.post_date(t)
+            out.append(f"{days[d.weekday()]} {d.strftime('%d.%m')}" if t.get("due_date") else "sans date")
+        return out
 
     def reel_share(self, ep: Episode, n: int, item: dict, taken: set[str], instagram: bool = True) -> dict:
         """Validated reel n → its ClickUp place (Instagram: the episode's next free « Reel k/N » slot, else a new

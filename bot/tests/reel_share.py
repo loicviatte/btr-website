@@ -122,7 +122,7 @@ p = Pipeline(cfg)
 p.yt = type("Y", (), {"video": lambda self, vid: {"snippet": {"publishedAt": "2026-10-27T17:00:00Z"}}})()
 ep = Episode(cfg.data_dir, "PjDZ8X_JWY0")
 ep["guest_name"], ep["part"], ep["title"] = "Oti Mabuse", "2", "Oti Mabuse Part 2"
-assert p.reel_ig_slots(ep, set()) == 2
+assert len(p.reel_ig_slots(ep, set())) == 2
 it = {"file": "/nonexistent.mp4", "duration": 40, "captions": {"instagram": "IG", "tiktok": "TT #x"}, "title": "Alone"}
 r1 = p.reel_share(ep, 1, dict(it), set(), True)
 assert r1["clickup_task"] == "p2" and r1["clickup_kind"] == "slot" and DB["p2"]["status"]["status"] == "approved", r1
@@ -130,7 +130,7 @@ assert DB["p2"]["name"] == "Reel 2/3 · Oti Mabuse P2 · Alone"
 r2 = p.reel_share(ep, 2, dict(it, title="Yacht"), {"p2"}, False)                       # TikTok + Shorts only
 assert r2["clickup_kind"] == "short" and DB[r2["clickup_task"]]["name"].startswith("Short · Oti Mabuse P2")
 assert "IG" not in DB[r2["clickup_task"]]["markdown_description"] and "TT #x" in DB[r2["clickup_task"]]["markdown_description"]
-assert p.reel_ig_slots(ep, {"p2", r2["clickup_task"]}) == 1
+assert len(p.reel_ig_slots(ep, {"p2", r2["clickup_task"]})) == 1
 # reel 1 finally not on Instagram: its slot is given back, a Shorts task is made
 r1b = p.reel_share(ep, 1, dict(it, clickup_task="p2", clickup_kind="slot", clickup_orig=r1["clickup_orig"]), {r2["clickup_task"]}, False)
 assert DB["p2"]["name"] == "Reel 2/3 · Oti P2" and DB["p2"]["status"]["status"] == "to generate", DB["p2"]

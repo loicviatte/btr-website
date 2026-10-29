@@ -37,17 +37,19 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   reel_drop. Subtitle pages: 4 lines max (`subs.cap_lines`), never an expression cut between pages (`keep_phrases`),
   placement (`vary` + `place`: mostly centred, 2 pages off-centre every 8 (l / r / lower / stair), a page never starts below the last word of the previous one nor in the bottom third). A restart resumes interrupted reels; when the reel rules
   change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
-  the reels himself: the bot never posts them. On ✅ Valider: cover (`pipeline.reel_cover`: 4K guest stills kept at
+  the reels himself: the bot never posts them. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
+  2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
+  tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
+  for each reel (feed ones first), cover (`pipeline.reel_cover`: 4K guest stills kept at
   render time in `reels/rNN/cover/`, best face chosen by Haiku, hook = consecutive words really said, template
   `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):
   ClickUp place first, then Drive (scope drive.file, folder « BTR Reels / <guest> », files named
   MMDD_EPn_GUEST_FEED|SHORTS_TITLE.mp4 + _COVER.jpg, MMDD = due date of the ClickUp task else today, EP numbers in
   `share.EP_NUMBERS` + data/ep_numbers.json (new guest = next number); file ids kept so a re-file renames/moves the same
   file; bump `bot.REELS_FILES` to re-file validated reels at boot; viewable by link), then the ClickUp task
-  (list « Content calendar »; preview buttons « ✅ Insta + TikTok + Shorts » (rok) / « ✅ TikTok + Shorts » (rsh), the
-  preview says how many Instagram slots of the episode are still free; Insta → the episode's next free « Reel k/N »
+  (list « Content calendar »; the feed question lists the episode's free Instagram slots; feed → the next free « Reel k/N »
   slot, else a new « Reel · … » task; TikTok + Shorts only → a new « Short · … » task (Instagram field Not planned);
-  changing the choice later gives the slot back / deletes the bot's own task; renamed, status approved,
+  changing the choice later (reel_validate instagram=…) gives the slot back / deletes the bot's own task; renamed, status approved,
   description block below « ———— BTR Studio ———— » with links + captions, cover attached). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
   sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description).
