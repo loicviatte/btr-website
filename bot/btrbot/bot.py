@@ -778,6 +778,8 @@ def tool_handlers(ctx, images: list) -> dict:
         if not reel_cand(ep, n) or not RS(ep).data["items"].get(str(n), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
         item = reel_item(ep, n)
+        if item.get("status") in ("queued", "rendering"):
+            return f"le reel {n} est déjà en cours de montage : je prendrai la retouche après"
         sh = item["shift"]
         sh[0] = round(sh[0] + float(start_shift or 0), 2)
         sh[1] = round(sh[1] + float(end_shift or 0), 2)
@@ -785,9 +787,11 @@ def tool_handlers(ctx, images: list) -> dict:
             item["cuts"] = []
         if cut:
             item["cuts"].append(str(cut)[:200])
+        if cut or uncut or start_shift or end_shift:
+            item.pop("captions", None)                 # the words changed: the captions are written again
         item["status"] = "queued"
         RS(ep).save()
-        return bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, RS(ep).data["id"], [n]))
+        return bg(ctx, f"Reel {n} (retouche)", reel_chain(ctx, ep, RS(ep).data.get("id"), [n]))
 
     async def reel_validate(n):
         ep = reels_or_fail()
@@ -931,9 +935,9 @@ def reel_kb(ep):
     d = RS(ep).data
     sel = set(d.get("sel") or [])
     nums = [c["n"] for c in d["cands"]]
-    rows = [[B(("✅ " if n in sel else "") + str(n), callback_data=f"rsel:{d['id']}:{n}") for n in nums[i:i + 5]]
+    rows = [[B(("✅ " if n in sel else "") + str(n), callback_data=f"rsel:{d.get('id')}:{n}") for n in nums[i:i + 5]]
             for i in range(0, len(nums), 5)]
-    rows.append([B(f"🎬 Monter la sélection ({len(sel)})", callback_data=f"rgo:{d['id']}")])
+    rows.append([B(f"🎬 Monter la sélection ({len(sel)})", callback_data=f"rgo:{d.get('id')}")])
     return K(rows)
 
 
@@ -990,7 +994,7 @@ def reel_caption(ep, n: int) -> str:
 async def send_reel(ctx, ep, n: int):
     d = RS(ep).data
     item = reel_item(ep, n)
-    kb = K([[B("✅ Valider", callback_data=f"rok:{d['id']}:{n}"), B("🗑 Jeter", callback_data=f"rno:{d['id']}:{n}")]])
+    kb = K([[B("✅ Valider", callback_data=f"rok:{d.get('id')}:{n}"), B("🗑 Jeter", callback_data=f"rno:{d.get('id')}:{n}")]])
     with open(item["file"], "rb") as f:
         await ctx.bot.send_video(cfg.chat_id, f, caption=reel_caption(ep, n)[:1000], supports_streaming=True,
                                  width=1080, height=1920, duration=int(item["duration"]), reply_markup=kb,
@@ -1003,8 +1007,8 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     d = RS(ep).data
     item = reel_item(ep, n)
     cand = reel_cand(ep, n)
-    if d.get("id") != list_id or not cand or item.get("status") == "dropped":
-        return False
+    if d.get("id") != list_id or not cand or item.get("status") != "queued":
+        return False                                   # replaced list, dropped, or already taken by another chain
     item["status"] = "rendering"
     res = await run(pipe.render_reel, ep, dict(cand), list(item["shift"]), list(item["cuts"]))
     if RS(ep).data.get("id") != list_id:                  # a new list arrived during the render
@@ -1042,15 +1046,22 @@ async def reel_chain(ctx, ep, list_id: int, nums: list[int], done: int = 0, tota
 
 
 def start_reels(ctx, ep, nums: list[int]) -> str:
+    """Queue the reels not made yet (or failed / dropped): a double tap, or ticking one more moment and pressing
+    again, never renders a reel twice. A reel already made is changed with reel_adjust."""
     d = RS(ep).data
+    todo = []
     for n in nums:
         it = reel_item(ep, n)
-        if it.get("status") == "dropped":
-            it["status"] = "queued"
+        if it.get("status") in ("queued", "rendering", "preview", "ok"):
+            continue
+        it["status"] = "queued"
+        todo.append(n)
     RS(ep).save()
-    asyncio.create_task(say(ctx, f"🎬 Je monte {len(nums)} reel(s) : {', '.join(map(str, nums))}. Compte quelques minutes "
+    if not todo:
+        return "ces reels sont déjà montés ou en cours (pour en changer un : dis-moi quoi changer)"
+    asyncio.create_task(say(ctx, f"🎬 Je monte {len(todo)} reel(s) : {', '.join(map(str, todo))}. Compte quelques minutes "
                                  "par reel, je t'envoie chacun dès qu'il est prêt."))
-    return bg(ctx, f"Reel {nums[0]}", reel_chain(ctx, ep, d["id"], nums))
+    return bg(ctx, f"Reel {todo[0]}", reel_chain(ctx, ep, d.get("id"), todo))
 
 
 async def validate_reel(ctx, ep, n: int):
@@ -1207,7 +1218,7 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
-    if q.data.startswith(("rsel:", "rok:", "rno:", "rgo:", "reels:")):
+    if q.data.startswith(("rsel:", "rok:", "rno:", "rgo", "reels:")):
         await on_reel_button(ctx, q, q.data)
         return
     if q.data == "part:redo":
@@ -1400,6 +1411,16 @@ async def on_boot(app):
         start_polling(app)
         try:
             await app.bot.send_message(cfg.chat_id, "🔄 BTR bot (re)démarré, je surveille YouTube.")
+            ep = reel_ep()
+            if ep and RS(ep):
+                stuck = [k for k, it in RS(ep).data["items"].items() if it.get("status") in ("queued", "rendering")]
+                for k in stuck:
+                    RS(ep).data["items"][k]["status"] = "failed"
+                if stuck:
+                    RS(ep).save()
+                    await app.bot.send_message(cfg.chat_id, f"⚠️ Redémarrage pendant le montage des reels {', '.join(sorted(stuck, key=int))} : "
+                                               "ils n'ont pas été finis. Redemande-les (« remonte les reels "
+                                               f"{', '.join(sorted(stuck, key=int))} »).")
             err = cfg.data_dir / "last_deploy_error.txt"
             if err.exists():
                 reg.data["deploy_error"] = err.read_text()[-3000:]

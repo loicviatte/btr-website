@@ -24,7 +24,7 @@ import numpy as np
 YT = "https://www.youtube.com/watch?v={}"
 OUT_W, OUT_H = 1080, 1920
 PAD = 6.0                 # seconds downloaded before/after the moment, to find the exact words
-MIN_LEN, MAX_LEN = 15.0, 75.0
+MIN_LEN, MAX_LEN = 15.0, 90.0
 GAP_CUT, GAP_KEEP = 0.40, 0.14   # silences longer than GAP_CUT are cut down to GAP_KEEP
 LOCATE_MIN = 70           # below this fuzzy score the moment is not in the clip: fail instead of cutting elsewhere
 TARGET_LUFS = -14.0
@@ -89,8 +89,15 @@ def probe(path: Path) -> dict:
 
 
 # ---------------------------------------------------------------- speech → words
-def extract_wav(src: Path, dest: Path) -> Path:
-    run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", dest])
+def audio_offset(section_start: float, fps: float) -> float:
+    """A section cut from a whole second starts its picture on the next frame boundary: at 29.97 or 23.976 fps the
+    sound starts a few ms earlier than the picture. Skipping that much sound keeps them aligned (0 at 25/50 fps)."""
+    return max(0.0, math.ceil(section_start * fps - 1e-6) / fps - section_start)
+
+
+def extract_wav(src: Path, dest: Path, offset: float = 0.0) -> Path:
+    af = ["-af", f"atrim=start={offset:.6f},asetpts=PTS-STARTPTS"] if offset > 1e-4 else []
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-vn", *af, "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", dest])
     return dest
 
 
@@ -169,7 +176,8 @@ class Energy:
         frames = len(x) // n
         rms = np.sqrt(np.mean(x[:frames * n].reshape(frames, n) ** 2, axis=1) + 1e-12) if frames else np.zeros(1)
         self.db = 20 * np.log10(rms + 1e-9)
-        p10, p90 = (np.percentile(self.db, 10), np.percentile(self.db, 90)) if frames else (-60.0, -20.0)
+        live = self.db[self.db > -90] if frames else self.db    # digital silence (inserted gaps) would skew the floor
+        p10, p90 = (np.percentile(live, 10), np.percentile(live, 90)) if len(live) else (-60.0, -20.0)
         self.thr = float(min(max(p10 + 8, -50.0), p90 - 15))
 
     def _i(self, t: float) -> int:
@@ -181,8 +189,9 @@ class Energy:
             return (t0 + t1) / 2
         return (a + int(np.argmin(self.db[a:b + 1]))) * self.HOP
 
-    def silence(self, t0: float, t1: float) -> tuple[float, float] | None:
-        """Longest silent stretch in [t0, t1] (start, end), or None."""
+    def silence(self, t0: float, t1: float, min_len: float = 0.05) -> tuple[float, float] | None:
+        """Longest silent stretch in [t0, t1] (start, end) of at least `min_len` s, or None. (The closure inside a word,
+        a few ms, is never taken for a pause.)"""
         a, b = self._i(t0), self._i(t1)
         best, cur, best_run = 0, None, None
         for k in range(a, b + 1):
@@ -192,7 +201,9 @@ class Energy:
                     best, best_run = k - cur + 1, (cur, k)
             else:
                 cur = None
-        return None if not best_run else (best_run[0] * self.HOP, (best_run[1] + 1) * self.HOP)
+        if not best_run or best * self.HOP < min_len:
+            return None
+        return best_run[0] * self.HOP, (best_run[1] + 1) * self.HOP
 
 
 # ---------------------------------------------------------------- the moment inside the clip
@@ -234,7 +245,8 @@ def locate(words: list[Word], first_words: str, last_words: str) -> tuple[int, i
 def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift: float = 0.0, end_shift: float = 0.0,
                 cut_phrases: list[str] = ()) -> tuple[list[tuple[float, float]], list[str]]:
     """Time ranges of the clip to keep, and the asked phrases that were not found. Long silences (measured on the
-    sound) are shortened to GAP_KEEP; asked phrases are removed; every cut falls at a quiet spot between words."""
+    sound) are shortened to GAP_KEEP; asked phrases are removed; every cut falls at a quiet spot between words, never
+    inside the last word. Start/end shifts move the edges and every range is clipped to them."""
     removed: set[int] = set()
     missing: list[str] = []
     for ph in cut_phrases or ():
@@ -246,36 +258,47 @@ def keep_ranges(words: list[Word], i0: int, i1: int, energy: Energy, start_shift
     idx = [k for k in range(i0, i1 + 1) if k not in removed]
     if not idx:
         raise RuntimeError("rien à garder")
+
+    def after(k: int) -> tuple[float, float]:
+        """The pause after word k: from the end of its sound to the next word."""
+        nxt = words[k + 1].start if k + 1 < len(words) else words[k].end + 0.8
+        # a real pause (≥ 120 ms) anywhere after the word starts: the speech model often stretches the last word of a
+        # sentence over the pause. Else a short one, but only near its end (never the closure inside a word).
+        sil = energy.silence(words[k].start + 0.05, nxt + 0.05, 0.12) or \
+            energy.silence(max(words[k].start + 0.05, words[k].end - 0.08), nxt + 0.05, 0.05)
+        if sil:
+            return sil
+        e = max(energy.quiet(words[k].end, min(nxt, words[k].end + 0.12)), words[k].end - 0.03)
+        return e, max(e, nxt)
+
     first, last = words[idx[0]], words[idx[-1]]
-    nxt = words[idx[-1] + 1].start if idx[-1] + 1 < len(words) else last.end + 0.8
-    # start: just before the first word (or where Loïc asked), on the quietest spot
+    # edges (start: just before the first word; end: where the last word's sound stops), then Loïc's shifts
+    a = energy.quiet(first.start - 0.25, first.start - 0.02)
     if start_shift:
-        t = first.start + start_shift
-        a = energy.quiet(t - 0.3, t + 0.3)
-    else:
-        a = energy.quiet(first.start - 0.25, first.start - 0.02)
-    # end: where the last word's sound really stops, then the quietest spot right after
-    sil = energy.silence(last.start + 0.05, min(nxt, last.end + 1.0))
-    speech_end = sil[0] if sil else last.end
-    b = energy.quiet(speech_end, min(speech_end + 0.18, max(nxt, speech_end + 0.02)))
+        a = energy.quiet(first.start + start_shift - 0.3, first.start + start_shift + 0.3)
+    s_end, nxt_start = after(idx[-1])
+    b = max(energy.quiet(s_end, min(s_end + 0.18, max(nxt_start, s_end + 0.02))), last.end - 0.03)
     if end_shift:
         b = energy.quiet(b + end_shift - 0.3, b + end_shift + 0.3)
-    ranges: list[list[float]] = [[max(0.0, a), None]]
+    # inner cuts: long pauses, removed phrases
+    ranges: list[list[float]] = [[min(a, first.start), None]]
     for p, q in zip(idx, idx[1:]):
         if q != p + 1:                                   # a removed phrase: from after p to before q
-            s1 = energy.silence(words[p].start + 0.05, words[p + 1].start + 0.05)
-            s2 = energy.silence(words[q - 1].start + 0.05, words[q].start + 0.05)
-            left = s1[0] + min(GAP_KEEP / 2, (s1[1] - s1[0]) / 2) if s1 else energy.quiet(words[p].end, words[p + 1].start)
-            right = s2[1] - min(GAP_KEEP / 2, (s2[1] - s2[0]) / 2) if s2 else energy.quiet(words[q - 1].end, words[q].start)
-            ranges[-1][1] = left
-            ranges.append([right, None])
+            l0, l1 = after(p)
+            r0, r1 = after(q - 1)
+            ranges[-1][1] = l0 + min(GAP_KEEP / 2, (l1 - l0) / 2)
+            ranges.append([r1 - min(GAP_KEEP / 2, (r1 - r0) / 2), None])
             continue
-        sil = energy.silence(words[p].start + 0.05, words[q].start + 0.05)
-        if sil and sil[1] - sil[0] > GAP_CUT:
-            ranges[-1][1] = sil[0] + GAP_KEEP / 2
-            ranges.append([sil[1] - GAP_KEEP / 2, None])
-    ranges[-1][1] = b
-    return [(float(x), float(y)) for x, y in ranges if y > x + 0.05], missing
+        g0, g1 = after(p)
+        if g1 - g0 > GAP_CUT and g1 <= words[q].start + 0.1:
+            ranges[-1][1] = g0 + GAP_KEEP / 2
+            ranges.append([g1 - GAP_KEEP / 2, None])
+    ranges[-1][1] = max(b, last.end)
+    clipped = [(max(x, a), min(y, b)) for x, y in ranges]
+    out = [(float(x), float(y)) for x, y in clipped if y > x + 0.05]
+    if not out:
+        raise RuntimeError("rien à garder après la retouche : le début et la fin se croisent")
+    return out, missing
 
 
 def snap_to_cuts(ranges: list[tuple[float, float]], cuts: list[float], words: list[Word]) -> list[tuple[float, float]]:
@@ -476,7 +499,7 @@ def _loudness(wav: Path) -> float:
     return float(m[-1]) if m and m[-1] != "-inf" else -70.0
 
 
-def render_audio(src: Path, pcs: list[dict], fps: float, work: Path) -> Path:
+def render_audio(src: Path, pcs: list[dict], fps: float, work: Path, offset: float = 0.0) -> Path:
     """The sound of each kept range in one piece (continuous across camera switches, short fades only at the edit
     cuts), then brought to −14 LUFS: gain + peak limiter, measured, corrected once."""
     ranges: list[list] = []                     # [start_s, frames] per range, in order
@@ -488,7 +511,7 @@ def render_audio(src: Path, pcs: list[dict], fps: float, work: Path) -> Path:
     parts, labels = [], []
     for i, (s, n, _) in enumerate(ranges):
         dur = n / fps
-        parts.append(f"[0:a]atrim=start={s:.6f}:duration={dur:.6f},asetpts=PTS-STARTPTS,aresample=48000,"
+        parts.append(f"[0:a]atrim=start={s + offset:.6f}:duration={dur:.6f},asetpts=PTS-STARTPTS,aresample=48000,"
                      f"afade=t=in:d=0.008,afade=t=out:st={max(0.0, dur - 0.008):.6f}:d=0.008[a{i}]")
         labels.append(f"[a{i}]")
     raw = work / "audio_raw.wav"
@@ -496,14 +519,14 @@ def render_audio(src: Path, pcs: list[dict], fps: float, work: Path) -> Path:
          ";".join(parts) + f";{''.join(labels)}concat=n={len(ranges)}:v=0:a=1[out]", "-map", "[out]", "-ac", "2",
          "-c:a", "pcm_s16le", raw])
     level = work / "audio_level.wav"
-    gain = TARGET_LUFS - _loudness(raw)
+    gain = min(20.0, TARGET_LUFS - _loudness(raw))
     for _ in range(2):
         run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af",
              f"volume={gain:.2f}dB,alimiter=limit=0.84:level=false:attack=3:release=60", "-c:a", "pcm_s16le", level])
         miss = TARGET_LUFS - _loudness(level)
         if abs(miss) <= 0.3:
             break
-        gain += miss
+        gain = min(20.0, gain + miss)
     audio = work / "audio.m4a"
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", level, "-c:a", "aac", "-b:a", "192k", audio])
     for f in (raw, level):

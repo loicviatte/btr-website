@@ -112,57 +112,78 @@ def _shown(core: str, spoken: str) -> str:
     return letters                      # small word: the spoken casing (names keep their capital)
 
 
-def parse_blocks(spec: list[dict], words: list, max_shift: int = 6) -> list[Block]:
+def parse_blocks(spec: list[dict], words: list, max_shift: int = 6, stats: dict | None = None) -> list[Block]:
     """Blocks from the model's notation. Each token must be the SAME word as the next words really said (in order);
     its letters always come from the transcription, the model only brings case, emphasis and punctuation. A token
-    that does not match is dropped; a spoken word the model skipped is put back as a small word, unless it is a
-    filler (um, uh…) or a repetition. So the subtitles can neither add, change nor silently drop a meaningful word."""
-    placed: list[tuple[int, int, int, Tok]] = []     # (block, line, word index, token)
+    that does not match is dropped; a spoken word the model skipped is put back as small words on their own lines
+    (3 at most), unless it is a filler (um, uh…) or the extra copy of a repeated word. So the subtitles can neither
+    add, change nor silently drop a meaningful word. `stats["reinserted"]` = how many words had to be put back."""
+    toks: list[tuple[int, int, str]] = []            # (block, line, raw token), in reading order
     meta: list[str] = []
-    k = 0
     for bi, b in enumerate(spec):
         meta.append(b.get("align", "c") if b.get("align") in ("c", "l", "stair") else "c")
         for li, line in enumerate(b.get("lines") or []):
-            for raw in str(line).split():
-                m = TOKEN_RE.match(raw)
-                if not m:
-                    continue
-                lead, flags, lead2, core, trail = m.groups()
-                if not WORD_RE.search(core):
-                    continue
-                hit = next((j for j in range(k, min(len(words), k + max_shift)) if _same(core, words[j].text)), None)
-                if hit is None:
-                    continue
-                w = words[hit]
-                k = hit + 1
-                letters = re.sub(r"[^A-Za-zÀ-ÿ]", "", core)
-                big = bool(letters) and letters.isupper() and (len(letters) > 1 or letters not in ("I", "A"))
-                text = (lead + lead2) + _shown(core, w.text) + trail
-                placed.append((bi, li, hit, Tok(text, w.start, w.end, big, "*" in flags, "/" in flags, "~" in flags)))
-    # put back the meaningful words the model skipped
+            toks += [(bi, li, re.sub(r"^\d+:", "", raw)) for raw in str(line).split()]
+    parsed = []
+    for bi, li, raw in toks:
+        m = TOKEN_RE.match(raw)
+        if m and WORD_RE.search(m.group(4)):
+            parsed.append((bi, li, m.groups()))
+    placed: list[tuple[int, int, int, Tok]] = []
+    k = 0
+    for t, (bi, li, (lead, flags, lead2, core, trail)) in enumerate(parsed):
+        hit = next((j for j in range(k, min(len(words), k + max_shift)) if _same(core, words[j].text)), None)
+        if hit is None:
+            # the model skipped a longer aside: resync further on, only if the next token agrees right after
+            nxt = parsed[t + 1][2][3] if t + 1 < len(parsed) else None
+            for j in range(k + max_shift, len(words)):
+                if _same(core, words[j].text) and (nxt is None or (j + 1 < len(words) and _same(nxt, words[j + 1].text))):
+                    hit = j
+                    break
+        if hit is None:
+            continue
+        w = words[hit]
+        k = hit + 1
+        letters = re.sub(r"[^A-Za-zÀ-ÿ]", "", core)
+        big = bool(letters) and letters.isupper() and (len(letters) > 1 or letters not in ("I", "A"))
+        text = (lead + lead2) + _shown(core, w.text) + trail
+        placed.append((bi, li, hit, Tok(text, w.start, w.end, big, "*" in flags, "/" in flags, "~" in flags)))
     used = {p[2] for p in placed}
-    fixed = list(placed)
+    entries: list[tuple[int, object]] = [(p[2], p) for p in placed]
+    back = 0
     for j, w in enumerate(words):
         if j in used:
             continue
         kw = _key(w.text)
-        repeat = (j + 1 < len(words) and _key(words[j + 1].text) == kw) or (j > 0 and _key(words[j - 1].text) == kw)
-        if not kw or kw in FILLERS or repeat:
-            continue
-        before = [p for p in fixed if p[2] < j]
-        anchor = max(before, key=lambda p: p[2]) if before else (min(fixed, key=lambda p: p[2]) if fixed else None)
-        bi, li = (anchor[0], anchor[1]) if anchor else (0, 0)
-        if not meta:
-            meta.append("c")
+        twins = [i for i in (j - 1, j + 1) if 0 <= i < len(words) and _key(words[i].text) == kw]
+        if not kw or kw in FILLERS or any(i in used for i in twins) or (j - 1) in twins:
+            continue                                   # filler, or a repeated word already shown once
         word = re.sub(r"^[^\w']+|[^\w']+$", "", w.text.replace("’", "'"))
-        fixed.append((bi, li, j, Tok(word, w.start, w.end)))
-    fixed.sort(key=lambda p: p[2])
+        entries.append((j, Tok(word, w.start, w.end)))
+        back += 1
+    if stats is not None:
+        stats["reinserted"] = back
+    entries.sort(key=lambda e: e[0])
     blocks: list[Block] = []
-    for bi in sorted({p[0] for p in fixed}):
-        lines = []
-        for li in sorted({p[1] for p in fixed if p[0] == bi}):
-            lines.append([p[3] for p in fixed if p[0] == bi and p[1] == li])
-        blocks.append(Block(lines, meta[bi] if bi < len(meta) else "c"))
+    cur_key, cur_line, cur_block = None, None, None
+    first_block = min((p[0] for p in placed), default=0)
+    bi_now = first_block
+    for _, e in entries:
+        if isinstance(e, tuple):                       # a token placed by the model
+            bi, li, _, tok = e
+            key = (bi, li)
+        else:                                          # a word put back: its own short line in the current block
+            bi, tok = bi_now, e
+            key = ("back", bi) if cur_key == ("back", bi) and len(cur_line) < 3 else ("back", bi, id(e))
+        if bi != cur_block:
+            blocks.append(Block([], meta[bi] if bi < len(meta) else "c"))
+            cur_block, cur_key = bi, None
+        if key != cur_key:
+            cur_line = []
+            blocks[-1].lines.append(cur_line)
+            cur_key = ("back", bi) if key[0] == "back" else key
+        cur_line.append(tok)
+        bi_now = bi
     return blocks
 
 

@@ -131,6 +131,15 @@ async def main():
     out3 = await h["reels_select"]([5])
     await settle()
     assert rendered[-1][0] == 5, rendered
+    # double tap on « Monter la sélection »: each reel is made once
+    before = len(rendered)
+    await press(f"rsel:{lid2}:6")
+    await press(f"rgo:{lid2}")
+    await press(f"rgo:{lid2}")
+    await settle()
+    assert [r[0] for r in rendered[before:]] == [6], rendered[before:]
+    await press("rgo")                          # a button from before the list ids
+    assert "ancienne liste" in sent[-1][1], sent[-1]
     print("context:\n" + bot.reels_context())
     print("select →", out2, "|", out3)
     assert slim_calls == [True, False], slim_calls        # reel 5 had no file to clean

@@ -348,7 +348,7 @@ class Pipeline:
             t = srt.find_quote(cues, c["first_words"])
             if t is not None and abs(t - a) <= 8:     # the transcript knows better than the model where it starts
                 b, a = b + (t - a), t
-            c.update(start_s=a, end_s=min(max(b, a + R.MIN_LEN), a + 120), verified=t is not None)
+            c.update(start_s=a, end_s=min(max(b, a + R.MIN_LEN), a + R.MAX_LEN), verified=t is not None)
             out.append(c)
         out.sort(key=lambda c: c["start_s"])
         for i, c in enumerate(out, 1):
@@ -378,9 +378,10 @@ class Pipeline:
                 old.unlink()
         clip = R.download_section(ep.video_id, dl_a, dl_b, work / f"clip_{tag}.mp4", self.cfg.ytdlp_cookies)
         info = R.probe(clip)
+        off = R.audio_offset(dl_a, info["fps"])
         wav = work / f"clip_{tag}.wav"
         if not wav.exists():
-            R.extract_wav(clip, wav)
+            R.extract_wav(clip, wav, off)
         wj = work / f"words_{tag}.json"
         if wj.exists():
             words = [R.Word(**w) for w in json.loads(wj.read_text())]
@@ -396,6 +397,8 @@ class Pipeline:
         a, b = ranges[0][0], ranges[-1][1]
         scene = R.scene_cuts(clip, max(0.0, a - 0.5), b + 0.5)
         ranges = R.snap_to_cuts(ranges, scene, words)
+        if not ranges:
+            raise RuntimeError("rien à garder après la retouche")
         a, b = ranges[0][0], ranges[-1][1]
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in R.sample_frames(clip, a, b, work / "frames")]
         shots = R.shot_layouts(samples, scene, a, b)
@@ -403,14 +406,15 @@ class Pipeline:
         if not pcs:
             raise RuntimeError("extrait vide après le montage")
         video = R.render_video(clip, pcs, info, work / "pieces")
-        audio = R.render_audio(clip, pcs, info["fps"], work)
+        audio = R.render_audio(clip, pcs, info["fps"], work, off)
         total = sum(p["frames"] for p in pcs) / info["fps"]
         ow = R.out_words(words, pcs, info["fps"])
+        stats: dict = {}
         try:
-            blocks = subs.parse_blocks(self.llm.reel_blocks([w.text for w in ow]), ow)
+            blocks = subs.parse_blocks(self.llm.reel_blocks([w.text for w in ow]), ow, stats=stats)
         except Exception:  # noqa: BLE001
             blocks = []
-        if not blocks:
+        if not blocks or stats.get("reinserted", 0) > 0.15 * len(ow):   # the model's layout misses too much
             blocks = subs.auto_blocks(ow)
         subs.timeline(blocks, total, lambda t: R.layout_at(pcs, t))
         fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
