@@ -81,3 +81,24 @@ def find_quote(cues: list[Cue], quote: str) -> float | None:
         if score > best:
             best, best_t = score, cues[i].start
     return best_t if best >= 80 else None
+
+
+def find_quote_end(cues: list[Cue], quote: str, after: float = 0.0, within: float = 150.0) -> float | None:
+    """End time of the cue where `quote` (e.g. the last words of a moment) finishes, searching from `after`."""
+    from rapidfuzz import fuzz
+
+    q = re.sub(r"[^\w\s']", "", (quote or "").lower())
+    if not q.strip():
+        return None
+    best, best_end = 0.0, None
+    for i, c in enumerate(cues):
+        if c.end < after or c.start > after + within:
+            continue
+        for j in range(i, min(i + 4, len(cues))):      # the shortest window that contains the phrase
+            window = re.sub(r"[^\w\s']", "", " ".join(x.text for x in cues[i:j + 1]).lower())
+            score = fuzz.partial_ratio(q, window)
+            if score > best + 0.5:
+                best, best_end = score, cues[j].end
+            if score >= 95:
+                break
+    return best_end if best >= 80 else None

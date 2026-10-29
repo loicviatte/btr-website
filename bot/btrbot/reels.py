@@ -33,6 +33,10 @@ TG_LIMIT = 49 * 2 ** 20   # Telegram bots cannot send files over 50 MB
 ASR_DIR = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8"
 
 
+class NotInClip(RuntimeError):
+    """The first or last words of the moment are not in the section downloaded."""
+
+
 @dataclass
 class Word:
     text: str
@@ -208,22 +212,27 @@ class Energy:
 
 
 # ---------------------------------------------------------------- the moment inside the clip
-def _find(words: list[Word], phrase: str, lo: int = 0, hi: int | None = None) -> tuple[int, float]:
-    """Index of the word where `phrase` best starts (fuzzy), and the score 0-100."""
+def _find(words: list[Word], phrase: str, lo: int = 0, hi: int | None = None, end: bool = False) -> tuple[int, float]:
+    """Index of the word where `phrase` best starts (or ends, with end=True) — fuzzy, over windows a couple of words
+    shorter or longer (the model may drop or add a small word) — and the score 0-100."""
     from rapidfuzz import fuzz
     target = [norm(w) for w in phrase.split() if norm(w)]
     if not target or not words:
         return -1, 0.0
     hi = len(words) if hi is None else min(hi, len(words))
     toks = [norm(w.text) for w in words]
+    key = " ".join(target)
     best, best_i = 0.0, -1
     n = len(target)
     for i in range(lo, max(lo, hi - 1) + 1):
         if i >= len(toks):
             break
-        sc = fuzz.ratio(" ".join(target), " ".join(toks[i:i + n]))
-        if sc > best:
-            best, best_i = sc, i
+        for size in (n, n - 1, n + 1, n - 2, n + 2):
+            if size < 1 or i + size > len(toks):
+                continue
+            sc = fuzz.ratio(key, " ".join(toks[i:i + size])) - 2 * abs(size - n)
+            if sc > best:
+                best, best_i = sc, (i + size - 1 if end else i)
     return best_i, best
 
 
@@ -232,12 +241,10 @@ def locate(words: list[Word], first_words: str, last_words: str) -> tuple[int, i
     Fails when the words are not really there, rather than cutting another passage."""
     i0, s0 = _find(words, first_words)
     if i0 < 0 or s0 < LOCATE_MIN:
-        raise RuntimeError(f"je ne retrouve pas le début de l'extrait dans le son (score {s0:.0f}/100)")
-    n_last = len([w for w in last_words.split() if norm(w)])
-    i1s, s1 = _find(words, last_words, i0 + 1)
-    if i1s < 0 or s1 < LOCATE_MIN:
-        raise RuntimeError(f"je ne retrouve pas la fin de l'extrait dans le son (score {s1:.0f}/100)")
-    i1 = min(len(words) - 1, i1s + max(n_last, 1) - 1)
+        raise NotInClip(f"je ne retrouve pas le début de l'extrait dans le son (score {s0:.0f}/100)")
+    i1, s1 = _find(words, last_words, i0 + 1, end=True)
+    if i1 < 0 or s1 < LOCATE_MIN:
+        raise NotInClip(f"je ne retrouve pas la fin de l'extrait dans le son (score {s1:.0f}/100)")
     if i1 <= i0:
         raise RuntimeError("début et fin de l'extrait dans le mauvais ordre")
     return i0, i1, min(s0, s1)

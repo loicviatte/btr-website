@@ -368,6 +368,9 @@ class Pipeline:
             t = srt.find_quote(cues, c["first_words"])
             if t is not None and abs(t - a) <= 8:     # the transcript knows better than the model where it starts
                 b, a = b + (t - a), t
+            e = srt.find_quote_end(cues, c["last_words"], a)
+            if e is not None and a + 8 < e <= a + R.MAX_LEN:   # …and where it ends
+                b = e
             c.update(start_s=a, end_s=min(max(b, a + R.MIN_LEN), a + R.MAX_LEN), verified=t is not None)
             out.append(c)
         out.sort(key=lambda c: c["start_s"])
@@ -380,6 +383,13 @@ class Pipeline:
     def render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list, fixes: list | None = None,
                     note: str = "") -> dict:
         """Cut, frame, subtitle and render one moment. Pure: returns the reel's new fields, the caller stores them."""
+        from . import reels as R
+        try:
+            return self._render_reel(ep, cand, shift, cuts, fixes, note, widen=0.0)
+        except R.NotInClip:            # the moment runs past the section downloaded: once more, with a wider one
+            return self._render_reel(ep, cand, shift, cuts, fixes, note, widen=20.0)
+
+    def _render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list, fixes, note: str, widen: float) -> dict:
         import cv2
 
         from . import reels as R
@@ -387,9 +397,14 @@ class Pipeline:
         work = ep.dir / "reels" / f"r{n:02d}"
         work.mkdir(parents=True, exist_ok=True)
         s0, s1 = float(shift[0]), float(shift[1])
+        cues_all = self.cues(ep)
+        start_s, end_s = cand["start_s"], cand["end_s"]
+        e = srt.find_quote_end(cues_all, cand.get("last_words", ""), start_s) if cues_all else None
+        if e is not None and start_s + 8 < e <= start_s + R.MAX_LEN:
+            end_s = max(end_s, e)       # lists made before the end was looked up in the transcript
         # the 6 s margin covers most adjustments; beyond it, the section downloaded grows
-        a0 = cand["start_s"] + min(0.0, s0 + R.PAD - 1)
-        b0 = cand["end_s"] + max(0.0, s1 - R.PAD + 1)
+        a0 = start_s - widen + min(0.0, s0 + R.PAD - 1)
+        b0 = end_s + widen + max(0.0, s1 - R.PAD + 1)
         dl_a, dl_b = R.section_bounds(a0, b0)
         tag = f"{dl_a}_{dl_b}"
         for old in list(work.glob("clip_*.mp4")) + list(work.glob("words_*.json")):
@@ -413,7 +428,7 @@ class Pipeline:
         # Loïc's DaVinci SRT and the speech model are compared; where they differ, Claude picks one of the two
         diffs, picks = [], {}
         if ep.file("captions_davinci.srt").exists():
-            words, diffs = R.compare_with_srt(words, self.cues(ep), dl_a + off)
+            words, diffs = R.compare_with_srt(words, cues_all, dl_a + off)
             if diffs:
                 try:
                     picks = self.llm.reel_arbitrate(ep.get("guest_name", ""), self.reel_title(ep), diffs)

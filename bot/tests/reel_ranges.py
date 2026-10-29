@@ -65,3 +65,14 @@ assert " ".join(w.text for w in chosen) == "And I had to impress Motsi and Craig
 fixed, nf = R.apply_fixes(chosen, [{"from": "its", "to": "it's"}])
 assert " ".join(w.text for w in fixed) == "And I had to impress Motsi and Craig, it's a checklist." and not nf
 print("OK 2")
+
+# the moment's end found in the transcript, and the last words found despite a small word difference
+cues2 = [Cue(10.0, 13.0, "I remember we had a trainer and I was like,"), Cue(13.0, 16.0, "could you please come and watch"),
+         Cue(16.0, 19.5, "and she said it's disgusting."), Cue(19.5, 23.0, "So I got a yacht for my husband.")]
+from btrbot import srt as S  # noqa: E402
+assert S.find_quote_end(cues2, "I got a yacht for my husband", 10) == 23.0
+assert S.find_quote_end(cues2, "she said it's disgusting", 10) == 19.5
+ws = [R.Word(t, i * 0.3, i * 0.3 + 0.25) for i, t in enumerate("so I got a yacht for my husband and then".split())]
+i, sc = R._find(ws, "I got the yacht for my husband", end=True)
+assert ws[i].text == "husband" and sc >= 70, (i, sc)
+print("OK 3")
