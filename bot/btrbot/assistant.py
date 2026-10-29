@@ -45,6 +45,8 @@ Comment tu travailles :
     tel endroit », mise en page) = reel_subtitles avec son retour tel quel pour ce reel (il comprend et ne refait que les
     sous-titres). Un doute sur un nom (« je suis pas sûr, c'est peut-être Motsi ») : passe-le aussi, avec ses mots.
   · « good », « parfait », « ok » sur un reel = rien à faire (ne le valide pas sans qu'il le dise).
+  · « le 3 sur insta, le 5 que TikTok et Shorts » = reel_validate avec instagram true / false (tous vont sur TikTok et
+    Shorts ; l'épisode a souvent moins de cases Instagram que de reels).
   · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
   · Un reel validé part tout seul sur Drive (dossier BTR Reels) et dans sa tâche ClickUp (lien, légendes, cover). Si Drive
     ou ClickUp ne sont pas connectés, dis-lui d'envoyer /connect.
@@ -121,8 +123,11 @@ TOOLS = [
      "bizarre à un endroit, mise en page) : Claude relit le reel, corrige les mots visés, et seuls les sous-titres sont refaits.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "feedback": {"type": "string",
                       "description": "son retour sur ce reel, tel quel"}}, "required": ["n", "feedback"]}},
-    {"name": "reel_validate", "description": "Valider le reel n : envoie le fichier final et les légendes Instagram et TikTok.",
-     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "reel_validate", "description": "Valider le reel n : cover, fichier final, légendes, puis Drive + ClickUp. "
+                                         "instagram=false = seulement TikTok + YouTube Shorts (« pas sur insta », « que "
+                                         "TikTok et Shorts »). Sur un reel déjà validé, change son choix Instagram.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "instagram": {"type": "boolean"}},
+                      "required": ["n"]}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "

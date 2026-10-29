@@ -58,3 +58,83 @@ assert share.drive_error(Exception("Drive API has not been used in project 123 b
                                    "visiting https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=123 then retry")
                          ).endswith("overview?project=123")
 print("OK")
+
+# ---- whole ClickUp step with a fake ClickUp: Instagram slot, Shorts-only task, change of mind both ways
+import copy  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp())
+from btrbot.config import Settings  # noqa: E402
+from btrbot.pipeline import Pipeline  # noqa: E402
+from btrbot.state import Episode  # noqa: E402
+
+DB = {t["id"]: copy.deepcopy(t) for t in TASKS}
+LOG = []
+
+
+class FakeCU:
+    def __init__(self, token):
+        if not token:
+            raise share.NotConnected("ClickUp")
+
+    def tasks(self, list_id=None):
+        return [copy.deepcopy(t) for t in DB.values()]
+
+    def task(self, tid):
+        if tid not in DB:
+            raise RuntimeError("ClickUp 404")
+        return copy.deepcopy(DB[tid])
+
+    def update(self, tid, **f):
+        LOG.append(("update", tid, f.get("status")))
+        t = DB[tid]
+        t["name"] = f.get("name", t["name"])
+        t["status"] = {"status": f.get("status", t["status"]["status"])}
+        if "markdown_content" in f:
+            t["markdown_description"] = t["text_content"] = f["markdown_content"]
+
+    def set_field(self, tid, field, value):
+        pass
+
+    def create(self, list_id=None, **f):
+        tid = f"new{len(DB)}"
+        DB[tid] = {"id": tid, "name": f["name"], "status": {"status": f["status"]}, "custom_fields": f["custom_fields"],
+                   "markdown_description": f["markdown_content"], "text_content": f["markdown_content"],
+                   "url": f"https://app.clickup.com/t/{tid}"}
+        LOG.append(("create", tid, f["name"]))
+        return copy.deepcopy(DB[tid])
+
+    def delete(self, tid):
+        LOG.append(("delete", tid))
+        DB.pop(tid)
+
+    def attach(self, tid, path):
+        LOG.append(("attach", tid))
+
+
+share.ClickUp = FakeCU
+cfg = Settings()
+share.Secrets(cfg.data_dir).set(clickup_token="pk_test")
+p = Pipeline(cfg)
+p.yt = type("Y", (), {"video": lambda self, vid: {"snippet": {"publishedAt": "2026-10-27T17:00:00Z"}}})()
+ep = Episode(cfg.data_dir, "PjDZ8X_JWY0")
+ep["guest_name"], ep["part"], ep["title"] = "Oti Mabuse", "2", "Oti Mabuse Part 2"
+assert p.reel_ig_slots(ep, set()) == 2
+it = {"file": "/nonexistent.mp4", "duration": 40, "captions": {"instagram": "IG", "tiktok": "TT #x"}, "title": "Alone"}
+r1 = p.reel_share(ep, 1, dict(it), set(), True)
+assert r1["clickup_task"] == "p2" and r1["clickup_kind"] == "slot" and DB["p2"]["status"]["status"] == "approved", r1
+assert DB["p2"]["name"] == "Reel 2/3 · Oti Mabuse P2 · Alone"
+r2 = p.reel_share(ep, 2, dict(it, title="Yacht"), {"p2"}, False)                       # TikTok + Shorts only
+assert r2["clickup_kind"] == "short" and DB[r2["clickup_task"]]["name"].startswith("Short · Oti Mabuse P2")
+assert "IG" not in DB[r2["clickup_task"]]["markdown_description"] and "TT #x" in DB[r2["clickup_task"]]["markdown_description"]
+assert p.reel_ig_slots(ep, {"p2", r2["clickup_task"]}) == 1
+# reel 1 finally not on Instagram: its slot is given back, a Shorts task is made
+r1b = p.reel_share(ep, 1, dict(it, clickup_task="p2", clickup_kind="slot", clickup_orig=r1["clickup_orig"]), {r2["clickup_task"]}, False)
+assert DB["p2"]["name"] == "Reel 2/3 · Oti P2" and DB["p2"]["status"]["status"] == "to generate", DB["p2"]
+assert share.MARK not in DB["p2"]["markdown_description"] and r1b["clickup_kind"] == "short" and r1b.get("clickup_freed")
+# reel 2 finally on Instagram: its Shorts task (made by the bot) is deleted, it takes the free slot
+r2b = p.reel_share(ep, 2, dict(it, title="Yacht", clickup_task=r2["clickup_task"], clickup_kind="short"), {r1b["clickup_task"]}, True)
+assert r2["clickup_task"] not in DB and r2b["clickup_task"] == "p2" and r2b["clickup_kind"] == "slot", (r2b, LOG)
+assert "drive_error" in r1 and "pas encore connecté" in r1["drive_error"]
+print("OK clickup")

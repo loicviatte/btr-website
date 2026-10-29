@@ -610,7 +610,21 @@ class Pipeline:
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
 
-    def reel_share(self, ep: Episode, n: int, item: dict, taken: set[str]) -> dict:
+    def reel_ig_slots(self, ep: Episode, taken: set[str]) -> int | None:
+        """How many Instagram reel slots of this episode are still free in ClickUp (None: not connected)."""
+        from . import share
+        token = share.Secrets(self.cfg.data_dir).get("clickup_token")
+        if not token:
+            return None
+        try:
+            video = self.yt.video(ep.video_id)
+        except Exception:  # noqa: BLE001
+            video = {}
+        guest, part = ep.get("guest_name") or "", part_number(ep)
+        label = share.episode_label(guest, part) or self.reel_title(ep)
+        return len(share.free_slots(share.ClickUp(token).tasks(), label, guest, part, share.episode_date(video), taken))
+
+    def reel_share(self, ep: Episode, n: int, item: dict, taken: set[str], instagram: bool = True) -> dict:
         """Validated reel n → Drive (« BTR Reels / <episode> », video + cover, viewable by link) and its ClickUp
         slot (the episode's next free « Reel k/N » task, else a new task): link, captions, cover, status approved.
         Each part is independent: one failing does not block the other. Returns what was done and why not."""
@@ -643,39 +657,66 @@ class Pipeline:
             except Exception:  # noqa: BLE001
                 video = {}
             ep_date = share.episode_date(video)
-            tid = item.get("clickup_task")
-            task = cu.task(tid) if tid else None
-            if task is None:
-                slot = share.pick_slot(cu.tasks(), label, guest, part, ep_date, taken)
-                task = cu.task(slot["id"]) if slot else None
             url = f"https://www.youtube.com/watch?v={ep.video_id}"
+            today = share.today_str()
+            tid, kind = item.get("clickup_task"), item.get("clickup_kind")
+            task = None
+            if tid:
+                try:
+                    task = cu.task(tid)
+                except RuntimeError:
+                    task = None                                     # deleted in ClickUp meanwhile
+            if task and not kind:                                   # validated before the Instagram choice existed
+                kind = "slot" if re.match(r"Reel\s+\d+\s*/\s*\d+", task.get("name", "")) else "ig_new"
+            if task and (kind == "short") == instagram:             # Loïc changed his mind: undo the old place
+                if kind == "slot":
+                    orig = item.get("clickup_orig") or {}
+                    old = task.get("markdown_description") or task.get("description") or ""
+                    head = (re.match(r"(Reel\s+\d+\s*/\s*\d+)", task.get("name", "")) or [None, "Reel"])[1]
+                    cu.update(task["id"], name=orig.get("name") or f"{head} · {label}",
+                              markdown_content=orig.get("desc") or old.split(share.MARK)[0].rstrip(),
+                              status="to generate")
+                else:
+                    cu.delete(task["id"])                           # a task the bot made itself
+                out["clickup_freed"] = task.get("name", "")
+                task, kind = None, None
+            if task is None and instagram:
+                slot = share.pick_slot(cu.tasks(), label, guest, part, ep_date, taken)
+                if slot:
+                    task, kind = cu.task(slot["id"]), "slot"
+                    out["clickup_orig"] = {"name": task.get("name", ""),
+                                           "desc": task.get("markdown_description") or task.get("description") or ""}
             if task is None:
-                desc = share.description("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
-                                         "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” "
-                                         "to the episode, no link in the description.", out["links"], item, title, url,
-                                         share.today_str())
-                task = cu.create(name=f"Reel · {label} · {title}"[:200], markdown_content=desc, status="approved",
-                                 custom_fields=[{"id": share.F_EPISODE, "value": label},
-                                                {"id": share.F_FORMAT, "value": share.CLIP},
-                                                {"id": share.F_PLACEMENT, "value": share.REELS_TAB}])
+                kind = "ig_new" if instagram else "short"
+                name = f"{'Reel' if instagram else 'Short'} · {label} · {title}"[:200]
+                desc = share.description(share.WHERE_IG if instagram else share.WHERE_SHORT, out["links"], item, title,
+                                         url, today, instagram)
+                fields = [{"id": share.F_EPISODE, "value": label}, {"id": share.F_FORMAT, "value": share.CLIP},
+                          {"id": share.F_IG, "value": share.IG_TODO if instagram else share.IG_NO},
+                          {"id": share.F_TT, "value": share.TT_TODO}, {"id": share.F_YT, "value": share.YT_TODO}]
+                if instagram:
+                    fields.append({"id": share.F_PLACEMENT, "value": share.REELS_TAB})
+                task = cu.create(name=name, markdown_content=desc, status="approved", custom_fields=fields)
+                task["name"] = name
                 out["clickup_new"] = True
             else:
                 old = task.get("markdown_description") or task.get("description") or ""
-                cu.update(task["id"], name=share.slot_name(task.get("name", ""), label, title),
-                          markdown_content=share.description(old, out["links"], item, title, url, share.today_str()),
-                          status="approved")
-                if not share._field(task, share.F_EPISODE) or "of " in str(share._field(task, share.F_EPISODE)):
+                name = share.slot_name(task.get("name", ""), label, title) if kind == "slot" else task.get("name", "")
+                cu.update(task["id"], name=name, status="approved",
+                          markdown_content=share.description(old, out["links"], item, title, url, today, instagram))
+                task["name"] = name
+                if kind == "slot" and (not share._field(task, share.F_EPISODE)
+                                       or "of " in str(share._field(task, share.F_EPISODE))):
                     cu.set_field(task["id"], share.F_EPISODE, label)
-            if item.get("cover") and Path(item["cover"]).exists() and item.get("cover_sent") != item.get("cover"):
+            if item.get("cover") and Path(item["cover"]).exists() and (
+                    item.get("cover_sent") != item.get("cover") or out.get("clickup_new") or item.get("clickup_task") != task["id"]):
                 try:
                     cu.attach(task["id"], Path(item["cover"]))
                     out["cover_sent"] = item["cover"]
                 except Exception:  # noqa: BLE001
                     log.exception("clickup attach")
-            out["clickup_task"] = task["id"]
-            out["clickup_url"] = task.get("url") or f"https://app.clickup.com/t/{task['id']}"
-            out["clickup_name"] = share.slot_name(task.get("name", ""), label, title) if not out.get("clickup_new") \
-                else f"Reel · {label} · {title}"
+            out.update(clickup_task=task["id"], clickup_kind=kind, clickup_name=task.get("name", ""),
+                       clickup_url=task.get("url") or f"https://app.clickup.com/t/{task['id']}")
         except share.NotConnected as e:
             out["clickup_error"] = str(e)
         except Exception as e:  # noqa: BLE001

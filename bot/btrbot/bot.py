@@ -809,11 +809,13 @@ def tool_handlers(ctx, images: list) -> dict:
         out = queue_reel(ctx, ep, n, "subs")
         return f"{out}. À dire à Loïc : {res.get('reply', '')}"
 
-    async def reel_validate(n):
+    async def reel_validate(n, instagram=True):
         ep = reels_or_fail()
         if not RS(ep).data["items"].get(str(int(n)), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
-        return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, int(n)))
+        ig = instagram not in (False, "false", "non", 0)
+        return bg(ctx, f"Reel {n} validé ({'Insta + TikTok + Shorts' if ig else 'TikTok + Shorts'})",
+                  validate_reel(ctx, ep, int(n), ig))
 
     async def reel_drop(n):
         ep = reels_or_fail()
@@ -1028,12 +1030,26 @@ def reel_caption(ep, n: int) -> str:
             + "\nDis-moi en texte s'il faut changer quelque chose (« commence 2 s plus tôt », « coupe la dernière phrase »).")
 
 
+def reel_tasks_taken(ep, n: int) -> set:
+    return {it.get("clickup_task") for k, it in RS(ep).data["items"].items() if k != str(n) and it.get("clickup_task")}
+
+
 async def send_reel(ctx, ep, n: int):
     d = RS(ep).data
     item = reel_item(ep, n)
-    kb = K([[B("✅ Valider", callback_data=f"rok:{d.get('id')}:{n}"), B("🗑 Jeter", callback_data=f"rno:{d.get('id')}:{n}")]])
+    kb = K([[B("✅ Insta + TikTok + Shorts", callback_data=f"rok:{d.get('id')}:{n}"),
+             B("✅ TikTok + Shorts", callback_data=f"rsh:{d.get('id')}:{n}")],
+            [B("🗑 Jeter", callback_data=f"rno:{d.get('id')}:{n}")]])
+    slots = ""
+    try:
+        free = await run(pipe.reel_ig_slots, ep, reel_tasks_taken(ep, n))
+        if free is not None:
+            slots = (f"\n📸 Instagram : {free} case(s) libre(s) pour cet épisode dans ClickUp" if free
+                     else "\n📸 Instagram : plus de case libre pour cet épisode (un « Insta » créera une tâche sans date)")
+    except Exception:  # noqa: BLE001
+        log.exception("ig slots")
     with open(item["file"], "rb") as f:
-        await ctx.bot.send_video(cfg.chat_id, f, caption=reel_caption(ep, n)[:1000], supports_streaming=True,
+        await ctx.bot.send_video(cfg.chat_id, f, caption=(reel_caption(ep, n)[:960 - len(slots)] + slots), supports_streaming=True,
                                  width=1080, height=1920, duration=int(item["duration"]), reply_markup=kb,
                                  read_timeout=300, write_timeout=300)
     MEMORY.add("assistant", f"[vidéo envoyée : reel {n} ({item['duration']} s), {(reel_cand(ep, n) or {}).get('title')}]")
@@ -1173,7 +1189,8 @@ def resend_reels(ctx, ep, nums: list[int] | None = None) -> str:
     return bg(ctx, f"Reel {todo[0]}", reel_chain(ctx, ep, d.get("id"), todo))
 
 
-async def validate_reel(ctx, ep, n: int):
+async def validate_reel(ctx, ep, n: int, instagram: bool = True):
+    """instagram=False: TikTok + YouTube Shorts only (the episode has fewer Instagram slots than reels)."""
     from pathlib import Path
 
     from . import reels as R
@@ -1181,7 +1198,7 @@ async def validate_reel(ctx, ep, n: int):
     if not item.get("file") or not Path(item["file"]).exists():
         await say(ctx, f"Le reel {n} n'est plus disponible (liste remplacée ou fichier supprimé).")
         return
-    item["status"] = "ok"
+    item["status"], item["instagram"] = "ok", bool(instagram)
     RS(ep).save()
     if not item.get("cover") or not Path(item["cover"]).exists():
         try:
@@ -1191,11 +1208,13 @@ async def validate_reel(ctx, ep, n: int):
             log.exception("cover")
             await say(ctx, f"⚠️ Cover du reel {n} pas faite : <code>{esc(str(e)[-200:])}</code>")
     with open(item["file"], "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["file"]).name, caption=f"Reel {n} validé : le fichier final.",
+        where = "Instagram + TikTok + Shorts" if instagram else "TikTok + Shorts (pas Instagram)"
+    await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["file"]).name, caption=f"Reel {n} validé ({where}) : le fichier final.",
                                     read_timeout=300, write_timeout=300)
     await send_cover(ctx, ep, n)
     caps = item.get("captions") or {}
-    await plain(ctx, f"📸 Légende Instagram (reel {n}) :\n\n{caps.get('instagram') or '(pas de légende)'}")
+    if instagram:
+        await plain(ctx, f"📸 Légende Instagram (reel {n}) :\n\n{caps.get('instagram') or '(pas de légende)'}")
     await plain(ctx, f"🎵 Légende TikTok / Shorts (reel {n}) :\n\n{caps.get('tiktok') or '(pas de légende)'}")
     R.slim(Path(item["file"]).parent, keep_final=True)
     await share_reel(ctx, ep, n)
@@ -1249,11 +1268,12 @@ async def share_reel(ctx, ep, n: int):
             await send_cover(ctx, ep, n)
         except Exception:  # noqa: BLE001
             log.exception("cover")
-    taken = {it.get("clickup_task") for k, it in RS(ep).data["items"].items() if k != str(n) and it.get("clickup_task")}
+    taken = reel_tasks_taken(ep, n)
     cand = reel_cand(ep, n) or {}
-    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken)
+    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken,
+                    item.get("instagram", True))
     item["links"] = res.get("links") or item.get("links") or {}
-    for k in ("clickup_task", "clickup_url", "cover_sent"):
+    for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig"):
         if res.get(k):
             item[k] = res[k]
     RS(ep).save()
@@ -1263,7 +1283,14 @@ async def share_reel(ctx, ep, n: int):
     elif res.get("drive_error"):
         lines.append(f"📁 Drive : {esc(res['drive_error'])}")
     if res.get("clickup_url"):
-        what = "nouvelle tâche (pas de case libre pour cet épisode)" if res.get("clickup_new") else "tâche du calendrier"
+        if res.get("clickup_kind") == "short":
+            what = "tâche TikTok + Shorts, sans date"
+        elif res.get("clickup_new"):
+            what = "nouvelle tâche Instagram sans date (plus de case libre pour cet épisode)"
+        else:
+            what = "case Instagram du calendrier"
+        if res.get("clickup_freed"):
+            what += f" ; « {esc(res['clickup_freed'])} » est libérée"
         lines.append(f"✅ ClickUp : <a href=\"{res['clickup_url']}\">{esc(res.get('clickup_name') or 'la tâche')}</a> "
                      f"({what}, statut approved, lien + légendes + cover)")
     elif res.get("clickup_error"):
@@ -1314,8 +1341,10 @@ async def on_reel_button(ctx, q, d: str):
         await say(ctx, esc(start_reels(ctx, ep, nums)))
     elif parts[0] == "rall":
         await say(ctx, esc(resend_reels(ctx, ep)))
-    elif parts[0] == "rok" and n:
-        await say(ctx, esc(bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))))
+    elif parts[0] in ("rok", "rsh") and n:
+        ig = parts[0] == "rok"
+        await say(ctx, esc(bg(ctx, f"Reel {n} validé ({'Insta + TikTok + Shorts' if ig else 'TikTok + Shorts'})",
+                              validate_reel(ctx, ep, n, ig))))
     elif parts[0] == "rno" and n:
         await say(ctx, esc(bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, n))))
 

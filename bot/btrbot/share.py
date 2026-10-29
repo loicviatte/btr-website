@@ -22,6 +22,14 @@ CONTENT_LIST = os.environ.get("CLICKUP_LIST", "1200920000009096")      # « Cont
 F_EPISODE = "d32347e7-35fc-486b-964c-21a3539189fb"
 F_FORMAT, CLIP = "7751e670-2be0-4518-bb2b-07272384f4f8", "a9b07faf-6af1-410b-9a8f-3b22cbd4e785"
 F_PLACEMENT, REELS_TAB = "102a1750-0c36-4620-b95b-ac12fccde027", "3673c5e3-d04d-4836-a2ac-14de82d40c30"
+F_IG, IG_NO, IG_TODO = ("00e62fea-52fd-4927-82b1-712e64a799e7", "6d3b3f7c-8782-4d9e-aa78-b8fca22f8615",
+                        "2e187c73-0476-4683-a90e-3d0899df3076")
+F_TT, TT_TODO = "a02e2e2c-eb04-47ba-bb85-0d9c9d77fbcd", "4d699c14-5ae2-4817-8f34-70f029e3c8d7"
+F_YT, YT_TODO = "42cc05f2-218b-405a-ad1b-6069c5e2b04a", "93280cc0-4dd6-4654-b1cf-b3fa39cd1949"
+WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
+            "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” to the episode, no link in the description.")
+WHERE_SHORT = ("Where: TikTok + YouTube Shorts only (not Instagram)\n"
+               "Shorts: set “Related video” to the episode, no link in the description.")
 MARK = "———— BTR Studio ————"                 # everything below is rewritten by the bot at each validation
 FOLDER = "BTR Reels"
 MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
@@ -192,6 +200,9 @@ class ClickUp:
     def create(self, list_id: str = CONTENT_LIST, **fields) -> dict:
         return self._req("POST", f"/list/{list_id}/task", json=fields)
 
+    def delete(self, tid: str) -> None:
+        self._req("DELETE", f"/task/{tid}")
+
     def attach(self, tid: str, path: Path) -> None:
         h = {"Authorization": self.h["Authorization"]}
         with open(path, "rb") as f:
@@ -247,14 +258,20 @@ def matches_episode(t: dict, label: str, guest: str, part: str | None, ep_date: 
     return False
 
 
-def pick_slot(tasks: list[dict], label: str, guest: str, part: str | None, ep_date: datetime | None,
-              taken: set[str]) -> dict | None:
-    """The first free reel slot of this episode in the calendar (earliest due date)."""
+def free_slots(tasks: list[dict], label: str, guest: str, part: str | None, ep_date: datetime | None,
+               taken: set[str]) -> list[dict]:
+    """The episode's Instagram reel slots still free in the calendar, earliest first."""
     free = [t for t in tasks if is_reel_slot(t) and t["id"] not in taken
             and (t.get("status") or {}).get("status", "").lower() in ("to generate", "generated")
             and MARK not in (t.get("text_content") or t.get("description") or "")
             and matches_episode(t, label, guest, part, ep_date)]
-    free.sort(key=lambda t: int(t.get("due_date") or 9e15))
+    return sorted(free, key=lambda t: int(t.get("due_date") or 9e15))
+
+
+def pick_slot(tasks: list[dict], label: str, guest: str, part: str | None, ep_date: datetime | None,
+              taken: set[str]) -> dict | None:
+    """The first free reel slot of this episode in the calendar (earliest due date)."""
+    free = free_slots(tasks, label, guest, part, ep_date, taken)
     return free[0] if free else None
 
 
@@ -264,7 +281,8 @@ def slot_name(old: str, label: str, title: str) -> str:
     return f"{head} · {label} · {title}"[:200]
 
 
-def description(old: str, links: dict, item: dict, title: str, video_url: str, today: str) -> str:
+def description(old: str, links: dict, item: dict, title: str, video_url: str, today: str,
+                instagram: bool = True) -> str:
     """The task's own lines (where / when / cover rules) kept, then the bot's block, rewritten at each validation:
     links, and the captions in code blocks (exact text, line breaks kept, copy button in ClickUp)."""
     keep = (old or "").split(MARK)[0].rstrip()
@@ -272,11 +290,13 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
 
     def fence(t):
         return "```\n" + (t or "—").replace("```", "") + "\n```"
-    lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s)", "",
+    where = "Instagram + TikTok + Shorts" if instagram else "TikTok + Shorts seulement (pas Instagram)"
+    lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s) · {where}", "",
              f"- Vidéo : {links.get('video', '—')}", f"- Cover : {links.get('cover', '—')}",
-             f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}", "",
-             "**Légende Instagram** (sans hashtags)", "", fence(caps.get("instagram")), "",
-             "**Légende TikTok / Shorts** (avec hashtags)", "", fence(caps.get("tiktok"))]
+             f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}", ""]
+    if instagram:
+        lines += ["**Légende Instagram** (sans hashtags)", "", fence(caps.get("instagram")), ""]
+    lines += ["**Légende TikTok / Shorts** (avec hashtags)", "", fence(caps.get("tiktok"))]
     return (keep + "\n\n" if keep else "") + "\n".join(lines)
 
 

@@ -41,7 +41,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   render time in `reels/rNN/cover/`, best face chosen by Haiku, hook = consecutive words really said, template
   `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):
   Drive (Loïc's own Drive, scope drive.file, folder « BTR Reels / <episode> », files viewable by link) and ClickUp
-  (list « Content calendar »: the episode's next free « Reel k/N » slot, else a new task; renamed, status approved,
+  (list « Content calendar »; preview buttons « ✅ Insta + TikTok + Shorts » (rok) / « ✅ TikTok + Shorts » (rsh), the
+  preview says how many Instagram slots of the episode are still free; Insta → the episode's next free « Reel k/N »
+  slot, else a new « Reel · … » task; TikTok + Shorts only → a new « Short · … » task (Instagram field Not planned);
+  changing the choice later gives the slot back / deletes the bot's own task; renamed, status approved,
   description block below « ———— BTR Studio ———— » with links + captions, cover attached). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
   sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description).
