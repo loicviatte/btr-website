@@ -1029,8 +1029,9 @@ async def send_reel(ctx, ep, n: int):
 
 
 # bump the id when the reel rules change: after the deploy, Loïc gets one button to get his chosen reels again
-REELS_RULES = ("2026-10-29-4l", "sous-titres à 4 lignes max, jamais une expression coupée entre deux pages, position qui "
-                                "varie (gauche / droite / plus bas). Les corrections inventées sont retirées.")
+REELS_RULES = ("2026-10-29-pos", "sous-titres surtout au centre, peu de changements de place (2 pages à gauche / droite / "
+                                 "plus bas de temps en temps), une page ne commence jamais plus bas que le dernier mot de "
+                                 "la précédente ni en bas de l'écran. 4 lignes max, aucune expression coupée.")
 
 
 def loic_wrote(words: str) -> bool:

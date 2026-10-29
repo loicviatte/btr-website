@@ -129,7 +129,7 @@ Group them into blocks (pages) of short lines (1 to 3 words per line) that follo
   between words that belong together ("why not", "give me", "a lot of", "I don't know", "come on", verb + its object,
   article/preposition + its noun). If in doubt, keep the words together in the same block.
 - Vary the rhythm so it never feels monotonous: mix very short punch blocks (1-2 lines, a single huge word on its own for an
-  accent) with longer flowing blocks; vary the alignment and how many punch words each block has.
+  accent) with longer flowing blocks; vary how many punch words each block has.
 - 4 lines per block at most (a hard limit). When a phrase is too long for 4 lines, end the block where its clause ends and
   continue the phrase on the next block; 1-2 lines is fine for an accent.
 Notation for each token:
@@ -138,8 +138,7 @@ Notation for each token:
 - a prefix applies to ONE word only. Put “ ” around words the speaker quotes or paraphrases from someone else.
 Rules: use ONLY the spoken words, in the same order, same spelling (you may fix the capitalisation and punctuation). You may skip
 fillers and stutters ("um", "you know", repeated words) but never add, change or reorder words. Never put a long small-word
-phrase on the same line as a punch word: split it. Vary the alignment from one block to the next so the text is not always
-in the centre: "c" centred, "l" left, "r" right, "stair" (never more than two "c" in a row).
+phrase on the same line as a punch word: split it. Always put "align": "c" (the program places the blocks on screen).
 Return ONLY JSON: {{"blocks": [{{"align": "c", "lines": ["where are my *FRIENDS", "FAMILY", "HUSBAND?"]}}]}}"""
 
 REEL_CAPTIONS = """Write the social captions for this reel of Break The Routine, a DanceSport podcast hosted by Marius Iepure (@mariusiepure).

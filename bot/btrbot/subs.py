@@ -1,6 +1,6 @@
 """BTR v3 animated subtitles (style of claude/btr-subtitles-workflow.md), as an ASS file burned by libass.
 
-Pages of 1-7 stacked lines (about 3-4, varied; a phrase is never cut between two pages); small linking words in Monument Extended Regular, punch words in Heavy, gold
+Pages of 1-4 stacked lines (varied, mostly centred; a phrase is never cut between two pages); small linking words in Monument Extended Regular, punch words in Heavy, gold
 #FCDF9A on key words, synthetic italic on punchlines. Each word comes out of a blur when it is spoken (190 ms),
 the block leaves with a 120 ms blur + fade. Soft black shadow offset 5 px. No landing effect, no text behind the
 head, no camera shake (all rejected by Loïc).
@@ -24,8 +24,11 @@ DESC = 0.32 * EM              # descender, below the baseline
 GOLD = "&H9ADFFC&"            # #FCDF9A in ASS (BGR)
 WHITE = "&HFFFFFF&"
 Y_FULL, Y_SPLIT = 1160, 960   # block centre: under the face on a full frame, on the seam of a split screen
-Y_LOW, LOW_BOTTOM = 1380, 1540  # lower page (alternates with Y_FULL), its bottom always above the Instagram caption UI
+LOW_BOTTOM = 1540             # bottom of a lower page, always above the Instagram caption UI
+START_MAX = 1280              # a page never starts in the bottom third of the screen (Loïc, 29.10.2026)
 MAX_LINES = 4                 # hard limit per page (Loïc, 29.10.2026)
+CYCLE, AWAY_RUN = 8, 2        # in every 8 pages: 6 in the centre, then 2 pages off it at the same place
+AWAY = ("l", "r", "low", "stair")   # where the off-centre pages go, in turn
 ALIGNS = ("c", "l", "r", "stair")
 STAIR = 60                    # each line of a "stair" block is shifted right by 60 px (120 px on the 4K master)
 FONT_FILES = {"small": "BTRRegular.ttf", "big": "BTRHeavy.ttf"}
@@ -268,19 +271,14 @@ def cap_lines(blocks: list[Block], max_lines: int = MAX_LINES) -> list[Block]:
 
 
 def vary(blocks: list[Block]) -> None:
-    """Not always in the centre: never more than two centred pages in a row (the next one goes left / right / stair in
-    turn), and on a full frame every few pages sits lower (Y_LOW), so the text moves around the picture."""
-    run, turn = 0, 0
+    """Mostly in the centre, few moves (Loïc: the eye must not chase the text): pages start centred; after 6 centred
+    pages, 2 pages sit together off the centre (left, right, lower, stair in turn), then back to the centre.
+    The model's alignment is not used: the rhythm is the program's, so it holds on every reel."""
     for i, b in enumerate(blocks):
-        if b.align == "c":
-            run += 1
-            if run > 2:
-                b.align = ("l", "r", "stair")[turn % 3]
-                turn += 1
-                run = 0
-        else:
-            run = 0
-        b.meta["low"] = i % 5 in (2, 4)
+        k, slot = divmod(i, CYCLE)
+        away = AWAY[k % len(AWAY)] if slot >= CYCLE - AWAY_RUN else "c"
+        b.align = "c" if away == "low" else away
+        b.meta["low"] = away == "low"
 
 
 def auto_blocks(words: list) -> list[Block]:
@@ -326,7 +324,8 @@ def timeline(blocks: list[Block], total: float, layout_at) -> None:
         nxt = blocks[i + 1].lines[0][0].start if i + 1 < len(blocks) else total
         b.end = min(nxt, max(last + 0.35, b.start + 0.6), total)
         split = any(layout_at(t) == "split" for t in (b.start + 0.05, (b.start + b.end) / 2, b.end - 0.05))
-        b.y_center = Y_SPLIT if split else (Y_LOW if b.meta.get("low") else Y_FULL)
+        b.y_center = Y_SPLIT if split else Y_FULL
+        b.meta["split"] = split
 
 
 # ---------------------------------------------------------------- ASS
@@ -354,15 +353,35 @@ def _line_sizes(line: list[Tok], m: Measure) -> tuple[float, float]:
     return s, width(s)
 
 
-def block_events(b: Block, m: Measure) -> list[str]:
-    ev = []
+def _sizes(b: Block, m: Measure) -> tuple[list[float], list[float], float]:
+    """Line scales, line heights (font size) and the block height from the top of its first line to the baseline of
+    its last line."""
     scales = [_line_sizes(line, m)[0] for line in b.lines]
     heights = [max((BIG if t.big else SMALL) * s for t in line) for line, s in zip(b.lines, scales)]
-    total = sum(h * CAP for h in heights) + LINE_GAP * (len(heights) - 1)
-    center = b.y_center
-    if center == Y_LOW:
-        center = min(center, LOW_BOTTOM - total / 2 - heights[-1] * DESC)
-    baseline = center - total / 2
+    return scales, heights, sum(h * CAP for h in heights) + LINE_GAP * (len(heights) - 1)
+
+
+def place(blocks: list[Block], m: Measure) -> None:
+    """Vertical place of each page. A page never starts lower than the last word of the page before (its top is at or
+    above that word's baseline) and never in the bottom third; a "low" page starts right at that level and runs down,
+    its bottom above the Instagram caption. meta["top"] / meta["last"] = top of the page / baseline of its last word."""
+    prev = None
+    for b in blocks:
+        _, heights, total = _sizes(b, m)
+        limit = min(START_MAX, prev if prev is not None else START_MAX)
+        top = b.y_center - total / 2
+        if b.meta.get("low") and not b.meta.get("split"):
+            top = max(top, min(limit, LOW_BOTTOM - total - heights[-1] * DESC))
+        top = min(top, limit)
+        b.y_center = top + total / 2
+        b.meta["top"], b.meta["last"] = round(top, 1), round(top + total, 1)
+        prev = top + total
+
+
+def block_events(b: Block, m: Measure) -> list[str]:
+    ev = []
+    scales, heights, total = _sizes(b, m)
+    baseline = b.y_center - total / 2
     dur_ms = int(round((b.end - b.start) * 1000))
     for li, (line, s, hmax) in enumerate(zip(b.lines, scales, heights)):
         baseline += hmax * CAP + (LINE_GAP if li else 0)
@@ -412,6 +431,7 @@ Style: Base,{FONT_NAMES['small']},{SMALL},&H00FFFFFF,&H00FFFFFF,&H00000000,&H000
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
+    place(blocks, m)
     events = [e for b in blocks for e in block_events(b, m)]
     out.write_text(head + "\n".join(events) + "\n", encoding="utf-8")
     return out

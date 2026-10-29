@@ -33,12 +33,12 @@ assert len(bs) == 1 and len(bs[0].lines) <= 4, text(bs)
 # keep_phrases may merge a one-word page: the cap still holds
 bs = subs.cap_lines(subs.keep_phrases([page("why"), page("not", "a", "b", "c.")]))
 assert all(len(b.lines) <= 4 for b in bs) and text(bs)[0].startswith("why not"), text(bs)
-# variety: never 3 centred pages in a row, some pages lower
-bs = [page("a", align="c") for _ in range(10)]
+# placement: mostly centred, off-centre pages in pairs (few moves), some pages lower
+bs = [page("a", align="r") for _ in range(32)]
 subs.vary(bs)
-al = [b.align for b in bs]
-assert "c" in al and any(a != "c" for a in al) and "ccc" not in "".join(a[0] for a in al), al
-assert any(b.meta["low"] for b in bs) and not all(b.meta["low"] for b in bs)
+al = ["low" if b.meta["low"] else b.align for b in bs]
+assert al[0] == "c" and al.count("c") > len(al) / 2 and {"l", "r", "stair", "low"} <= set(al), al
+assert sum(x != y for x, y in zip(al, al[1:])) <= len(al) // 4, al
 print(text(subs.cap_lines(subs.keep_phrases([page("so I said", "why", "not.", "and then", "she came", "back")]))))
 print("aligns", al)
 print("OK")
