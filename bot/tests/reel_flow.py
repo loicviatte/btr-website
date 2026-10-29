@@ -74,7 +74,7 @@ def resub(ep, cand, fixes, note=""):
 
 
 p.reel_subtitles = resub
-p.reel_feedback = lambda item, fb: ({"fixes": [{"from": "Muti", "to": "Motsi"}], "relayout": False, "reply": "Je remplace Muti par Motsi."}
+p.reel_feedback = lambda ep, n, item, fb: ({"fixes": [{"from": "Muti", "to": "Motsi"}], "relayout": False, "reply": "Je remplace Muti par Motsi."}
                                     if "Motsi" in fb else {"fixes": [], "relayout": True, "layout_note": "keep the question on one line",
                                                            "reply": "Je remets la question sur une ligne."})
 p.reel_captions = lambda ep, said: {"instagram": "Hook IG", "tiktok": "Hook TT #dancesport"}

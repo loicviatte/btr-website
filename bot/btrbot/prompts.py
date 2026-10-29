@@ -168,8 +168,9 @@ Loïc's feedback: "{feedback}"
 
 Decide what to change:
 - "fixes": words that are wrong on screen and what they should be (a misheard word, a misspelled name). "from" = the words
-  exactly as they are now, "to" = the correct words. Only words Loïc points at, or an obvious mishearing in the place he points
-  at. Never change words he did not question; never rephrase.
+  exactly as they are now, "to" = the correct words. Only words Loïc points at. "to" must be words Loïc wrote himself
+  (e.g. "c'est Motsi" → "Motsi"). If he only says a passage is wrong without saying what is really said, do NOT guess:
+  no fix, and ask him in "reply" for the exact words. Never change words he did not question; never rephrase.
 - "relayout": true if the problem is the layout (cut in the wrong place, a word missing on screen, bad emphasis) rather than
   a word; then "layout_note" = a short English instruction for whoever redoes the layout.
 - "reply": one short French sentence for Loïc saying exactly what you will change (or asking ONE question if you

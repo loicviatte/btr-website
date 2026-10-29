@@ -795,7 +795,7 @@ def tool_handlers(ctx, images: list) -> dict:
         item = RS(ep).data["items"].get(str(n)) or {}
         if not item.get("file"):
             return f"le reel {n} n'est pas encore monté"
-        res = await run(pipe.reel_feedback, dict(item), str(feedback))
+        res = await run(pipe.reel_feedback, ep, n, dict(item), str(feedback))
         fixes = [f for f in res.get("fixes") or [] if f.get("from") and f.get("to")]
         it = reel_item(ep, n)
         if fixes:

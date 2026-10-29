@@ -457,7 +457,9 @@ class Pipeline:
         shutil.rmtree(work / "pieces", ignore_errors=True)
         doubts = [f"« {d['audio'] or '—'} » (audio) / « {d['srt']} » (SRT) → {d['srt'] if picks.get(k) == 'srt' else d['audio'] or '—'}"
                   for k, d in enumerate(diffs) if a - 0.2 <= d["t"] <= b + 0.2]
-        edit = {"fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "confidence": round(conf),
+        alts = [{"audio": d["audio"], "srt": d["srt"]} for d in diffs if a - 0.2 <= d["t"] <= b + 0.2]
+        edit = {"fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "alts": alts,
+                "confidence": round(conf),
                 "missing_cuts": missing, "words": [w.__dict__ for w in R.out_words(words, pcs, info["fps"])],
                 "layout": [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs]}
         (work / "edit.json").write_text(json.dumps(edit))
@@ -497,9 +499,29 @@ class Pipeline:
                 "on_screen": [" / ".join(" ".join(t.text for t in line) for line in b.lines) for b in blocks][:40],
                 "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
 
-    def reel_feedback(self, item: dict, feedback: str) -> dict:
-        """What Loïc's remark about the subtitles means: word fixes and/or a layout note (Claude reads the reel)."""
-        return self.llm.reel_sub_feedback(str(item.get("said", "")).split(), item.get("on_screen") or [], feedback)
+    def reel_feedback(self, ep: Episode, n: int, item: dict, feedback: str) -> dict:
+        """What Loïc's remark about the subtitles means: word fixes and/or a layout note (Claude reads the reel).
+        A fix is kept only if its new words come from Loïc's own message or from one of the two versions heard
+        there (his SRT or the speech model): the model may never put words in the guest's mouth."""
+        from . import reels as R
+        res = self.llm.reel_sub_feedback(str(item.get("said", "")).split(), item.get("on_screen") or [], feedback)
+        edit_p = ep.dir / "reels" / f"r{n:02d}" / "edit.json"
+        alts = json.loads(edit_p.read_text()).get("alts", []) if edit_p.exists() else []
+        heard = {R.norm(t) for a in alts for t in (a["audio"] + " " + a["srt"]).split()}
+        said_by_him = {R.norm(t) for t in feedback.split()}
+        kept, refused = [], []
+        for f in res.get("fixes") or []:
+            new_words = {R.norm(t) for t in str(f.get("to", "")).split()} - {""}
+            if new_words and new_words <= (said_by_him | heard):
+                kept.append(f)
+            else:
+                refused.append(f)
+        res["fixes"] = kept
+        if refused:
+            asks = " ; ".join(f"« {f.get('from')} »" for f in refused)
+            res["reply"] = (str(res.get("reply", "")) + f" Pour {asks}, je n'ai pas de version sûre de ce qui est dit : "
+                            "écris-moi les mots exacts et je corrige.").strip()
+        return res
 
     def reel_captions(self, ep: Episode, said: str) -> dict:
         """Instagram without hashtags (enforced), TikTok / Shorts with some."""
