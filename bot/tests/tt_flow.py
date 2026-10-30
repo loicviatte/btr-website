@@ -81,7 +81,11 @@ class FakeTT:
         return "P1"
 
     def status(self, pid):
-        return {"status": "PUBLISH_COMPLETE"}
+        return {"status": "SEND_TO_USER_INBOX" if pid == "D1" else "PUBLISH_COMPLETE"}
+
+    def draft(self, video):
+        posted.append(("draft",))
+        return "D1"
 
 
 tiktok.TikTok = FakeTT
@@ -128,6 +132,13 @@ async def composer():
     assert posted and posted[0][1]["privacy_level"] == "PUBLIC_TO_EVERYONE" and posted[0][1]["disable_comment"], posted
     assert len([s for s in sent if s[0] == "video"]) == n            # no manual notification
     assert tt["posted"] and "en ligne sur TikTok" in sent[-1][1], sent[-1]
+    rs.data["items"]["1"]["tt_post"].pop("posted", None)
+    await bot.on_tt_button(ctx, Q(), "ttc:VIDTT000001:1:draft")
+    for _ in range(20):
+        await real_sleep(0.05)
+        if "boîte TikTok" in sent[-1][1]:
+            break
+    assert ("draft",) in posted and "boîte TikTok" in sent[-1][1], sent[-1]
     print("OK tiktok composer")
 
 

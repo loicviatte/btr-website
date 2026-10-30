@@ -2184,6 +2184,7 @@ def tt_card(ep, n: int):
                      B(("☑️ " if st.get("brand_content_toggle") else "⬜ ") + "Contenu de marque", callback_data=f"{key}:b")])
     rows.append([B("✅ Confirmer pour l'heure prévue", callback_data=f"{key}:go"),
                  B("▶️ Publier maintenant", callback_data=f"{key}:now")])
+    rows.append([B("📥 Envoyer en brouillon dans TikTok", callback_data=f"{key}:draft")])
     return "\n".join(lines), K(rows)
 
 
@@ -2225,6 +2226,10 @@ async def on_tt_button(ctx, q, data: str):
         return
     if act == "x":
         await say(ctx, "Ce réglage est désactivé dans les paramètres de ton compte TikTok.")
+        return
+    if act == "draft":
+        await say(ctx, "📥 J'envoie la vidéo en brouillon dans la boîte TikTok du compte…")
+        asyncio.create_task(tt_draft(ctx, ep, n))
         return
     if act == "p":
         opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
@@ -2308,6 +2313,30 @@ async def tt_publish(ctx, ep, n: int):
         RS(ep).save()
         await say(ctx, f"⚠️ TikTok n'a pas pris {name} : <code>{esc(str(e)[-200:])}</code>. Je repasse en mode "
                        "notification pour ce reel (vidéo + légende à l'heure prévue).")
+
+
+async def tt_draft(ctx, ep, n: int):
+    """Upload (video.upload): the clip goes to the TikTok inbox as a draft; Loïc finishes it in the app."""
+    from pathlib import Path
+    from . import share, tiktok
+    it = reel_item(ep, n)
+    name = short_name({"ep": ep, "n": n})
+    try:
+        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
+        pid = await run(api.draft, Path(it["file"]))
+        st = {}
+        for _ in range(40):
+            await asyncio.sleep(10)
+            st = await run(api.status, pid)
+            if st.get("status") in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE", "FAILED"):
+                break
+        if st.get("status") == "FAILED" or not st.get("status"):
+            raise RuntimeError(st.get("fail_reason") or "pas de réponse de TikTok")
+        await say(ctx, f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
+                       "et publie.\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
+    except Exception as e:  # noqa: BLE001
+        log.exception("tiktok draft")
+        await say(ctx, f"⚠️ Brouillon TikTok refusé : <code>{esc(str(e)[-200:])}</code>")
 
 
 async def tiktok_cmd(update: Update, ctx):
