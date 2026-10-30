@@ -2717,7 +2717,12 @@ async def connect_cmd(update: Update, ctx):
                "colle-le ici (j'efface ton message tout de suite).")
     tt_ok = bool(sec.get("tt_refresh"))
     msg.append(f"\n<b>TikTok</b> {'✅ connecté' if tt_ok else '❌'}")
-    if not tt_ok:
+    if sec.get("tt_client_key"):
+        from . import tiktok
+        msg.append(f"<a href=\"{esc(tiktok.auth_url(sec.get('tt_client_key')))}\">{'Reconnecter' if tt_ok else 'Connecter'} "
+                   "le compte TikTok</a> : connecte-toi avec le compte BTR, accepte, puis colle ici le message « tiktok … » "
+                   "affiché par la page BTR.")
+    elif not tt_ok:
         msg.append("developers.tiktok.com → app BTR Studio : colle ici « tiktok CLIENT_KEY CLIENT_SECRET » (j'efface ton "
                    "message), puis suis le lien que je t'envoie.")
     from . import instagram
