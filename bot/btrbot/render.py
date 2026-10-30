@@ -195,3 +195,29 @@ def cover_sheet(stills: list[Path], faces: list[dict], out: Path, cols: int = 4)
         d.text((x + 8, y + 2), str(i + 1), fill=(254, 203, 122), font=font)
     sheet.save(out, quality=88)
     return out
+
+
+def mouth_sheet(frames: list[Path], faces: list[dict], out: Path, cols: int = 8) -> Path:
+    """The guest's whole face (mouth included) on each frame, numbered from 1: to tell open mouths from closed ones."""
+    from PIL import ImageDraw, ImageFont
+    tw, th = 160, 200
+    rows = (len(frames) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * th), (0, 0, 0))
+    d = ImageDraw.Draw(sheet)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
+    except OSError:
+        font = ImageFont.load_default()
+    for i, (p, f) in enumerate(zip(frames, faces)):
+        im = Image.open(p).convert("RGB")
+        W, H = im.size
+        fh, fw = f.get("fh", 0.2), f.get("fw", 0.1)
+        box = ((f["cx"] - fw * 0.75) * W, (f["cy"] - fh * 0.7) * H, (f["cx"] + fw * 0.75) * W, (f["cy"] + fh * 0.75) * H)
+        crop = im.crop(tuple(int(max(0, v)) for v in box))
+        crop.thumbnail((tw, th))
+        x, y = (i % cols) * tw, (i // cols) * th
+        sheet.paste(crop, (x, y))
+        d.rectangle([x, y, x + 34, y + 26], fill=(0, 0, 0))
+        d.text((x + 4, y + 1), str(i + 1), fill=(254, 203, 122), font=font)
+    sheet.save(out, quality=88)
+    return out

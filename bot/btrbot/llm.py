@@ -132,6 +132,14 @@ class LLM:
                                                            feedback=feedback), 1500, tier="work",
                           task="reels (retour sous-titres)")
 
+    def mouth_open(self, sheet: Path) -> list[int]:
+        img = base64.standard_b64encode(sheet.read_bytes()).decode()
+        r = self._json([
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
+            {"type": "text", "text": prompts.MOUTH_OPEN},
+        ], max_tokens=400, tier="vision_cheap", task="reels (bouche)")
+        return [int(i) for i in r.get("open", []) if str(i).isdigit()]
+
     def reel_cover_pick(self, sheet: Path, ref: Path | None = None, want: str = "") -> list[int]:
         content = []
         if ref and Path(ref).exists():

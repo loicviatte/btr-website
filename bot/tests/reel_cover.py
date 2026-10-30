@@ -55,3 +55,11 @@ again = pipe.reel_cover(ep, 1, item, pick=1)
 assert again["cover_pick"] == 1
 shutil.copy(res["cover"], Path(cfg.data_dir) / "cover_test.jpg")
 print("OK")
+# a new search never shows the same stills again, and mixes open / closed mouths
+seen = [c["t"] for c in cands][:2]                 # two stills already shown: the new search avoids them
+cands2 = R.cover_search(clip, samples, dict(fr), work / "cover", k=4, seen=seen,
+                        mouth=lambda items: [i for i in range(len(items)) if i % 2 == 0])
+print("second search:", [(c["t"], c.get("mouth")) for c in cands2])
+assert cands2 and all(all(abs(c["t"] - u) >= 0.5 for u in seen) for c in cands2), cands2
+assert {c.get("mouth") for c in cands2} <= {"open", "closed"}
+print("OK search")

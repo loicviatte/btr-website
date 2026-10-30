@@ -1387,11 +1387,13 @@ async def better_covers(ctx, ep, nums: list[int]):
         sheet = Path(item["cover"]).parent / "cover" / "sheet.jpg"
         if sheet.exists():
             with open(sheet, "rb") as f:
-                await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Reel {n} : {count} photos nettes du guest. Pour en "
-                                                                  f"prendre une autre : « cover reel {n} : photo 5 ».")
-        await send_cover(ctx, ep, n)
+                await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Reel {n} : {count} nouvelles photos nettes (moitié "
+                                                                  "bouche ouverte, moitié fermée, jamais celles déjà "
+                                                                  f"vues). Pour en prendre une : « cover reel {n} : photo 5 ».")
         if item.get("filed"):
-            await share_reel(ctx, ep, n)
+            await share_reel(ctx, ep, n)                  # sends the cover, then Drive / ClickUp
+        else:
+            await send_cover(ctx, ep, n)
 
 
 async def send_cover(ctx, ep, n: int):

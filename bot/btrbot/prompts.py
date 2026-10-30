@@ -231,3 +231,9 @@ Rules: only change a word into the correct spelling of the SAME spoken name (it 
 words; never add or remove words; if you cannot confirm a spelling, leave it as it is.
 Return ONLY JSON, after your searches: {{"fixes": [{{"from": "words exactly as in the clip", "to": "correct spelling",
 "source": "context" or a URL}}]}}"""
+
+
+MOUTH_OPEN = """These are numbered close-ups of the same person's face, taken from a video.
+List ONLY the numbers where the mouth is OPEN: lips apart, talking, teeth or inside of the mouth visible (a wide smile
+showing teeth counts as open). A closed mouth or lips together (even smiling) is not open.
+Return ONLY JSON: {{"open": [numbers]}}"""

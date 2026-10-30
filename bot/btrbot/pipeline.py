@@ -501,7 +501,7 @@ class Pipeline:
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
         shots = R.shot_layouts(samples, scene, a, b)
         try:
-            R.cover_search(clip, samples, dict(fr), work / "cover")         # sharp 4K stills for the reel cover
+            R.cover_search(clip, samples, dict(fr), work / "cover", mouth=self._mouth_checker(work))  # 4K stills
         except Exception:  # noqa: BLE001
             log.exception("reel cover stills")
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
@@ -727,6 +727,13 @@ class Pipeline:
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
 
+    def _mouth_checker(self, work: Path):
+        """For the cover stills: which candidate frames show the mouth open (Haiku looks at a sheet of faces)."""
+        def check(items: list) -> list[int]:
+            sheet = render.mouth_sheet([p for _, _, p in items], [f for _, f, _ in items], work / "mouth_sheet.jpg")
+            return [i - 1 for i in self.llm.mouth_open(sheet) if 1 <= i <= len(items)]
+        return check
+
     def registry_pref(self, key: str):
         """A preference Loïc gave in the chat, kept in the bot's registry (data/registry.json)."""
         try:
@@ -752,7 +759,11 @@ class Pipeline:
             info = R.probe(clip)
             frames = dict(R.sample_frames(clip, 0.0, info["duration"], work / "frames_cover", fps=3.0))
             samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in frames.items()]
-            cands = R.cover_search(clip, samples, frames, work / "cover")
+            seen_p = work / "cover" / "seen.json"
+            seen = json.loads(seen_p.read_text()) if seen_p.exists() else \
+                [c["t"] for c in json.loads((work / "cover" / "cands.json").read_text())] \
+                if (work / "cover" / "cands.json").exists() else []
+            cands = R.cover_search(clip, samples, frames, work / "cover", seen=seen, mouth=self._mouth_checker(work))
         finally:
             clip.unlink(missing_ok=True)
             shutil.rmtree(work / "frames_cover", ignore_errors=True)

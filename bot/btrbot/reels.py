@@ -752,9 +752,12 @@ def cover_candidates(clip: Path, samples: list[tuple[float, dict]], ranges: list
     return out
 
 
-def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, out_dir: Path, k: int = 16) -> list[dict]:
-    """A wider choice of cover stills: every sampled moment where the guest is alone on screen, scored on sharpness of
-    the face (no motion blur), its size and how high it sits, at least 0.8 s apart; the best k taken from the 4K."""
+def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, out_dir: Path, k: int = 16,
+                 seen=(), mouth=None) -> list[dict]:
+    """A wide choice of cover stills: every sampled moment where the guest is alone on screen, scored on sharpness of
+    the face (no motion blur), its size and how high it sits, at least 1 s apart, never one already shown (`seen`:
+    times of earlier searches). `mouth(list of (t, face, frame))` → indexes where the mouth is open: the choice is then
+    half mouth open, half mouth closed (Loïc, 30.10.2026). The k stills are taken from the 4K."""
     import cv2
     out_dir.mkdir(parents=True, exist_ok=True)
     for p in out_dir.glob("c_*.jpg"):
@@ -784,19 +787,40 @@ def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, ou
         return sum(1 for a in arr if a <= v) / len(arr)
     scored = sorted(pool, key=lambda x: -(0.55 * rank(x[2], sharp) + 0.25 * rank(x[1]["fh"], big)
                                           + (0.2 if x[1]["cy"] <= 0.38 else 0.0)))
+    fresh = [x for x in scored if all(abs(x[0] - u) >= 0.5 for u in seen)]
+    if len(fresh) < k // 2:                            # the moment is exhausted: start again from the best ones
+        fresh = scored
     chosen: list = []
-    for t, f, _ in scored:
-        if all(abs(t - u) >= 0.8 for u, _ in chosen):
+    for t, f, _ in fresh:
+        if all(abs(t - u) >= 1.0 for u, _ in chosen):
             chosen.append((t, f))
-        if len(chosen) == k:
+        if len(chosen) == 2 * k:
             break
+    flags = {}
+    if mouth and chosen:
+        try:
+            opened = set(mouth([(t, f, frames[t]) for t, f in chosen]))
+            flags = {i: (i in opened) for i in range(len(chosen))}
+            op = [c for i, c in enumerate(chosen) if flags[i]]
+            cl = [c for i, c in enumerate(chosen) if not flags[i]]
+            half = k // 2
+            pick = op[:half] + cl[:half]
+            rest = [c for c in chosen if c not in pick]
+            chosen = pick + rest[:k - len(pick)]
+            flags = {t: (t in {x[0] for x in op}) for t, _ in chosen}
+        except Exception:  # noqa: BLE001
+            chosen, flags = chosen[:k], {}
+    chosen = chosen[:k]
     out = []
     for i, (t, f) in enumerate(sorted(chosen)):
         jpg = out_dir / f"c_{i:02d}.jpg"
         run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
         if jpg.exists():
-            out.append({"file": jpg.name, "t": round(t, 3), **{x: f[x] for x in ("cx", "cy", "fh", "fw", "top") if x in f}})
+            out.append({"file": jpg.name, "t": round(t, 3), **{x: f[x] for x in ("cx", "cy", "fh", "fw", "top") if x in f},
+                        **({"mouth": "open" if flags[t] else "closed"} if t in flags else {})})
     (out_dir / "cands.json").write_text(json.dumps(out))
+    shown = list(seen) + [c["t"] for c in out]
+    (out_dir / "seen.json").write_text(json.dumps(shown[-200:]))
     return out
 
 

@@ -49,7 +49,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   for each reel (feed ones first), cover (`pipeline.reel_cover`: sharp 4K guest stills kept at render time in
   `reels/rNN/cover/` (`reels.cover_search`: face sharpness, size, height), the best chosen by Sonnet against the approved
   cover `assets/cover_ref.jpg`; « de meilleurs screenshots » = tool reels_cover_search → `pipeline.reel_cover_search`
-  downloads the moment again and samples it every 0.33 s, hook = consecutive words really said, template
+  downloads the moment again and samples it every 0.33 s; every search avoids stills already shown (cover/seen.json)
+  and gives half mouth open / half mouth closed (Haiku on `render.mouth_sheet`); hook = consecutive words really said, template
   `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):
   ClickUp place first, then Drive (scope drive.file, folder « BTR Reels / <guest> », files named
   MMDD_EPn_GUEST_FEED|SHORTS_TITLE.mp4 + _COVER.jpg, MMDD = due date of the ClickUp task else today, EP numbers in
