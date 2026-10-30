@@ -146,28 +146,25 @@ HAIR = 1.4      # top of the hair above the face centre, in face heights (fringe
 AIR = 40        # px of air above the head in the grid tile (Loïc: the whole head and a little air, like « They just DON'T CARE »)
 
 
+FILL = 640      # head height (hair → chin) on the 1920 px cover: as close as « They just DON'T CARE », chin above the hook
+
+
 def cover_box(W: int, H: int, face: dict, air: bool = True) -> tuple[float, float, float, float]:
-    """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: full height when the face sits in the upper
-    part; a face lower in the frame is brought up to ~1/3 of the cover by cropping closer (never closer than 60 % of
-    the height, never cutting the head), so the hook below does not run over it. face["zoom"] (Loïc's « zoom x1.25 »)
-    tightens that window around the face, which keeps its place on the cover."""
+    """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: close on the guest like the validated
+    « They just DON'T CARE. » cover (head = FILL px of the 1920 cover, so the chin lands just above the hook), the top
+    of the hair a little under the top of Instagram's 3:4 grid tile (AIR). Never closer than half the frame height (4K
+    stills stay sharp). face["zoom"] (Loïc's « zoom x1.25 ») tightens that window around the face."""
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
-    if abs(W / H - 9 / 16) < 0.02:                     # already vertical (a frame of the edit)
-        x0, y0, sw, h = 0.0, 0.0, float(W), float(H)
-    else:
-        h = H if c <= 0.36 * H else min(H, max(0.6 * H, fh * 2.6, (H - c) / 0.68))
-        y0 = max(0.0, min(H - h, c - 0.32 * h))
-        sw = h * 9 / 16
-        x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))
+    head = (HAIR + 0.6) * fh
+    h = min(float(H), max(head * 1920 / FILL, (0.5 if H >= 2000 else 0.8) * H))
+    sw = h * 9 / 16
+    if sw > W:
+        sw, h = float(W), W * 16 / 9
     z = min(1.5, max(1.0, float(face.get("zoom") or 1)))
-    if z > 1:
-        cx = face.get("cx", 0.5) * W
-        x0, y0 = cx - (cx - x0) / z, c - (c - y0) / z
-        sw, h = sw / z, h / z
-        x0, y0 = max(0.0, min(W - sw, x0)), max(0.0, min(H - h, y0))
-    need = c - HAIR * fh - (GRID["centre"][0] + AIR) * h / 1920       # whole head + a little air in the grid tile
-    if air and need < y0:
-        y0 = max(0.0, need)
+    sw, h = sw / z, h / z
+    y0 = c - HAIR * fh - (GRID["centre"][0] + AIR) * h / 1920 if air else c - 0.32 * h
+    y0 = max(0.0, min(H - h, y0))
+    x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))
     return x0, y0, sw, h
 
 

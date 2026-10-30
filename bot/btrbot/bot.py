@@ -2630,16 +2630,16 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
-                if not reg.data.get("covers_air_1030"):          # 30.10.2026: whole head + a little air in the grid
-                    reg.data["covers_air_1030"] = True
+                if not reg.data.get("covers_zoom_1030"):         # 30.10.2026: closer, whole head + a little air in the grid
+                    reg.data["covers_zoom_1030"] = True
                     reg.save()
                     redo = [int(k) for k, it in sorted(rs["items"].items(), key=lambda kv: int(kv[0]))
                             if it.get("filed") and it.get("instagram", True) and it.get("cover")
-                            and not (it.get("ig_post") or {}).get("posted") and pipe.cover_needs_air(ep, int(k), it)]
+                            and not (it.get("ig_post") or {}).get("posted")]
                     if redo:
-                        await say(app, f"🖼 Covers feed {', '.join(map(str, redo))} : la tête touchait le haut de la grille "
-                                       "Instagram. Je les refais avec la même photo et un peu d'air au-dessus de la tête "
-                                       "(décor prolongé si besoin). Valide-les ensuite (✅ Cover OK).")
+                        await say(app, f"🖼 Covers feed {', '.join(map(str, redo))} : je les refais plus serrées sur la tête, "
+                                       "comme « They just DON'T CARE », tête entière avec un peu d'air dans la grille "
+                                       "Instagram, même photo. Valide-les ensuite (✅ Cover OK).")
                         for k in redo:
                             it = rs["items"][str(k)]
                             bg(app, f"Cover du reel {k}", redo_cover(app, ep, k, None, it.get("cover_pick"),
