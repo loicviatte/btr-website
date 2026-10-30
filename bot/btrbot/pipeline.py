@@ -1020,6 +1020,62 @@ class Pipeline:
             cu.update(item["clickup_task"], status=status)
         return cur
 
+    # ---- Instagram (btrbot/instagram.py): the bot posts the reel itself at its time --------------------------
+    def ig_prepare(self, ep: Episode, n: int, item: dict) -> dict:
+        """Upload reel n to Instagram as a container ready to publish (caption, collaborators, cover, placement from
+        the ClickUp task: « Grid » = also in the profile grid, else Reels tab only). Retries without the cover if
+        Instagram refuses it."""
+        from datetime import datetime, timezone
+        from . import instagram, share
+        sec = share.Secrets(self.cfg.data_dir)
+        ig = instagram.Instagram(sec)
+        caps = item.get("captions") or {}
+        grid = False
+        token, tid = sec.get("clickup_token"), item.get("clickup_task")
+        if token and tid:
+            try:
+                v = share._field(share.ClickUp(token).task(tid), share.F_PLACEMENT)
+                grid = v in (0, "0", share.GRID) or (isinstance(v, dict) and v.get("id") == share.GRID)
+            except Exception:  # noqa: BLE001
+                log.exception("clickup placement")
+        cover_id = (item.get("drive_ids") or {}).get("cover")
+        cover = f"https://drive.usercontent.google.com/download?id={cover_id}&export=download" if cover_id else None
+        note = ""
+        try:
+            cid = ig.container(Path(item["file"]), caps.get("instagram") or "", caps.get("collab") or [], cover, grid)
+            ig.wait(cid)
+        except RuntimeError:
+            if not cover:
+                raise
+            log.exception("instagram with cover")
+            cid = ig.container(Path(item["file"]), caps.get("instagram") or "", caps.get("collab") or [], None, grid)
+            ig.wait(cid)
+            note = "Instagram a refusé la cover : mets-la à la main dans l'app (reel → Modifier → Couverture)."
+        return {"container": cid, "made": datetime.now(timezone.utc).isoformat(), "grid": grid, "note": note}
+
+    def ig_publish(self, item: dict) -> dict:
+        from . import instagram, share
+        sec = share.Secrets(self.cfg.data_dir)
+        ig = instagram.Instagram(sec)
+        cid = item["ig_post"]["container"]
+        if ig.status(cid).get("status_code") == "PUBLISHED":          # an earlier try went through
+            res = {"id": "", "permalink": ""}
+        else:
+            res = ig.publish(cid)
+        token, tid = sec.get("clickup_token"), item.get("clickup_task")
+        if token and tid:
+            try:
+                share.ClickUp(token).set_field(tid, share.F_IG, share.IG_POSTED)
+            except Exception:  # noqa: BLE001
+                log.exception("clickup ig posted")
+        return res
+
+    def ig_mark(self, item: dict, value: str) -> None:
+        from . import share
+        token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
+        if token and tid:
+            share.ClickUp(token).set_field(tid, share.F_IG, value)
+
     def short_posted(self, item: dict) -> None:
         from . import share
         token = share.Secrets(self.cfg.data_dir).get("clickup_token")

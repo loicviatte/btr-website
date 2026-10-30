@@ -1848,6 +1848,104 @@ async def shorts_watch(ctx):
     bg(ctx, "Shorts YouTube", go(), limit=60 * 60)
 
 
+# ---------------------------------------------------------------- Instagram (btrbot/instagram.py)
+# A feed reel whose Short is scheduled is also posted on Instagram by the bot at the same time: upload ~45 min before
+# (container, 24 h validity), publish at the time (checked every minute). Not connected = Loïc is told to post it.
+IG_BUSY: dict = {}
+
+
+def ig_items() -> list:
+    out = []
+    for f in sorted((reg.root / "episodes").glob("*/reels.json")):
+        ep = reg.episode(f.parent.name)
+        for k, it in RS(ep).data.get("items", {}).items():
+            ig = it.get("ig_post") or {}
+            if (it.get("status") == "ok" and it.get("filed") and it.get("instagram", True) and it.get("file")
+                    and (it.get("yt_short") or {}).get("at") and not ig.get("posted") and not ig.get("failed")):
+                out.append((ep, int(k), it))
+    return out
+
+
+async def ig_tick(ctx):
+    from datetime import datetime, timedelta, timezone
+    from . import share, shorts
+    if IG_BUSY:
+        return
+    now = datetime.now(timezone.utc)
+    connected = bool(share.Secrets(cfg.data_dir).get("ig_token"))
+    items = sorted(ig_items(), key=lambda x: x[2]["yt_short"]["at"])
+    for ep, n, it in items:                                # ClickUp: Instagram « Scheduled » (the bot holds it)
+        ig = it.setdefault("ig_post", {})
+        if connected and not ig.get("marked"):
+            ig["marked"] = True
+            RS(ep).save()
+            try:
+                await run(pipe.ig_mark, dict(it), share.IG_SCHEDULED)
+            except Exception:  # noqa: BLE001
+                log.exception("clickup ig scheduled")
+    for ep, n, it in items:
+        at = shorts.parse(it["yt_short"]["at"])
+        ig = it["ig_post"]
+        if not at or at - now > timedelta(minutes=45):
+            continue
+        if not connected:
+            if not ig.get("warned"):
+                ig["warned"] = True
+                RS(ep).save()
+                await say(ctx, f"📸 Instagram n'est pas connecté : publie toi-même {short_name({'ep': ep, 'n': n})} à "
+                               f"{shorts.label(at)} (Londres), légende dans ClickUp. /connect pour que je le fasse.")
+            continue
+        if now - at > timedelta(hours=12):                 # bot down for too long: Loïc decides
+            ig["failed"] = "trop tard"
+            RS(ep).save()
+            await say(ctx, f"📸 {short_name({'ep': ep, 'n': n})} devait sortir sur Instagram {shorts.label(at)} : "
+                           "je ne l'ai pas publié (trop tard). Publie-le toi-même quand tu veux.")
+            continue
+        made = shorts.parse(ig.get("made"))
+        need = not ig.get("container") or (made and now - made > timedelta(hours=22))
+        if need or now >= at:
+            IG_BUSY["on"] = True
+            asyncio.create_task(ig_job(ctx, ep, n, it, "prepare" if need else "publish"))
+            return
+
+
+async def ig_job(ctx, ep, n: int, it: dict, step: str):
+    ig = it["ig_post"]
+    name = short_name({"ep": ep, "n": n})
+    try:
+        if step == "prepare":
+            res = await run(pipe.ig_prepare, ep, n, dict(it))
+            ig.update(container=res["container"], made=res["made"], grid=res["grid"])
+            ig.pop("tries", None)
+            if res.get("note"):
+                await say(ctx, f"📸 {name} : {esc(res['note'])}")
+        else:
+            res = await run(pipe.ig_publish, dict(it))
+            ig.update(posted=True, id=res["id"], permalink=res.get("permalink", ""))
+            it.setdefault("links", {})["instagram"] = res.get("permalink") or ""
+            RS(ep).save()
+            collab = " et ".join("@" + h for h in (it.get("captions") or {}).get("collab") or [])
+            where = "grille + onglet Reels" if ig.get("grid") else "onglet Reels (pas dans la grille)"
+            await say(ctx, f"📸 {name} est en ligne sur Instagram ({where}) · <a href=\"{res.get('permalink', '')}\">voir</a>"
+                           + (f" · invitations collab envoyées à {collab}" if collab else "") + ". ClickUp : Posted.")
+            try:
+                await share_reel(ctx, ep, n, quiet=True, cover=False)         # Instagram link in the task
+            except Exception:  # noqa: BLE001
+                log.exception("share after instagram")
+    except Exception as e:  # noqa: BLE001
+        log.exception("instagram %s", step)
+        msg = str(e)
+        if "EXPIRED" in msg or step == "publish" and "container" in msg.lower():
+            ig.pop("container", None)
+        ig["tries"] = ig.get("tries", 0) + 1
+        if ig["tries"] >= 3:
+            ig["failed"] = msg[-200:]
+            await say(ctx, f"⚠️ {name} : Instagram refuse ({esc(msg[-200:])}). Publie-le toi-même (légende dans ClickUp).")
+    finally:
+        RS(ep).save()
+        IG_BUSY.clear()
+
+
 async def covers_ok(ctx, ep, nums: list[int] | None = None):
     """Loïc validates covers: ClickUp « ready », which schedules the Shorts (shorts_watch)."""
     items = RS(ep).data.get("items", {})
@@ -1916,6 +2014,11 @@ def reels_context() -> str:
                      f"{it.get('file_base', '')}.mp4 + cover, tâche ClickUp « {it.get('clickup_name') or it.get('clickup_task')} » "
                      f"(approved, légendes dedans).")
             filed += " Cover validée (ClickUp ready)." if it.get("cover_ok") else " Cover PAS encore validée."
+            ig = it.get("ig_post") or {}
+            if it.get("instagram", True):
+                filed += (" Instagram EN LIGNE." if ig.get("posted") else " Instagram : échec, à publier à la main."
+                          if ig.get("failed") else " Instagram : le bot le publiera à l'heure du Short (si connecté)."
+                          if (it.get("yt_short") or {}).get("at") else "")
             ys = it.get("yt_short") or {}
             if ys.get("posted"):
                 filed += " Short YouTube EN LIGNE."
@@ -2133,6 +2236,19 @@ async def connect_cmd(update: Update, ctx):
     msg.append(f"\n<b>ClickUp</b> {'✅ connecté' if cu_ok else '❌'}")
     msg.append("Sur app.clickup.com : ton avatar → Settings → Apps → API Token → Generate, copie le code « pk_… » et "
                "colle-le ici (j'efface ton message tout de suite).")
+    from . import instagram
+    ig_ok = sec.get("ig_username")
+    msg.append(f"\n<b>Instagram</b> {'✅ @' + esc(ig_ok) if ig_ok else '❌'}")
+    if not ig_ok:
+        msg.append("Sur ordinateur, 10 min, une seule fois (API officielle de Meta) :\n"
+                   "1. <a href=\"https://developers.facebook.com/apps/creation/\">developers.facebook.com/apps</a> → "
+                   "Créer une app → cas d'usage « Gérer les messages et le contenu sur Instagram » → « Configuration de "
+                   "l'API avec connexion Facebook ». Nom : BTR Studio. Pas besoin de la publier (mode développement).\n"
+                   "2. Paramètres de l'app → Général : copie l'<b>ID de l'app</b> et la <b>clé secrète</b>.\n"
+                   "3. <a href=\"https://developers.facebook.com/tools/explorer/\">Explorateur de l'API Graph</a> : choisis "
+                   "l'app BTR Studio, « Générer un token d'accès », coche <code>" + esc(instagram.SCOPES) + "</code>, connecte-toi et sélectionne la page Facebook BTR et le compte Instagram BTR. Copie le token (EAA…).\n"
+                   "4. Colle ici en un seul message : <code>ID clé_secrète token</code>. J'efface ton message tout de suite ; "
+                   "je ne garde que le token de la page (il n'expire pas).")
     await say(ctx, "\n".join(msg))
 
 
@@ -2142,6 +2258,30 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     sec = share.Secrets(cfg.data_dir)
     code = share.code_from(text)
     token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
+    meta = re.search(r"\bEAA[A-Za-z0-9]{40,}\b", text)
+    if meta:
+        for m in MEMORY._list():
+            c = re.sub(r"\bEAA[A-Za-z0-9]{40,}", "EAA[effacé]", m.get("content", ""))
+            m["content"] = re.sub(r"\b[0-9a-f]{32}\b", "[effacé]", c)
+        reg.save()
+        try:
+            await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        app_id = re.search(r"\b\d{12,20}\b", text)
+        secret = re.search(r"\b[0-9a-f]{32}\b", text)
+        if not app_id or not secret:
+            await say(ctx, "J'ai effacé ton message. Il me faut les trois ensemble : <code>ID_app clé_secrète token</code> "
+                           "(/connect pour les étapes).")
+            return True
+        from . import instagram
+        try:
+            user = await run(instagram.connect, sec, app_id.group(0), secret.group(0), meta.group(0))
+            await say(ctx, f"✅ Instagram connecté (@{esc(user)}). J'ai effacé ton message. Les reels feed en « ready » "
+                           "seront publiés par moi à leur heure, avec la cover et les invitations collab.")
+        except Exception as e:  # noqa: BLE001
+            await say(ctx, f"⚠️ Connexion Instagram refusée : {esc(str(e)[-250:])}")
+        return True
     if not code and not token:
         return False
     for m in MEMORY._list():                       # never keep a code / token in the chat history (old pastes too)
@@ -2294,6 +2434,8 @@ async def on_photo(update: Update, ctx):
 def start_polling(app):
     if not app.job_queue.get_jobs_by_name("poll"):
         app.job_queue.run_repeating(poll_youtube, interval=cfg.poll_minutes * 60, first=15, name="poll")
+    if not app.job_queue.get_jobs_by_name("ig"):
+        app.job_queue.run_repeating(ig_tick, interval=60, first=30, name="ig")
 
 
 async def on_boot(app):

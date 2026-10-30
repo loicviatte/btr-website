@@ -54,7 +54,15 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   ready/scheduled/posted. ClickUp times are kept (date-only = 18:00 London, `shorts.due_at`). /shorts (tool shorts_plan)
   shows the plan; YouTube field Scheduled → Posted (`shorts_sync`), Short link in the task, the bot's own « Short · »
   task gets the publishing time as due date (Drive file renamed). A public Short is never touched again.
-  Related video can't be set by the API (Loïc in Studio). Test: `tests/shorts_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
+  Related video can't be set by the API (Loïc in Studio). Test: `tests/shorts_flow.py`.
+  Instagram (`btrbot/instagram.py`, Graph API with Facebook Login v23.0, no third party): connected with /connect (Loïc
+  pastes « app_id app_secret EAA-token » from the Graph API Explorer; `instagram.connect` keeps only the never-expiring
+  Page token + IG id, message deleted, scrubbed from MEMORY). A feed reel (item["instagram"]) whose Short is scheduled
+  is posted by the bot at the same time: `bot.ig_tick` every minute; ~45 min before = `pipeline.ig_prepare` (container,
+  resumable upload of the local file, caption, collaborators = captions["collab"], cover_url = Drive direct link,
+  retried without cover; ClickUp « Instagram placement » Grid = share_to_feed, else Reels tab only), at the time =
+  `pipeline.ig_publish` (container already PUBLISHED = no double post); ClickUp Instagram field Scheduled → Posted,
+  link in the task; 3 failures or >12 h late = Loïc posts it himself; not connected = one warning. Test: `tests/ig_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
   for each reel (feed ones first), cover (`pipeline.reel_cover`: sharp 4K guest stills kept at render time in

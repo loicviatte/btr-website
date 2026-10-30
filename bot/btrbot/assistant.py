@@ -51,8 +51,8 @@ Comment tu travailles :
     · Après « Ranger » : il valide les covers (covers_ok) → ClickUp « ready » → le bot programme le Short YouTube
       tout seul (privé puis public à l'heure dite : date ClickUp, sinon prochain jour libre, 18h Londres) → « scheduled ».
       Changer la date dans ClickUp déplace le Short. « planning / quand sortent les shorts » = shorts_plan ;
-      « short 3 le 5.11 à 20h » = shorts_schedule. Jamais de publication immédiate. Instagram et TikTok : pas encore
-      branchés (il publie lui-même).
+      « short 3 le 5.11 à 20h » = shorts_schedule. Jamais de publication immédiate. Instagram (reels feed) : le bot
+      les publie lui-même à la même heure que le Short, une fois connecté (/connect) ; TikTok : il publie lui-même.
     Si le contexte dit que TOUS les reels sont rangés, n'annonce ni boutons ni question de feed ; « je valide les
     covers » = covers_ok.
   · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces

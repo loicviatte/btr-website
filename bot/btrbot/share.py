@@ -26,6 +26,8 @@ F_IG, IG_NO, IG_TODO = ("00e62fea-52fd-4927-82b1-712e64a799e7", "6d3b3f7c-8782-4
                         "2e187c73-0476-4683-a90e-3d0899df3076")
 F_TT, TT_TODO = "a02e2e2c-eb04-47ba-bb85-0d9c9d77fbcd", "4d699c14-5ae2-4817-8f34-70f029e3c8d7"
 F_YT, YT_TODO = "42cc05f2-218b-405a-ad1b-6069c5e2b04a", "93280cc0-4dd6-4654-b1cf-b3fa39cd1949"
+IG_SCHEDULED, IG_POSTED = "eb8ad4fc-67be-4503-acca-7c14e6ad370d", "3594b624-2ee1-4d1b-83ff-bc4c8d5d9509"
+GRID = "b64d9e9c-6809-4527-9511-736f4d21ca4e"           # Instagram placement « Grid » (orderindex 0)
 YT_SCHEDULED, YT_POSTED = "a95e6c4c-35e7-4a87-8705-fcd3dc7592e0", "530bf62a-705a-4647-b596-364aff465ebf"
 WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
             "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” to the episode, no link in the description.")
@@ -371,6 +373,8 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
     lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s) · {where}", "",
              f"- Vidéo : {links.get('video', '—')}", f"- Cover : {links.get('cover', '—')}",
              f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}"]
+    if links.get("instagram"):
+        lines.append(f"- Instagram : {links['instagram']}")
     if links.get("short"):
         at = (item.get("yt_short") or {}).get("at")
         lines.append(f"- YouTube Short : {links['short']}" + (f" (programmé par le bot, en ligne le {_when(at)})" if at else ""))
