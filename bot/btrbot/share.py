@@ -25,6 +25,7 @@ F_PLACEMENT, REELS_TAB = "102a1750-0c36-4620-b95b-ac12fccde027", "3673c5e3-d04d-
 F_IG, IG_NO, IG_TODO = ("00e62fea-52fd-4927-82b1-712e64a799e7", "6d3b3f7c-8782-4d9e-aa78-b8fca22f8615",
                         "2e187c73-0476-4683-a90e-3d0899df3076")
 F_TT, TT_TODO = "a02e2e2c-eb04-47ba-bb85-0d9c9d77fbcd", "4d699c14-5ae2-4817-8f34-70f029e3c8d7"
+TT_SCHEDULED, TT_POSTED = "b1b05eb7-20a6-4a78-8602-98e1ba8262b0", "cc9d50cc-9317-48b1-a044-af3d4bc8326a"
 F_YT, YT_TODO = "42cc05f2-218b-405a-ad1b-6069c5e2b04a", "93280cc0-4dd6-4654-b1cf-b3fa39cd1949"
 IG_SCHEDULED, IG_POSTED = "eb8ad4fc-67be-4503-acca-7c14e6ad370d", "3594b624-2ee1-4d1b-83ff-bc4c8d5d9509"
 GRID = "b64d9e9c-6809-4527-9511-736f4d21ca4e"           # Instagram placement « Grid » (orderindex 0)

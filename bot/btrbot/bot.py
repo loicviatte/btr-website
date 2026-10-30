@@ -2062,6 +2062,75 @@ async def handle_reply(ctx, text: str) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- TikTok (semi-auto until TikTok's API audit)
+# Every filed reel goes on TikTok at the time of its Short: the bot sends Loïc the video, the cover and the TikTok
+# caption ready to copy; he shares to TikTok and taps « ✅ Posté sur TikTok » (ClickUp TikTok field → Posted).
+def tt_items() -> list:
+    out = []
+    for f in sorted((reg.root / "episodes").glob("*/reels.json")):
+        ep = reg.episode(f.parent.name)
+        for k, it in RS(ep).data.get("items", {}).items():
+            tt = it.get("tt_post") or {}
+            if (it.get("status") == "ok" and it.get("filed") and it.get("file") and (it.get("yt_short") or {}).get("at")
+                    and not tt.get("posted") and not tt.get("sent")):
+                out.append((ep, int(k), it))
+    return out
+
+
+async def tt_tick(ctx):
+    from datetime import datetime, timezone
+    from pathlib import Path
+    from . import share, shorts
+    now = datetime.now(timezone.utc)
+    for ep, n, it in sorted(tt_items(), key=lambda x: x[2]["yt_short"]["at"]):
+        tt = it.setdefault("tt_post", {})
+        if not tt.get("marked"):
+            tt["marked"] = True
+            RS(ep).save()
+            try:
+                await run(pipe.tt_mark, dict(it), share.TT_SCHEDULED)
+            except Exception:  # noqa: BLE001
+                log.exception("clickup tt scheduled")
+        at = shorts.parse(it["yt_short"]["at"])
+        if not at or now < at:
+            continue
+        tt["sent"] = now.isoformat()
+        RS(ep).save()
+        name = short_name({"ep": ep, "n": n})
+        late = (now - at).total_seconds() > 3600
+        try:
+            with open(it["file"], "rb") as f:
+                await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 TikTok · {name}" + (" (en retard)" if late else "")
+                                         + " : c'est l'heure. Partage la vidéo vers TikTok et colle la légende ci-dessous.",
+                                         supports_streaming=True, width=1080, height=1920,
+                                         duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
+            if it.get("cover") and Path(it["cover"]).exists():
+                with open(it["cover"], "rb") as f:
+                    await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Cover · {name} (TikTok : « Modifier la couverture » "
+                                                                    "→ importer)")
+            cap = (it.get("captions") or {}).get("tiktok") or ""
+            await say(ctx, f"<pre>{esc(cap)}</pre>", reply_markup=K([[B("✅ Posté sur TikTok",
+                                                                         callback_data=f"ttok:{ep.video_id}:{n}")]]))
+        except Exception:  # noqa: BLE001
+            log.exception("tiktok send")
+            tt.pop("sent", None)
+            RS(ep).save()
+
+
+async def tt_posted(ctx, vid: str, n: int):
+    from . import share
+    ep = reg.episode(vid)
+    it = RS(ep).data.get("items", {}).get(str(n)) or {}
+    tt = it.setdefault("tt_post", {})
+    tt["posted"] = True
+    RS(ep).save()
+    try:
+        await run(pipe.tt_mark, dict(it), share.TT_POSTED)
+        await say(ctx, f"✅ {short_name({'ep': ep, 'n': n})} : TikTok noté « Posted » dans ClickUp.")
+    except Exception as e:  # noqa: BLE001
+        await say(ctx, f"⚠️ ClickUp : <code>{esc(str(e)[-150:])}</code>")
+
+
 async def covers_ok(ctx, ep, nums: list[int] | None = None):
     """Loïc validates covers: ClickUp « ready », which schedules the Shorts (shorts_watch)."""
     items = RS(ep).data.get("items", {})
@@ -2233,6 +2302,14 @@ async def on_button(update: Update, ctx):
         return
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data.startswith("ttok:"):
+        _, vid, n = q.data.split(":", 2)
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+        await tt_posted(ctx, vid, int(n))
         return
     if q.data in ("igh:ok", "igh:none"):
         ask = reg.data.get("handle_ask") or {}
@@ -2601,6 +2678,8 @@ def start_polling(app):
         app.job_queue.run_repeating(poll_youtube, interval=cfg.poll_minutes * 60, first=15, name="poll")
     if not app.job_queue.get_jobs_by_name("ig"):
         app.job_queue.run_repeating(ig_tick, interval=60, first=30, name="ig")
+    if not app.job_queue.get_jobs_by_name("tt"):
+        app.job_queue.run_repeating(tt_tick, interval=60, first=40, name="tt")
 
 
 async def on_boot(app):

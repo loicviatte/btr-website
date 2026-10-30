@@ -1136,6 +1136,12 @@ class Pipeline:
                 log.exception("clickup ig posted")
         return res
 
+    def tt_mark(self, item: dict, value: str) -> None:
+        from . import share
+        token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
+        if token and tid:
+            share.ClickUp(token).set_field(tid, share.F_TT, value)
+
     def ig_mark(self, item: dict, value: str) -> None:
         from . import share
         token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
