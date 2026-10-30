@@ -20,7 +20,7 @@ from .share import NotConnected, Secrets
 API = "https://open.tiktokapis.com/v2"
 AUTH = "https://www.tiktok.com/v2/auth/authorize/"
 REDIRECT = "https://www.breaktheroutinepodcast.com/tiktok/callback"
-SCOPES = "user.info.basic,video.publish,video.upload"
+SCOPES = "user.info.basic,video.publish"
 PRIVACY_FR = {"PUBLIC_TO_EVERYONE": "Tout le monde", "MUTUAL_FOLLOW_FRIENDS": "Amis",
               "FOLLOWER_OF_CREATOR": "Abonnés", "SELF_ONLY": "Moi uniquement"}
 
