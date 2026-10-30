@@ -727,7 +727,7 @@ class Pipeline:
                     break
         if zoom is None:
             zoom = item.get("cover_zoom") if order[0] + 1 == item.get("cover_pick") else None
-        zoom = round(min(1.5, max(1.0, float(zoom or 1))), 2)
+        zoom = round(min(1.5, max(0.6, float(zoom or 1))), 2)
         c = {**cands[order[0]], "zoom": zoom}
         still = cdir / c["file"]
         still, c = self._cover_air(cdir, still, c)      # head too close to the top: a little set generated above

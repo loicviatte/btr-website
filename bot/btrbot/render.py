@@ -160,8 +160,11 @@ def cover_box(W: int, H: int, face: dict, air: bool = True) -> tuple[float, floa
     sw = h * 9 / 16
     if sw > W:
         sw, h = float(W), W * 16 / 9
-    z = min(1.5, max(1.0, float(face.get("zoom") or 1)))
+    z = min(1.5, max(0.6, float(face.get("zoom") or 1)))
     sw, h = sw / z, h / z
+    if h > H or sw > W:                                     # « zoom 0.8 » = wider, up to the whole frame
+        h = min(float(H), W * 16 / 9)
+        sw = h * 9 / 16
     y0 = c - HAIR * fh - (GRID["centre"][0] + AIR) * h / 1920 if air else c - 0.32 * h
     y0 = max(0.0, min(H - h, y0))
     x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))

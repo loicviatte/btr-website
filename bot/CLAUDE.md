@@ -99,7 +99,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   full name + hashtags; Shorts = title « Guest: “hook” | Break The Routine » + description without link; no emoji;
   Instagram handles in `share.HANDLES` (collab invite guest + @mariusiepure). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
-  sent to the chat model). Tool reel_cover (other photo / other words / zoom on the head 1.05-1.5: face["zoom"] in `render.cover_box`, kept in item["cover_zoom"] for that photo; fast path « reel 5 photo 11 zoom 1.25 »). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
+  sent to the chat model). Tool reel_cover (other photo / other words / zoom 0.6-1.5 (below 1 = wider): face["zoom"] in `render.cover_box`, kept in item["cover_zoom"] for that photo; fast path « reel 5 photo 11 zoom 1.25 »). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

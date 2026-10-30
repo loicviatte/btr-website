@@ -184,7 +184,7 @@ TOOLS = [
                                           "« next » pour la suivante) et/ou autre accroche (small = petits mots, big = "
                                           "mot(s) en très gros, gold = dernier(s) mot(s) en or italique ; uniquement des "
                                           "mots dits dans le reel, dans l'ordre) et/ou zoom sur la tête (zoom = facteur, "
-                                          "1.05 à 1.5, ex. « zoom x1.25 » ; 1 = sans zoom ; gardé pour cette photo). "
+                                          "0.6 à 1.5 : au-dessus de 1 = plus serré (« zoom x1.25 »), en dessous = plus large (« trop zoomé » → 0.8) ; 1 = cadrage normal ; gardé pour cette photo). "
                                           "Si le reel est validé, Drive et ClickUp sont mis à jour.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "photo": {"type": ["integer", "string"]},
                                                        "small": {"type": "string"}, "big": {"type": "string"},
