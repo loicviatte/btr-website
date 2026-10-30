@@ -234,6 +234,14 @@ async def main():
     await press(f"rund:{lid4}:5")
     await settle()
     assert store()["items"]["5"]["status"] == "preview", store()["items"]["5"]["status"]
+    # « remontre-moi les reels » : files sent as they are; « non refais pas » : queued redos cancelled
+    n_vid = sum(1 for x in sent if x[0] == "video")
+    out9 = await h["reels_show"]([2, 5])
+    await settle()
+    assert sum(1 for x in sent if x[0] == "video") == n_vid + 2, out9
+    store()["items"]["2"].update(status="queued", keep_ok=True, need="subs")
+    out10 = await h["reels_stop"]()
+    assert store()["items"]["2"]["status"] == "ok" and "keep_ok" not in store()["items"]["2"], out10
 
 
 try:

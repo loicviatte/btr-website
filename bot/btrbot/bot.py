@@ -861,6 +861,20 @@ def tool_handlers(ctx, images: list) -> dict:
             return f"reel {n} déjà validé" + ("" if ig is None else " ; choix feed noté pour le rangement")
         return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))
 
+    async def reels_show(nums=None):
+        ep = reels_or_fail()
+        nums = [int(x) for x in nums or []] or sorted(int(k) for k, it in RS(ep).data["items"].items()
+                                                       if it.get("status") in ("ok", "preview"))
+        asyncio.create_task(show_reels(ctx, ep, nums))     # just sending files: no need to wait for the heavy queue
+        return f"j'envoie les reels {', '.join(map(str, nums))} tels quels (sans rien refaire)"
+
+    async def reels_stop():
+        ep = reels_or_fail()
+        stopped = stop_reels(ep)
+        busy = f" ; « {RUNNING['label']} » en cours se termine (quelques secondes à 1 min)" if RUNNING else ""
+        return (f"annulé pour les reels {', '.join(map(str, stopped))} : ils gardent leur version actuelle{busy}"
+                if stopped else f"rien en attente{busy}")
+
     async def reels_cover_search(nums=None, want=""):
         ep = reels_or_fail()
         nums = [int(x) for x in nums or [] if str(x).isdigit() or isinstance(x, int)]
@@ -907,6 +921,7 @@ def tool_handlers(ctx, images: list) -> dict:
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
+            "reels_show": reels_show, "reels_stop": reels_stop,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1391,6 +1406,73 @@ async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
 
 def pipe_cover_text(text: dict) -> dict:
     return {k: (v.upper() if k != "small" else v) for k, v in text.items()}
+
+
+async def show_reels(ctx, ep, nums: list[int]):
+    """« Remontre-moi les reels » : the files as they are (video + cover), nothing made again."""
+    from pathlib import Path
+    sent = []
+    for n in nums:
+        item = reel_item(ep, n)
+        if not item.get("file") or not Path(item["file"]).exists():
+            await say(ctx, f"Reel {n} : plus de fichier sur le serveur.")
+            continue
+        where = {"ok": "validé", "preview": "à valider", "dropped": "jeté"}.get(item.get("status"), item.get("status", ""))
+        if item.get("filed"):
+            where += " · " + ("feed + TikTok + Shorts" if item.get("instagram", True) else "TikTok + Shorts")
+        title = str((reel_cand(ep, n) or {}).get("title") or "")
+        cap = f"🎞️ Reel {n} · {title} · {where}" + (f"\n{item['file_base']}.mp4" if item.get("file_base") else "")
+        with open(item["file"], "rb") as f:
+            await ctx.bot.send_video(cfg.chat_id, f, caption=cap[:1000], supports_streaming=True, width=1080, height=1920,
+                                     duration=int(item.get("duration") or 0), read_timeout=300, write_timeout=300)
+        await send_cover(ctx, ep, n)
+        sent.append(n)
+    MEMORY.add("assistant", f"[reels remontrés tels quels : {', '.join(map(str, sent))}]")
+
+
+async def restore_validated(ctx, ep, since: str):
+    """Put back the version Loïc validated for every filed reel that was made again after `since` (UTC): the Drive
+    revision from before, on Drive (same link) and on the server."""
+    from pathlib import Path
+
+    from . import share
+    sec = share.Secrets(cfg.data_dir)
+    done, kept = [], []
+    for k, it in sorted(RS(ep).data["items"].items(), key=lambda x: int(x[0])):
+        fid = (it.get("drive_ids") or {}).get("video")
+        if not it.get("filed") or not fid or not it.get("file"):
+            continue
+        try:
+            r = await run(share.restore_before, sec, cfg.youtube_client[:2], fid, since, Path(it["file"]))
+        except Exception as e:  # noqa: BLE001
+            log.exception("restore")
+            await say(ctx, f"⚠️ Reel {k} : retour impossible (<code>{esc(str(e)[-150:])}</code>)")
+            continue
+        st = Path(it["file"]).stat()
+        it.setdefault("drive_ids", {})["video_sig"] = f"{st.st_size}-{int(st.st_mtime)}"   # = what Drive holds
+        if r == "restored":
+            done.append(int(k))
+        else:
+            kept.append(int(k))
+    RS(ep).save()
+    if done:
+        await say(ctx, f"↩️ Reels {', '.join(map(str, done))} : la version que tu avais validée est remise (Drive, même "
+                       "lien, et serveur). " + (f"Pas touchés : {', '.join(map(str, kept))}." if kept else ""))
+    elif kept:
+        await say(ctx, f"✅ Reels {', '.join(map(str, kept))} : aucun n'avait été refait, ils sont tels que validés.")
+
+
+def stop_reels(ep) -> list[int]:
+    """Cancel the reels waiting to be made again: they keep their current version (the one in progress finishes)."""
+    stopped = []
+    for k, it in RS(ep).data["items"].items():
+        if it.get("status") == "queued":
+            it["status"] = "ok" if it.get("keep_ok") else ("preview" if it.get("file") else "failed")
+            for x in ("keep_ok", "need", "redo"):
+                it.pop(x, None)
+            stopped.append(int(k))
+    RS(ep).save()
+    return sorted(stopped)
 
 
 async def better_covers(ctx, ep, nums: list[int]):
@@ -1912,6 +1994,15 @@ async def on_boot(app):
             ep = reel_ep()
             if ep and RS(ep):
                 rs = RS(ep).data
+                for k, it in rs["items"].items():               # a redo of a validated reel is never resumed:
+                    if it.get("status") in ("queued", "rendering") and it.get("keep_ok"):   # it stays as validated
+                        it["status"] = "ok"
+                        for x in ("keep_ok", "need", "redo"):
+                            it.pop(x, None)
+                if not reg.data.get("restored_1030"):           # 30.10.2026: redo of validated reels by mistake
+                    reg.data["restored_1030"] = True
+                    reg.save()
+                    bg(app, "Retour des reels validés", restore_validated(app, ep, "2026-10-30T14:05:00Z"))
                 stuck = sorted((int(k) for k, it in rs["items"].items() if it.get("status") in ("queued", "rendering")))
                 for k in stuck:                                 # a restart (deploy) stopped them: start again
                     it = rs["items"][str(k)]

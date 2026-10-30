@@ -179,6 +179,39 @@ class Drive:
         return f"https://drive.google.com/drive/folders/{fid}"
 
 
+def restore_before(secrets: "Secrets", client: tuple[str, str], fid: str, since: str, local: Path) -> str:
+    """The Drive file's last revision from before `since` (ISO UTC) becomes the current one again, and the local copy
+    gets the same content. Returns "restored" or "unchanged" (nothing was uploaded after `since`)."""
+    import io
+
+    from googleapiclient.http import MediaIoBaseDownload
+    d = Drive(secrets, client)
+    revs = d.svc.revisions().list(fileId=fid, fields="revisions(id,modifiedTime)", pageSize=200).execute()
+    revs = sorted(revs.get("revisions", []), key=lambda r: r["modifiedTime"])
+    older = [r for r in revs if r["modifiedTime"] < since]
+    newer = [r for r in revs if r["modifiedTime"] >= since]
+    if not older:
+        return "unchanged"
+    req = d.svc.revisions().get_media(fileId=fid, revisionId=older[-1]["id"])
+    buf = io.BytesIO()
+    dl = MediaIoBaseDownload(buf, req, chunksize=16 * 2 ** 20)
+    done = False
+    while not done:
+        _, done = dl.next_chunk()
+    data = buf.getvalue()
+    if len(data) < 10000:
+        raise RuntimeError("ancienne version vide")
+    tmp = local.with_suffix(".restore.mp4")
+    tmp.write_bytes(data)
+    tmp.replace(local)                                  # the server copy = the validated version
+    if not newer:
+        return "unchanged"
+    from googleapiclient.http import MediaFileUpload
+    d.svc.files().update(fileId=fid, media_body=MediaFileUpload(str(local), mimetype="video/mp4", resumable=True,
+                                                                chunksize=8 * 2 ** 20)).execute()
+    return "restored"
+
+
 class NotConnected(RuntimeError):
     def __init__(self, what: str):
         super().__init__(f"{what} pas encore connecté")

@@ -50,6 +50,8 @@ Comment tu travailles :
     sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
   · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces
     mots sur le même bloc). « j'ai jeté par erreur », « reviens en arrière » sur un reel jeté = reel_undrop.
+  · « renvoie-moi / remontre-moi les reels » = reels_show (aucun travail refait). « refais / remonte avec les nouvelles
+    règles » = reels_resend. « non refais pas », « annule » = reels_stop.
   · Quand on parle des reels, « miniatures », « covers », « screenshots » = les COVERS des reels (reel_cover pour un
     changement précis, reels_cover_search pour de meilleures photos), JAMAIS les miniatures de l'épisode YouTube.
   · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
@@ -159,9 +161,16 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "photo": {"type": ["integer", "string"]},
                                                        "small": {"type": "string"}, "big": {"type": "string"},
                                                        "gold": {"type": "string"}}, "required": ["n"]}},
-    {"name": "reels_resend", "description": "Refaire et renvoyer des reels déjà choisis avec les règles actuelles (« renvoie-moi "
-                                            "les reels », « remonte les reels 1 et 5 »), sans changer leur début/fin. "
-                                            "Sans liste = tous les reels cochés (sauf les jetés).",
+    {"name": "reels_show", "description": "RENVOYER / REMONTRER / RÉAFFICHER des reels tels quels, sans rien refaire "
+                                         "(« renvoie-moi les reels », « remontre-moi le 1, 2, 3 », « je veux les revoir »). "
+                                         "Sans liste = tous les reels validés ou à valider. Instantané.",
+     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
+    {"name": "reels_stop", "description": "Annuler les reels en attente d'être refaits (« non refais pas », « arrête », "
+                                         "« annule ») : ils gardent leur version actuelle.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "reels_resend", "description": "REFAIRE (remonter à nouveau) des reels avec les règles actuelles, seulement si "
+                                            "Loïc demande de les REFAIRE / remonter / appliquer les nouvelles règles. Pour "
+                                            "juste les revoir : reels_show. Sans liste = tous les reels cochés.",
      "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
     {"name": "start_episode", "description": "Traiter une vidéo précise (lien ou id YouTube) comme nouvel épisode.",
      "input_schema": {"type": "object", "properties": {"video": {"type": "string"}}, "required": ["video"]}},
