@@ -35,10 +35,20 @@ def connect(secrets: Secrets, app_id: str, app_secret: str, user_token: str) -> 
     (debug_token); if the Page token can't be read, the long-lived user token is kept (60 days, the bot warns).
     Returns the Instagram @username."""
     import datetime as dt
-    long = _check(requests.get(f"{GRAPH}/oauth/access_token", timeout=30, params={
-        "grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": app_secret,
-        "fb_exchange_token": user_token}))
+    try:
+        long = _check(requests.get(f"{GRAPH}/oauth/access_token", timeout=30, params={
+            "grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": app_secret,
+            "fb_exchange_token": user_token}))
+    except RuntimeError:
+        long = {"access_token": user_token}          # system-user token from Business settings: kept as it is
     utok = long["access_token"]
+    never = False
+    try:
+        info = _check(requests.get(f"{GRAPH}/debug_token", timeout=30, params={
+            "input_token": utok, "access_token": f"{app_id}|{app_secret}"})).get("data", {})
+        never = info.get("type") == "SYSTEM_USER" or info.get("expires_at") == 0
+    except RuntimeError:
+        pass
     fields = "id,name,access_token,instagram_business_account{id,username}"
     pages = []
     try:
@@ -83,8 +93,9 @@ def connect(secrets: Secrets, app_id: str, app_secret: str, user_token: str) -> 
     if not best:
         raise RuntimeError("je n'arrive pas à lire le compte Instagram avec ce token")
     secs = int(long.get("expires_in") or 60 * 86400)
-    exp = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=secs)).isoformat()
-    secrets.set(ig_token=utok, ig_user=best["id"], ig_username=best.get("username", ""), ig_page="", ig_kind="user",
+    exp = "" if never else (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=secs)).isoformat()
+    secrets.set(ig_token=utok, ig_user=best["id"], ig_username=best.get("username", ""), ig_page="",
+                ig_kind="system" if never else "user",
                 ig_expires=exp)
     return best.get("username", "")
 

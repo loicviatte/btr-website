@@ -2392,7 +2392,7 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
             await say(ctx, f"✅ Instagram connecté (@{esc(user)}). J'ai effacé ton message. Les reels feed en « ready » "
                            "seront publiés par moi à leur heure, avec la cover et les invitations collab."
                       + (" Accès valable 60 jours : je te préviens une semaine avant pour le renouveler (même manip)."
-                         if kind == "user" else ""))
+                         if kind == "user" else " Accès sans expiration." if kind == "system" else ""))
         except Exception as e:  # noqa: BLE001
             await say(ctx, f"⚠️ Connexion Instagram refusée : {esc(str(e)[-250:])}")
         return True
