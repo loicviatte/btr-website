@@ -73,7 +73,9 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}},
     {"name": "choose_axis", "description": "Retenir l'axe n (1, 2, 3…) proposé : lance la recherche d'images.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
-    {"name": "other_frames", "description": "Proposer d'autres images du guest ou de Marius (ex. yeux fermés, mauvaise expression).",
+    {"name": "other_frames", "description": "MINIATURES YOUTUBE DE L'ÉPISODE seulement (pendant leur préparation) : "
+                                          "proposer d'autres images du guest ou de Marius. Pour les covers / photos des "
+                                          "REELS : reels_cover_search.",
      "input_schema": {"type": "object", "properties": {"who": {"type": "string", "enum": ["guest", "marius"]}}, "required": ["who"]}},
     {"name": "validate", "description": "Valider (figer) des miniatures.", "input_schema": {"type": "object", "properties": {"formats": FORMATS}, "required": ["formats"]}},
     {"name": "reopen", "description": "Dé-valider des miniatures pour pouvoir les modifier.", "input_schema": {"type": "object", "properties": {"formats": FORMATS}, "required": ["formats"]}},
@@ -137,8 +139,9 @@ TOOLS = [
                                                  "(« trouve de meilleurs screenshots pour les miniatures, garde la 8 ») : "
                                                  "nums = les reels à refaire (pas ceux qu'il garde). Différent des "
                                                  "miniatures de l'épisode YouTube.",
-     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}},
-                      "required": ["nums"]}},
+     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}},
+                                                       "want": {"type": "string", "description": "ce que Loïc veut sur "
+                                                                "la photo, ses mots (« bouche fermée », « qu'elle sourie »)"}}}},
     {"name": "reel_undrop", "description": "Annuler « jeter » sur le reel n (jeté par erreur, « reviens en arrière ») : "
                                           "il revient à valider, avec le même fichier.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},

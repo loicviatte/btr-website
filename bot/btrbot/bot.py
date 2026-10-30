@@ -587,7 +587,12 @@ def tool_handlers(ctx, images: list) -> dict:
         if not ep:
             raise RuntimeError("aucun épisode en cours")
         if stages and ep.stage not in stages:
-            raise RuntimeError(f"impossible à l'étape actuelle ({ep.stage})")
+            hint = ""
+            rep = reel_ep()
+            if rep and RS(rep):
+                hint = (" — ces outils ne servent qu'aux miniatures YouTube de l'épisode. Si Loïc parle des covers / "
+                        "miniatures / screenshots / photos des REELS, utilise reels_cover_search (nums, want) ou reel_cover.")
+            raise RuntimeError(f"impossible à l'étape actuelle ({ep.stage}){hint}")
         return ep
 
     async def get_status():
@@ -835,11 +840,17 @@ def tool_handlers(ctx, images: list) -> dict:
             return f"reel {n} déjà validé" + ("" if ig is None else " ; choix feed noté pour le rangement")
         return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))
 
-    async def reels_cover_search(nums):
+    async def reels_cover_search(nums=None, want=""):
         ep = reels_or_fail()
         nums = [int(x) for x in nums or [] if str(x).isdigit() or isinstance(x, int)]
+        if not nums:                                       # « les covers » = every reel already filed / validated
+            nums = sorted(int(k) for k, it in RS(ep).data["items"].items() if it.get("status") == "ok")
         if not nums:
             return "dis-moi quels reels"
+        if want:                                           # his taste for the photo, kept for every future cover
+            prefs = [x for x in str(reg.data.get("cover_want", "")).split(" | ") if x] + [str(want)[:200]]
+            reg.data["cover_want"] = " | ".join(dict.fromkeys(prefs))[-600:]
+            reg.save()
         return bg(ctx, f"Nouvelles covers (reels {', '.join(map(str, nums))})", better_covers(ctx, ep, nums))
 
     async def reel_undrop(n):

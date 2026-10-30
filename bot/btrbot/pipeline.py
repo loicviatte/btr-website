@@ -710,7 +710,9 @@ class Pipeline:
             try:
                 from .config import ASSETS
                 sheet = render.cover_sheet([cdir / c["file"] for c in cands], cands, cdir / "sheet.jpg")
-                best = [i - 1 for i in self.llm.reel_cover_pick(sheet, ASSETS / "cover_ref.jpg") if 1 <= i <= len(cands)]
+                want = str(self.registry_pref("cover_want") or "")
+                best = [i - 1 for i in self.llm.reel_cover_pick(sheet, ASSETS / "cover_ref.jpg", want)
+                        if 1 <= i <= len(cands)]
                 order = best + [i for i in order if i not in best]
             except Exception:  # noqa: BLE001
                 log.exception("cover pick")
@@ -724,6 +726,13 @@ class Pipeline:
         out = render.reel_cover(cdir, cdir / c["file"], c, hook, ep.get("guest_name") or "",
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
+
+    def registry_pref(self, key: str):
+        """A preference Loïc gave in the chat, kept in the bot's registry (data/registry.json)."""
+        try:
+            return json.loads((self.cfg.data_dir / "registry.json").read_text()).get(key)
+        except Exception:  # noqa: BLE001
+            return None
 
     def reel_cover_search(self, ep: Episode, n: int) -> int:
         """More and better cover stills for reel n (the 4K section of the moment downloaded again, sampled every

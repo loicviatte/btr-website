@@ -132,7 +132,7 @@ class LLM:
                                                            feedback=feedback), 1500, tier="work",
                           task="reels (retour sous-titres)")
 
-    def reel_cover_pick(self, sheet: Path, ref: Path | None = None) -> list[int]:
+    def reel_cover_pick(self, sheet: Path, ref: Path | None = None, want: str = "") -> list[int]:
         content = []
         if ref and Path(ref).exists():
             content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
@@ -140,7 +140,8 @@ class LLM:
         content += [
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                          "data": base64.standard_b64encode(sheet.read_bytes()).decode()}},
-            {"type": "text", "text": prompts.REEL_COVER_PICK},
+            {"type": "text", "text": prompts.REEL_COVER_PICK + (f"\nLoïc also asked (French): « {want} ». This comes first."
+                                                                 if want else "")},
         ]
         r = self._json(content, max_tokens=300, tier="work", task="reels (cover)")
         return [int(i) for i in r.get("best", []) if str(i).isdigit()]

@@ -179,7 +179,7 @@ REEL_COVER_PICK = """The first image is a reel cover Loïc approved: the style t
 the cover of another reel, each framed as the cover would be (the bottom part is darkened: the hook text goes there).
 Pick the best ones, like the approved cover: the guest's face sharp (no motion blur), both eyes open and visible (also
 behind glasses), a lively, engaged expression (a smile, a strong emotion, mid-thought), looking at the host or slightly
-to the side, mouth natural (not caught mid-word in an odd shape), no hand or microphone in front of the face, head and
+to the side, MOUTH CLOSED or a closed-mouth smile (never caught mid-word with the mouth open — Loïc rejects those), no hand or microphone in front of the face, head and
 shoulders well placed in the upper part of the frame.
 Return ONLY JSON: {{"best": [numbers, best first, up to 3]}}"""
 

@@ -34,7 +34,7 @@ seen = {}
 
 
 class FakeLLM:
-    def reel_cover_pick(self, sheet, ref=None):
+    def reel_cover_pick(self, sheet, ref=None, want=""):
         seen["ref"] = ref
         seen["sheet"] = sheet
         return [2, 1]
