@@ -45,7 +45,7 @@ item = {"duration": 46.6, "captions": {"instagram": "Line 1\nLine 2", "tiktok": 
 d1 = share.description("Where: Instagram\nTime: 20:00", {"video": "V1", "cover": "C1", "folder": "F"}, item, "T", "Y", "29.10.2026")
 d2 = share.description(d1, {"video": "V2", "cover": "C2", "folder": "F"}, item, "T", "Y", "30.10.2026")
 assert d2.count(share.MARK) == 1 and "V2" in d2 and "V1" not in d2 and d2.startswith("Where: Instagram\nTime: 20:00"), d2
-assert "```\nLine 1\nLine 2\n```" in d2
+assert "Line 1\nLine 2" in d2 and "```" not in d2
 # pasted Google address
 assert share.code_from("http://127.0.0.1:8765/?code=4/0Ab_x-y&scope=https://www.googleapis.com/auth/drive.file") == "4/0Ab_x-y"
 assert share.code_from("salut") is None

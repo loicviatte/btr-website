@@ -326,9 +326,6 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
     links, and the captions in code blocks (exact text, line breaks kept, copy button in ClickUp)."""
     keep = (old or "").split(MARK)[0].rstrip()
     caps = item.get("captions") or {}
-
-    def fence(t):
-        return "```\n" + (t or "—").replace("```", "") + "\n```"
     where = "Instagram + TikTok + Shorts" if instagram else "TikTok + Shorts seulement (pas Instagram)"
     lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s) · {where}", "",
              f"- Vidéo : {links.get('video', '—')}", f"- Cover : {links.get('cover', '—')}",
@@ -337,8 +334,13 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
         lines.append(f"- Fichier : {base}.mp4")
     lines.append("")
     if instagram:
-        lines += ["**Légende Instagram** (sans hashtags)", "", fence(caps.get("instagram")), ""]
-    lines += ["**Légende TikTok / Shorts** (avec hashtags)", "", fence(caps.get("tiktok"))]
+        collab = " et ".join("@" + h for h in caps.get("collab") or [])
+        lines += ["---", "", "**📸 Instagram** (sans hashtags)" + (f" · collaboration : inviter {collab}" if collab else ""),
+                  "", caps.get("instagram") or "—", ""]
+    lines += ["---", "", "**🎵 TikTok** (avec hashtags)", "", caps.get("tiktok") or "—", ""]
+    if caps.get("short_title"):
+        lines += ["---", "", "**▶️ YouTube Shorts** (vidéo associée : l'épisode ; pas de lien dans la description)", "",
+                  f"Titre : {caps['short_title']}", "", caps.get("short_desc") or ""]
     return (keep + "\n\n" if keep else "") + "\n".join(lines)
 
 
@@ -346,6 +348,14 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
 EP_NUMBERS = {"kiera brunton": 1, "michael shelton": 2, "jaime dieguez": 3, "nicole cutler": 4, "james wilson": 5,
               "anthony rutherford": 6, "phemelo mabuse": 7, "ian waite": 8, "oskar odiakosa": 9, "peter nash": 10,
               "peter maxwell": 11, "leila stewart": 12, "oti mabuse": 13}
+
+
+# Instagram accounts (for the @ in the Instagram caption and the collaboration invite); others get their full name
+HANDLES = {"oti mabuse": "otimabuse", "marius iepure": "mariusiepure"}
+
+
+def guest_handle(guest: str) -> str | None:
+    return HANDLES.get(_norm(guest))
 
 
 def guest_key(guest: str) -> str:

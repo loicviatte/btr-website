@@ -143,22 +143,37 @@ fillers and stutters ("um", "you know", repeated words) but never add, change or
 phrase on the same line as a punch word: split it. Always put "align": "c" (the program places the blocks on screen).
 Return ONLY JSON: {{"blocks": [{{"align": "c", "lines": ["where are my *FRIENDS", "FAMILY", "HUSBAND?"]}}]}}"""
 
-REEL_CAPTIONS = """Write the social captions for this reel of Break The Routine, a DanceSport podcast hosted by Marius Iepure (@mariusiepure).
-Guest: {guest_name}. Episode: "{video_title}".
+REEL_CAPTIONS = """Write the pieces of the social captions for this reel of Break The Routine, a DanceSport podcast hosted by Marius
+Iepure. Guest: {guest_name}. Episode: "{video_title}".
 What is said in the reel:
 <reel>
 {text}
 </reel>
-Rules: English; first line = a hook that makes a dancer stop scrolling (never invent facts or quotes: only what is said above);
-then 1 or 2 short lines of context; then a call to action to watch the full episode (YouTube / Spotify, link in bio).
-Instagram: NO hashtags, max 60 words. TikTok / YouTube Shorts: same text plus 5 to 8 relevant hashtags at the end
-(#dancesport #ballroom #latindance …).
-Cover: also choose the hook printed on the reel cover: 2 to 5 CONSECUTIVE words the guest really says above (exact
-words, same order), the most striking ones (e.g. "They just don't care."). Split them in up to 3 parts: "small" = the
-lead-in words (lower-case look, may be empty), "big" = the punch word(s) shown huge, "gold" = the last punch word(s)
-in gold italic (may be empty). Example: {{"small": "They just", "big": "DON'T", "gold": "CARE."}}. big and gold: 1 or 2
-short words each, in UPPER CASE.
-Return ONLY JSON: {{"instagram": "...", "tiktok": "...", "cover": {{"small": "...", "big": "...", "gold": "..."}}}}"""
+The captions follow a fixed format approved by Loïc (the program assembles it), e.g. for Oti Mabuse:
+“They just don't care.”
+
+@otimabuse on Latin and Ballroom competitive dance versus the TV shows: “When you are on these shows, people care.”
+
+Do you agree? Tell us in the comments.
+
+Part 2 of Break The Routine with Oti Mabuse is out now on YouTube and Spotify. Link in bio.
+Give:
+- "hook": the most striking short sentence of the reel, EXACT consecutive words the guest says (3 to 12 words, keep
+  their punctuation), e.g. "They just don't care."
+- "topic": what the moment is about, a few plain words that follow "<guest> on …", e.g. "Latin and Ballroom
+  competitive dance versus the TV shows" (no quotes, no full stop, no emoji).
+- "quote": a second line said in the reel that backs the hook up, EXACT consecutive words (5 to 20 words), different
+  from the hook; "" if none fits.
+- "question": one short question to the audience that makes dancers comment, e.g. "Do you agree?" or "Have you ever
+  felt this on the floor?" (no emoji).
+- "tags": 1 to 3 extra hashtags specific to this moment (e.g. "#StrictlyComeDancing"), CamelCase.
+- "cover": the words printed on the reel cover: 2 to 5 CONSECUTIVE words the guest really says, split in up to 3
+  parts: "small" = the lead-in words (may be empty), "big" = the punch word(s) shown huge, "gold" = the last punch
+  word(s) in gold italic (may be empty). Example: {{"small": "They just", "big": "DON'T", "gold": "CARE."}}. big and
+  gold: 1 or 2 short words each, in UPPER CASE.
+Never invent facts or words: quotes are only what is said above. No emoji anywhere. English.
+Return ONLY JSON: {{"hook": "...", "topic": "...", "quote": "...", "question": "...", "tags": ["#..."],
+"cover": {{"small": "...", "big": "...", "gold": "..."}}}}"""
 
 REEL_COVER_PICK = """The first image is a reel cover Loïc approved: the style to match. The second image shows numbered candidates for
 the cover of another reel, each framed as the cover would be (the bottom part is darkened: the hook text goes there).

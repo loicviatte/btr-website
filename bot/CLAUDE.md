@@ -58,7 +58,13 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (list « Content calendar »; the feed question lists the episode's free Instagram slots; feed → the next free « Reel k/N »
   slot, else a new « Reel · … » task; TikTok + Shorts only → a new « Short · … » task (Instagram field Not planned);
   changing the choice later (reel_validate instagram=…) gives the slot back / deletes the bot's own task; renamed, status approved,
-  description block below « ———— BTR Studio ———— » with links + captions, cover attached). Both are connected from
+  description block below « ———— BTR Studio ———— » with links + captions (plain paragraphs), cover attached).
+  Captions (`pipeline.reel_captions`, bump `CAPTIONS_V`; filed reels get new ones via `bot.REELS_FILES` at boot) =
+  the format approved on the first Oti reel, assembled by code from the model's pieces (hook / topic / quote /
+  question, quotes checked as really said): “hook” / « @handle on topic: “quote” » / « question Tell us in the
+  comments. » / « Part N of Break The Routine with Guest is out now on YouTube and Spotify. Link in bio. »; TikTok =
+  full name + hashtags; Shorts = title « Guest: “hook” | Break The Routine » + description without link; no emoji;
+  Instagram handles in `share.HANDLES` (collab invite guest + @mariusiepure). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
   sent to the chat model). Tool reel_cover (other photo / other words). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.

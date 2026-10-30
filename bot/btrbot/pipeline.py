@@ -22,6 +22,19 @@ def clean_quote(a: dict) -> dict:
     return {"top": _clean(a.get("top")), "key": _clean(a.get("key")).upper(), "bottom": _clean(a.get("bottom"))}
 
 
+CAPTIONS_V = 2          # bump when the caption format changes: filed reels get theirs written again
+
+
+def said_exactly(text: str, said: str) -> bool:
+    """These words are consecutive words of what is said (punctuation and case aside)."""
+    def key(w):
+        return re.sub(r"[^a-z0-9]", "", w.lower().replace("’", "'"))
+    want = [key(w) for w in (text or "").split() if key(w)]
+    words = [key(w) for w in (said or "").split() if key(w)]
+    n = len(want)
+    return bool(n) and any(words[i:i + n] == want for i in range(len(words) - n + 1))
+
+
 def apply_all(words: list, fixes: list[dict]) -> tuple[list, list[str]]:
     """Each fix applied wherever it occurs (a name can come back several times in a reel)."""
     from . import reels as R
@@ -627,17 +640,54 @@ class Pipeline:
         return res
 
     def reel_captions(self, ep: Episode, said: str) -> dict:
-        """Instagram without hashtags (enforced), TikTok / Shorts with some."""
+        """Captions in the format Loïc approved on the first Oti reel: the hook in quotes; « @guest on <topic>: “quote” »;
+        a question + « Tell us in the comments. »; « Part N of Break The Routine with <guest> is out now on YouTube and
+        Spotify. Link in bio. » Instagram: @handle, no hashtags; TikTok: full name, hashtags; YouTube Shorts: title
+        « Guest: “hook” | Break The Routine » and a description without link (the episode goes in « Related video »).
+        Quotes are kept only if they are words really said."""
+        from . import share
         try:
             c = self.llm.reel_captions(ep.get("guest_name", ""), self.reel_title(ep), said)
         except Exception:  # noqa: BLE001
+            log.exception("captions")
             return {}
-        ig = re.sub(r"[ \t]*#[\w-]+", "", c.get("instagram") or "").strip()
-        tt = (c.get("tiktok") or ig).strip()
-        if "#" not in tt:
-            tt += "\n\n#dancesport #ballroom #latindance #breaktheroutine"
-        out = {"instagram": ig, "tiktok": tt}
+        guest = ep.get("guest_name") or "our guest"
+        handle = share.guest_handle(guest)
+        part = part_number(ep)
+        clean = lambda x: re.sub(r"\s+", " ", re.sub(r"^[\s“”\"']+|[\s“”\"']+$", "", str(x or ""))).strip()  # noqa: E731
+        hook = clean(c.get("hook"))
+        quote = clean(c.get("quote"))
+        if not said_exactly(hook, said):
+            hook = ""
+        if not said_exactly(quote, said) or quote == hook:
+            quote = ""
         cover = cover_hook(c.get("cover"), said)
+        if not hook and cover:
+            hook = " ".join(x for x in (cover.get("small"), cover.get("big", "").lower(), cover.get("gold", "").lower()) if x)
+            hook = hook[:1].upper() + hook[1:]
+        topic = re.sub(r"[.:]+$", "", clean(c.get("topic"))) or "dance"
+        question = clean(c.get("question")) or "Do you agree?"
+        if not question.endswith("?"):
+            question += "?"
+
+        def body(who: str) -> str:
+            line = f"{who} on {topic}: “{quote}”" if quote else f"{who} on {topic}."
+            return "\n\n".join(x for x in (f"“{hook}”" if hook else "", line, f"{question} Tell us in the comments.") if x)
+        out_line = (f"Part {part} of Break The Routine with {guest} is out now on YouTube and Spotify." if part
+                    else f"The full episode of Break The Routine with {guest} is out now on YouTube and Spotify.")
+        gtag = "#" + re.sub(r"[^A-Za-z0-9]", "", guest)
+        extra = [t if t.startswith("#") else "#" + t for t in (c.get("tags") or [])[:3] if re.fullmatch(r"#?\w+", str(t))]
+        tags = list(dict.fromkeys(["#BreakTheRoutine", "#DanceSport", "#Ballroom", "#LatinDance", gtag, *extra,
+                                   "#DancePodcast"]))
+        ig = f"{body('@' + handle if handle else guest)}\n\n{out_line} Link in bio."
+        tt = f"{body(guest)}\n\n{out_line}\n\n{' '.join(tags)}"
+        short_hook = hook if len(hook) <= 60 else " ".join(hook.split()[:8]) + "…"
+        short_title = (f"{guest}: “{short_hook.rstrip('.')}” | Break The Routine" if hook else
+                       f"{guest} on {topic} | Break The Routine")[:100]
+        short_desc = (f"{guest} on {topic}: “{quote}”" if quote else f"{guest} on {topic}.") + \
+            f"\n\n#BreakTheRoutine #DanceSport #Ballroom {gtag} #Shorts"
+        out = {"instagram": ig, "tiktok": tt, "short_title": short_title, "short_desc": short_desc,
+               "collab": [h for h in (handle, "mariusiepure") if h], "v": CAPTIONS_V}
         if cover:
             out["cover"] = cover
         return out

@@ -1095,7 +1095,7 @@ REELS_RULES = ("2026-10-29-names", "chaque mot reste au moins 0,5 s à l'écran 
                                    "reels déjà validés le restent.")
 
 
-REELS_FILES = "guest-folders-1"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
+REELS_FILES = "captions-2"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
 
 
 def loic_wrote(words: str) -> bool:
@@ -1410,6 +1410,12 @@ async def share_reel(ctx, ep, n: int, quiet: bool = False) -> str:
         except Exception:  # noqa: BLE001
             log.exception("cover")
     await send_cover(ctx, ep, n)
+    from .pipeline import CAPTIONS_V
+    if (item.get("captions") or {}).get("v") != CAPTIONS_V and item.get("said"):
+        caps = await run(pipe.reel_captions, ep, item["said"])        # captions in the current approved format
+        if caps:
+            item["captions"] = caps
+            RS(ep).save()
     taken = reel_tasks_taken(ep, n)
     cand = reel_cand(ep, n) or {}
     res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken,
@@ -1886,8 +1892,8 @@ async def on_boot(app):
                     reg.save()
                     done = sorted(int(k) for k, it in rs["items"].items() if it.get("status") == "ok" and it.get("links"))
                     if done:
-                        await say(app, f"📁 Je range les reels {', '.join(map(str, done))} dans le dossier du guest, "
-                                       "avec les nouveaux noms de fichiers.")
+                        await say(app, f"📁 Je mets à jour les reels rangés ({', '.join(map(str, done))}) : légendes au "
+                                       "format validé (comme le premier reel d'Oti), Drive et ClickUp.")
                         for k in done:
                             bg(app, f"Reel {k} → Drive + ClickUp", share_reel(app, ep, k))
                 if reg.data.get("reels_rules") != REELS_RULES[0] and rs.get("sel"):
