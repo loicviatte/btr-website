@@ -2365,6 +2365,11 @@ async def tt_draft(ctx, ep, n: int):
                 break
         if st.get("status") == "FAILED":
             raise RuntimeError(st.get("fail_reason") or "FAILED")
+        if st.get("status") not in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
+            await say(ctx, T(f"📥 Vidéo envoyée à TikTok, statut encore « {esc(str(st.get('status')))} » après 1 min "
+                             f"(publish_id {esc(pid)}). Regarde ta boîte TikTok dans quelques minutes.",
+                             f"📥 Video uploaded, TikTok status still “{esc(str(st.get('status')))}” after 1 min."))
+            return
         await say(ctx, T(f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
                          "et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the notification "
                          "in TikTok to edit and post it.") + "\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
