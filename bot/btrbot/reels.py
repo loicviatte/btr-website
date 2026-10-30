@@ -59,15 +59,16 @@ def section_bounds(start: float, end: float) -> tuple[int, int]:
     return max(0, int(math.floor(start - PAD))), int(math.ceil(end + PAD))
 
 
-def download_section(video_id: str, a: int, b: int, dest: Path, cookies: Path | None) -> Path:
-    """Only [a, b] seconds of the episode, best quality up to 4K. VP9/H.264 preferred over AV1 (faster to decode)."""
+def download_section(video_id: str, a: int, b: int, dest: Path, cookies: Path | None, height: int = 2160) -> Path:
+    """Only [a, b] seconds of the episode, best quality up to 4K (or `height`). VP9/H.264 preferred over AV1."""
     import yt_dlp
     from yt_dlp.utils import download_range_func
     if dest.exists() and dest.stat().st_size > 0:
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     opts = {
-        "format": "bv*[height<=2160][vcodec^=vp09]+ba/bv*[height<=2160][vcodec^=avc1]+ba/bv*[height<=2160]+ba/b",
+        "format": (f"bv*[height<={height}][vcodec^=vp09]+ba/bv*[height<={height}][vcodec^=avc1]+ba/bv*[height<={height}]+ba/b"
+                   if height >= 2160 else f"bv*[height<={height}][vcodec^=avc1]/bv*[height<={height}]/b[height<={height}]"),
         "merge_output_format": "mp4", "outtmpl": str(dest.with_suffix(".%(ext)s")),
         "download_ranges": download_range_func(None, [(a, b)]),
         "quiet": True, "no_warnings": True, "noprogress": True,
@@ -753,7 +754,7 @@ def cover_candidates(clip: Path, samples: list[tuple[float, dict]], ranges: list
 
 
 def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, out_dir: Path, k: int = 16,
-                 seen=(), mouth=None) -> list[dict]:
+                 seen=(), mouth=None, still_src: str | None = None, offset: float = 0.0) -> list[dict]:
     """A wide choice of cover stills: every sampled moment where the guest is alone on screen, scored on sharpness of
     the face (no motion blur), its size and how high it sits, at least 1 s apart, never one already shown (`seen`:
     times of earlier searches). `mouth(list of (t, face, frame))` → indexes where the mouth is open: the choice is then
@@ -814,7 +815,11 @@ def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, ou
     out = []
     for i, (t, f) in enumerate(sorted(chosen)):
         jpg = out_dir / f"c_{i:02d}.jpg"
-        run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
+        if still_src:                                  # the full-resolution stream: only 16 frames fetched
+            run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{offset + t:.3f}", "-i", still_src, "-frames:v", "1",
+                 "-q:v", "2", jpg])
+        else:
+            run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
         if jpg.exists():
             out.append({"file": jpg.name, "t": round(t, 3), **{x: f[x] for x in ("cx", "cy", "fh", "fw", "top") if x in f},
                         **({"mouth": "open" if flags[t] else "closed"} if t in flags else {})})

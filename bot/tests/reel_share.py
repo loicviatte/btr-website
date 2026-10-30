@@ -163,7 +163,7 @@ class FakeDrive:
     def folder_link(self, fid):
         return f"https://drive.google.com/drive/folders/{fid}"
 
-    def put(self, path, folder_id, name, mime, fid=None):
+    def put(self, path, folder_id, name, mime, fid=None, same=False):
         fid = fid if fid in FILES else f"1file{len(FILES):020d}"
         FILES[fid] = (folder_id, name)
         return {"id": fid, "webViewLink": f"https://drive.google.com/file/d/{fid}/view"}

@@ -754,16 +754,22 @@ class Pipeline:
         if not tags:
             raise RuntimeError("le moment de ce reel n'est plus sur le serveur")
         a, b = (int(float(x)) for x in tags[-1].stem.split("_")[1:3])
-        clip = R.download_section(ep.video_id, a, b, work / f"clipcover_{a}_{b}.mp4", self.cfg.ytdlp_cookies)
+        # fast: the moment in 720p to look for faces, then only the chosen frames from the 4K stream
+        clip = R.download_section(ep.video_id, a, b, work / f"clipcover_{a}_{b}.mp4", self.cfg.ytdlp_cookies, height=720)
+        try:
+            src4k = frames.full_res_url(ep.video_id, self.cfg.ytdlp_cookies)
+        except Exception:  # noqa: BLE001
+            src4k = None
         try:
             info = R.probe(clip)
-            frames = dict(R.sample_frames(clip, 0.0, info["duration"], work / "frames_cover", fps=3.0))
-            samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in frames.items()]
+            frames_ = dict(R.sample_frames(clip, 0.0, info["duration"], work / "frames_cover", fps=3.0))
+            samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in frames_.items()]
             seen_p = work / "cover" / "seen.json"
             seen = json.loads(seen_p.read_text()) if seen_p.exists() else \
                 [c["t"] for c in json.loads((work / "cover" / "cands.json").read_text())] \
                 if (work / "cover" / "cands.json").exists() else []
-            cands = R.cover_search(clip, samples, frames, work / "cover", seen=seen, mouth=self._mouth_checker(work))
+            cands = R.cover_search(clip, samples, frames_, work / "cover", seen=seen, mouth=self._mouth_checker(work),
+                                   still_src=src4k, offset=float(a))
         finally:
             clip.unlink(missing_ok=True)
             shutil.rmtree(work / "frames_cover", ignore_errors=True)
@@ -872,8 +878,11 @@ class Pipeline:
             for key, link in out["links"].items():                 # files uploaded before their ids were kept
                 if key in ("video", "cover") and key not in ids and share.file_id(link):
                     ids[key] = share.file_id(link)
-            f = d.put(Path(item["file"]), sub, f"{base}.mp4", "video/mp4", ids.get("video"))
-            ids["video"], out["links"]["video"] = f["id"], f["webViewLink"]
+            st = Path(item["file"]).stat()
+            sig = f"{st.st_size}-{int(st.st_mtime)}"
+            f = d.put(Path(item["file"]), sub, f"{base}.mp4", "video/mp4", ids.get("video"),
+                      same=ids.get("video_sig") == sig)           # same file: renamed / moved only, no upload
+            ids["video"], ids["video_sig"], out["links"]["video"] = f["id"], sig, f["webViewLink"]
             if item.get("cover") and Path(item["cover"]).exists():
                 f = d.put(Path(item["cover"]), sub, f"{base}_COVER.jpg", "image/jpeg", ids.get("cover"))
                 ids["cover"], out["links"]["cover"] = f["id"], f["webViewLink"]

@@ -923,7 +923,8 @@ async def ask_assistant(ctx, text: str, images: list | None = None):
         if actions:
             log.info("assistant actions: %s", actions)
             MEMORY.add("assistant", "[actions : " + " ; ".join(a.split(" → ")[0] for a in actions) + "]")
-        if reply.strip():
+        reply = "\n".join(x for x in reply.splitlines() if not x.strip().startswith("[actions")).strip()
+        if reply:
             await say(ctx, esc(reply))
 
 
@@ -1361,9 +1362,10 @@ async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
                        "Donne-moi des mots exacts, dans l'ordre.")
     item.update(res)
     RS(ep).save()
-    await send_cover(ctx, ep, n)
     if item.get("filed"):
-        await share_reel(ctx, ep, n)                      # same Drive link, new cover on ClickUp
+        await share_reel(ctx, ep, n)                      # sends the cover; same Drive link, new cover on ClickUp
+    else:
+        await send_cover(ctx, ep, n)
 
 
 def pipe_cover_text(text: dict) -> dict:
@@ -1376,6 +1378,7 @@ async def better_covers(ctx, ep, nums: list[int]):
     from pathlib import Path
     for n in nums:
         item = reel_item(ep, n)
+        await say(ctx, f"🔎 Reel {n} : je cherche de nouvelles photos (environ 1 min)…")
         try:
             count = await run(pipe.reel_cover_search, ep, n)
             item.update(await run(pipe.reel_cover, ep, n, dict(item)))

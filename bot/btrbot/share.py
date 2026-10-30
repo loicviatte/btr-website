@@ -120,7 +120,7 @@ class Drive:
             body["parents"] = [parent]
         return self.svc.files().create(body=body, fields="id").execute()["id"]
 
-    def put(self, path: Path, folder_id: str, name: str, mime: str, fid: str | None = None) -> dict:
+    def put(self, path: Path, folder_id: str, name: str, mime: str, fid: str | None = None, same: bool = False) -> dict:
         """Upload under `name` in `folder_id`; an existing file (its id kept from before) is replaced in place, renamed
         and moved, so its link never changes. Anyone with the link can view it."""
         from googleapiclient.http import MediaFileUpload
@@ -132,6 +132,10 @@ class Drive:
                 if not cur.get("trashed"):
                     olds = ",".join(p for p in cur.get("parents", []) if p != folder_id)
                     kw = {"addParents": folder_id, "removeParents": olds} if olds else {}
+                    if same:                               # content unchanged: name / folder only (seconds, not minutes)
+                        f = self.svc.files().update(fileId=fid, body={"name": name}, fields="id,webViewLink",
+                                                    **kw).execute()
+                        return f
                     f = self.svc.files().update(fileId=fid, body={"name": name}, media_body=media,
                                                 fields="id,webViewLink", **kw).execute()
             except Exception:  # noqa: BLE001
