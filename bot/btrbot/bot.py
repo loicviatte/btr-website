@@ -1389,6 +1389,7 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
 
 async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
     item = reel_item(ep, n)
+    await say(ctx, f"🖼 Reel {n} : je refais la cover" + (f" avec la photo {photo}" if photo else "") + "…")
     try:
         res = await run(pipe.reel_cover, ep, n, dict(item), text, photo)
     except Exception as e:  # noqa: BLE001
@@ -1815,6 +1816,24 @@ async def on_button(update: Update, ctx):
         await guarded(ctx, "Chapitrage", propose_chapters(ctx, ep, "nouvel essai"))
 
 
+async def reel_fast_path(ctx, text: str) -> bool:
+    """« reel 5 photo 13 », « cover 5 d'autres photos » : done at once, without the chat model (which sometimes only
+    said it did it)."""
+    low = text.lower().strip()
+    m = re.match(r"^(?:la\s+)?(?:cover\s+)?(?:du\s+)?r[ée]el\s*(\d+)\s*[:,-]?\s*(?:cover\s*)?(?:la\s+)?photo\s*(?:n°|numéro)?\s*(\d+)\s*$", low)
+    m2 = re.match(r"^(?:cover|r[ée]el)\s*(?:du\s+)?(?:r[ée]el\s*)?(\d+)\s*[:,-]?\s*(?:trouve\s+)?(?:d['’]\s*)?autres?\s+photos?\s*$", low)
+    if not (m or m2):
+        return False
+    MEMORY.add("user", text)
+    h = tool_handlers(ctx, [])
+    try:
+        out = await (h["reel_cover"](int(m.group(1)), photo=int(m.group(2))) if m else h["reels_cover_search"]([int(m2.group(1))]))
+    except Exception as e:  # noqa: BLE001
+        out = f"⚠️ {e}"
+    await say(ctx, "👍 " + esc(out))
+    return True
+
+
 async def connect_cmd(update: Update, ctx):
     """Drive + ClickUp for the validated reels: status and the two steps, all from the phone."""
     if not allowed(update):
@@ -1878,6 +1897,8 @@ async def on_text(update: Update, ctx):
         return
     text = update.message.text.strip()
     if await on_secret(update, ctx, text):
+        return
+    if await reel_fast_path(ctx, text):
         return
     low = text.lower()
     ep = reg.episode(reg.active) if reg.active else None

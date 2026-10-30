@@ -193,6 +193,10 @@ def _block(b) -> dict:
     return b.model_dump(exclude_none=True)   # thinking / redacted_thinking: passed back untouched
 
 
+CLAIMS = re.compile(r"arrière-plan|je (re)?lance|je mets|je refais|je cherche|je renvoie|je range|je te renvoie|"
+                    r"c'est lancé|je m'en occupe|je passe à", re.I)
+
+
 async def converse(llm, model: str, context: str, history: list[dict], user_content, handlers: dict,
                    max_steps: int = 12) -> tuple[str, list[str]]:
     """Runs the tool loop. Returns (final text for Loïc, list of actions done)."""
@@ -200,11 +204,20 @@ async def converse(llm, model: str, context: str, history: list[dict], user_cont
     messages = list(history) + [{"role": "user", "content": user_content}]
     actions: list[str] = []
     text = ""
+    nudged = False
     for _ in range(max_steps):
         msg = await asyncio.to_thread(lambda: llm.create("discussion", model=model, max_tokens=1200, system=system,
                                                          tools=TOOLS, messages=messages))
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
         uses = [b for b in msg.content if getattr(b, "type", "") == "tool_use"]
+        if not uses and not actions and not nudged and CLAIMS.search(text):
+            # it says it launched something but called no tool (it copied an earlier answer): make it act for real
+            nudged = True
+            messages.append({"role": "assistant", "content": text or "…"})
+            messages.append({"role": "user", "content": "(note du système, pas de Loïc) Tu viens d'annoncer une action "
+                             "sans appeler aucun outil : rien n'est lancé. Appelle maintenant l'outil qui la fait, puis "
+                             "réponds. Si aucun outil ne peut la faire, dis-le honnêtement."})
+            continue
         if not uses:
             return text, actions
         messages.append({"role": "assistant", "content": [_block(b) for b in msg.content]})
