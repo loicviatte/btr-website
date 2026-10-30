@@ -2096,6 +2096,9 @@ async def tt_tick(ctx):
             continue
         tt["sent"] = now.isoformat()
         RS(ep).save()
+        if tt.get("confirmed") and share.Secrets(cfg.data_dir).get("tt_refresh"):
+            asyncio.create_task(tt_publish(ctx, ep, n))      # Loïc confirmed the post in the composer: API
+            continue
         name = short_name({"ep": ep, "n": n})
         late = (now - at).total_seconds() > 3600
         try:
@@ -2129,6 +2132,204 @@ async def tt_posted(ctx, vid: str, n: int):
         await say(ctx, f"✅ {short_name({'ep': ep, 'n': n})} : TikTok noté « Posted » dans ClickUp.")
     except Exception as e:  # noqa: BLE001
         await say(ctx, f"⚠️ ClickUp : <code>{esc(str(e)[-150:])}</code>")
+
+
+# TikTok composer (TikTok's Direct Post UX rules): before a post Loïc sees the account, the video, the caption, picks
+# the audience himself (nothing pre-selected), comments / duet / stitch, the commercial content disclosure, then confirms.
+TT_SET = {"c": "disable_comment", "d": "disable_duet", "s": "disable_stitch"}
+
+
+def tt_card(ep, n: int):
+    from . import shorts, tiktok
+    it = reel_item(ep, n)
+    tt = it.setdefault("tt_post", {})
+    cr, st = tt.get("creator") or {}, tt.setdefault("settings", {})
+    who = cr.get("creator_nickname") or cr.get("creator_username") or "?"
+    at = shorts.parse((it.get("yt_short") or {}).get("at"))
+    lines = [f"🎵 <b>TikTok · {short_name({'ep': ep, 'n': n})}</b>",
+             f"Compte : <b>{esc(who)}</b>" + (f" (@{esc(cr['creator_username'])})" if cr.get("creator_username") else ""),
+             "Quand : " + (f"<b>{shorts.label(at)}</b> (Londres)" if at else "pas encore programmé (le Short d'abord)"),
+             f"Légende :\n<pre>{esc((it.get('captions') or {}).get('tiktok') or '')}</pre>"]
+    mx = cr.get("max_video_post_duration_sec")
+    if mx and float(it.get("duration") or 0) > float(mx):
+        lines.append(f"⚠️ La vidéo dure {it.get('duration')} s, ce compte accepte {mx} s maximum.")
+    pl = st.get("privacy_level")
+    lines.append("Visibilité : " + (f"<b>{tiktok.PRIVACY_FR.get(pl, pl)}</b>" if pl else "<b>à choisir</b>"))
+    if st.get("commercial"):
+        if st.get("brand_content_toggle"):
+            lines.append("Contenu commercial : sera étiqueté « Partenariat rémunéré ».")
+        elif st.get("brand_organic_toggle"):
+            lines.append("Contenu commercial : sera étiqueté « Contenu promotionnel ».")
+        else:
+            lines.append("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque ».")
+    lines.append("En publiant, tu acceptes la Music Usage Confirmation de TikTok"
+                 + (" et sa Branded Content Policy." if st.get("brand_content_toggle") else "."))
+    if tt.get("confirmed"):
+        lines.append("✅ <b>Confirmé</b> : le bot publiera à l'heure dite. Tu peux encore changer et reconfirmer.")
+    key = f"ttc:{ep.video_id}:{n}"
+    opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
+    rows = [[B(("● " if pl == o else "") + tiktok.PRIVACY_FR.get(o, o), callback_data=f"{key}:p:{i}")
+             for i, o in enumerate(opts)][k:k + 2] for k in range(0, len(opts), 2)]
+    tog = []
+    for code, label, dis in (("c", "Commentaires", "comment_disabled"), ("d", "Duo", "duet_disabled"),
+                             ("s", "Stitch", "stitch_disabled")):
+        if cr.get(dis):
+            tog.append(B(f"🚫 {label}", callback_data=f"{key}:x"))
+        else:
+            tog.append(B(("❌ " if st.get(TT_SET[code]) else "✅ ") + label, callback_data=f"{key}:{code}"))
+    rows.append(tog)
+    rows.append([B(("☑️ " if st.get("commercial") else "⬜ ") + "Contenu commercial", callback_data=f"{key}:m")])
+    if st.get("commercial"):
+        rows.append([B(("☑️ " if st.get("brand_organic_toggle") else "⬜ ") + "Ta marque", callback_data=f"{key}:o"),
+                     B(("☑️ " if st.get("brand_content_toggle") else "⬜ ") + "Contenu de marque", callback_data=f"{key}:b")])
+    rows.append([B("✅ Confirmer pour l'heure prévue", callback_data=f"{key}:go"),
+                 B("▶️ Publier maintenant", callback_data=f"{key}:now")])
+    return "\n".join(lines), K(rows)
+
+
+async def tt_compose(ctx, ep, n: int):
+    """Send the composer for reel n (video first, so Loïc sees what will be posted)."""
+    from pathlib import Path
+    from . import share, tiktok
+    it = reel_item(ep, n)
+    tt = it.setdefault("tt_post", {})
+    try:
+        tt["creator"] = await run(lambda: tiktok.TikTok(share.Secrets(cfg.data_dir)).creator_info())
+    except share.NotConnected:
+        await say(ctx, "TikTok n'est pas encore connecté : /connect.")
+        return
+    except Exception as e:  # noqa: BLE001
+        await say(ctx, f"⚠️ TikTok : <code>{esc(str(e)[-200:])}</code>")
+        return
+    tt.setdefault("settings", {})
+    RS(ep).save()
+    if it.get("file") and Path(it["file"]).exists():
+        with open(it["file"], "rb") as f:
+            await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 Aperçu TikTok · {short_name({'ep': ep, 'n': n})}",
+                                     supports_streaming=True, width=1080, height=1920,
+                                     duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
+    text, kb = tt_card(ep, n)
+    await say(ctx, text, reply_markup=kb)
+
+
+async def on_tt_button(ctx, q, data: str):
+    from . import share, tiktok
+    _, vid, n, act, *rest = data.split(":")
+    ep, n = reg.episode(vid), int(n)
+    it = reel_item(ep, n)
+    tt = it.setdefault("tt_post", {})
+    st = tt.setdefault("settings", {})
+    cr = tt.get("creator") or {}
+    if tt.get("posted"):
+        await say(ctx, "Déjà publié sur TikTok.")
+        return
+    if act == "x":
+        await say(ctx, "Ce réglage est désactivé dans les paramètres de ton compte TikTok.")
+        return
+    if act == "p":
+        opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
+        st["privacy_level"] = opts[int(rest[0])]
+    elif act in TT_SET:
+        st[TT_SET[act]] = not st.get(TT_SET[act])
+    elif act == "m":
+        st["commercial"] = not st.get("commercial")
+        if not st["commercial"]:
+            st["brand_organic_toggle"] = st["brand_content_toggle"] = False
+    elif act == "o":
+        st["brand_organic_toggle"] = not st.get("brand_organic_toggle")
+    elif act == "b":
+        st["brand_content_toggle"] = not st.get("brand_content_toggle")
+        if st["brand_content_toggle"] and st.get("privacy_level") == "SELF_ONLY":
+            st["privacy_level"] = None
+            await say(ctx, "Un contenu de marque ne peut pas être privé : choisis une autre visibilité.")
+    elif act in ("go", "now"):
+        if not st.get("privacy_level"):
+            await say(ctx, "Choisis d'abord la visibilité.")
+            return
+        if st.get("commercial") and not (st.get("brand_organic_toggle") or st.get("brand_content_toggle")):
+            await say(ctx, "Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque », ou décoche-le.")
+            return
+        if st.get("brand_content_toggle") and st.get("privacy_level") == "SELF_ONLY":
+            await say(ctx, "Un contenu de marque ne peut pas être privé.")
+            return
+        tt["confirmed"] = True
+        RS(ep).save()
+        try:
+            await run(pipe.tt_mark, dict(it), share.TT_SCHEDULED)
+        except Exception:  # noqa: BLE001
+            log.exception("clickup tt")
+        if act == "now":
+            tt["sent"] = "now"
+            RS(ep).save()
+            await say(ctx, "🎵 J'envoie sur TikTok…")
+            asyncio.create_task(tt_publish(ctx, ep, n))
+    RS(ep).save()
+    text, kb = tt_card(ep, n)
+    try:
+        await q.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def tt_publish(ctx, ep, n: int):
+    """Direct Post with the confirmed settings, then follow the status until TikTok says it is out."""
+    from pathlib import Path
+    from . import share, tiktok
+    it = reel_item(ep, n)
+    tt = it.setdefault("tt_post", {})
+    name = short_name({"ep": ep, "n": n})
+    try:
+        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
+        pid = await run(api.post, Path(it["file"]), (it.get("captions") or {}).get("tiktok") or "", tt["settings"])
+        tt["publish_id"] = pid
+        RS(ep).save()
+        st = {}
+        for _ in range(40):
+            await asyncio.sleep(15)
+            st = await run(api.status, pid)
+            if st.get("status") in ("PUBLISH_COMPLETE", "FAILED"):
+                break
+        if st.get("status") != "PUBLISH_COMPLETE":
+            raise RuntimeError(st.get("fail_reason") or st.get("status") or "pas de réponse de TikTok")
+        tt["posted"] = True
+        RS(ep).save()
+        try:
+            await run(pipe.tt_mark, dict(it), share.TT_POSTED)
+        except Exception:  # noqa: BLE001
+            log.exception("clickup tt posted")
+        private = tt["settings"].get("privacy_level") == "SELF_ONLY"
+        await say(ctx, f"🎵 {name} est en ligne sur TikTok"
+                       + (" (privé)" if private else f" ({tiktok.PRIVACY_FR.get(tt['settings']['privacy_level'], '')})")
+                       + ". ClickUp : Posted.")
+    except Exception as e:  # noqa: BLE001
+        log.exception("tiktok post")
+        tt.pop("confirmed", None)
+        tt.pop("sent", None)
+        RS(ep).save()
+        await say(ctx, f"⚠️ TikTok n'a pas pris {name} : <code>{esc(str(e)[-200:])}</code>. Je repasse en mode "
+                       "notification pour ce reel (vidéo + légende à l'heure prévue).")
+
+
+async def tiktok_cmd(update: Update, ctx):
+    """/tiktok [n] : the composer for reel n (or the next reel going to TikTok)."""
+    if not allowed(update):
+        return
+    from . import shorts
+    args = [a for a in (ctx.args or []) if a.isdigit()]
+    if args:
+        ep = reel_ep()
+        if not ep:
+            await say(ctx, "Pas de liste de reels en cours.")
+            return
+        await guarded(ctx, "TikTok", tt_compose(ctx, ep, int(args[0])))
+        return
+    items = sorted([(ep, n, it) for ep, n, it in tt_items() if not (it.get("tt_post") or {}).get("confirmed")],
+                   key=lambda x: x[2]["yt_short"]["at"])
+    if not items:
+        await say(ctx, "🎵 Aucun reel en attente pour TikTok.")
+        return
+    ep, n, _ = items[0]
+    await guarded(ctx, "TikTok", tt_compose(ctx, ep, n))
 
 
 async def covers_ok(ctx, ep, nums: list[int] | None = None):
@@ -2303,6 +2504,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
+    if q.data.startswith("ttc:"):
+        await on_tt_button(ctx, q, q.data)
+        return
     if q.data.startswith("ttok:"):
         _, vid, n = q.data.split(":", 2)
         try:
@@ -2475,6 +2679,11 @@ async def connect_cmd(update: Update, ctx):
     msg.append(f"\n<b>ClickUp</b> {'✅ connecté' if cu_ok else '❌'}")
     msg.append("Sur app.clickup.com : ton avatar → Settings → Apps → API Token → Generate, copie le code « pk_… » et "
                "colle-le ici (j'efface ton message tout de suite).")
+    tt_ok = bool(sec.get("tt_refresh"))
+    msg.append(f"\n<b>TikTok</b> {'✅ connecté' if tt_ok else '❌'}")
+    if not tt_ok:
+        msg.append("developers.tiktok.com → app BTR Studio : colle ici « tiktok CLIENT_KEY CLIENT_SECRET » (j'efface ton "
+                   "message), puis suis le lien que je t'envoie.")
     from . import instagram
     ig_ok = sec.get("ig_username")
     msg.append(f"\n<b>Instagram</b> {'✅ @' + esc(ig_ok) if ig_ok else '❌'}")
@@ -2495,6 +2704,30 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     sec = share.Secrets(cfg.data_dir)
     code = share.code_from(text)
     token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
+    m_tt = re.match(r"^\s*tiktok\s+(\S{16,})(?:\s+([A-Za-z0-9_-]{16,}))?\s*$", text, re.I)
+    if m_tt:
+        for m in MEMORY._list():
+            if re.match(r"^\s*tiktok\s+\S", m.get("content", ""), re.I):
+                m["content"] = "tiktok [effacé]"
+        reg.save()
+        try:
+            await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        from . import tiktok
+        if m_tt.group(2):                                  # client key + client secret of the app BTR Studio
+            sec.set(tt_client_key=m_tt.group(1), tt_client_secret=m_tt.group(2))
+            await say(ctx, f"✅ App TikTok enregistrée, message effacé. Maintenant : <a href=\"{esc(tiktok.auth_url(m_tt.group(1)))}\">"
+                           "ouvre ce lien TikTok</a>, accepte avec le compte BTR, puis copie le message affiché par la page "
+                           "BTR (« tiktok … ») et colle-le ici.")
+        else:
+            try:
+                u = await run(tiktok.connect, sec, m_tt.group(1))
+                await say(ctx, f"✅ TikTok connecté ({esc(u.get('display_name') or 'compte')}). Message effacé. "
+                               "/tiktok = l'écran de publication du prochain reel.")
+            except Exception as e:  # noqa: BLE001
+                await say(ctx, f"⚠️ Connexion TikTok refusée : {esc(str(e)[-250:])}")
+        return True
     meta = re.search(r"\bEAA[A-Za-z0-9]{40,}\b", text)
     if meta:
         for m in MEMORY._list():
@@ -2792,6 +3025,7 @@ def main():
     app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CommandHandler("igtest", igtest_cmd))
+    app.add_handler(CommandHandler("tiktok", tiktok_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

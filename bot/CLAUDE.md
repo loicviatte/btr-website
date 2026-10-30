@@ -72,7 +72,16 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   posting time. /igtest = dry run on the next IG reel (container only, kept if still fresh). Test: `tests/ig_flow.py`.
   TikTok (semi-auto until the API audit): `bot.tt_tick` every minute; at the Short's time it sends the video, the cover
   and the TikTok caption (<pre>, tap to copy) with « ✅ Posté sur TikTok » (ttok:vid:n → `tt_posted`); ClickUp TikTok
-  field Scheduled → Posted. Test: `tests/tt_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
+  field Scheduled → Posted. Test: `tests/tt_flow.py`.
+  TikTok API (`btrbot/tiktok.py`, Content Posting API Direct Post, app « BTR Studio »): /connect → Loïc pastes « tiktok
+  CLIENT_KEY CLIENT_SECRET », then the authorisation link → breaktheroutinepodcast.com/tiktok/callback (site page
+  app/tiktok/callback, shows « tiktok CODE ») → pasted back (`on_secret`, message deleted); access token 24 h refreshed,
+  refresh 365 days. /tiktok [n] = composer (`tt_compose` / `tt_card` / `on_tt_button`, TikTok UX rules: account, video,
+  caption, audience picked by Loïc from creator_info (nothing pre-selected), comments / duet / stitch (🚫 when the account
+  disables them), commercial content (your brand / branded content, never private), Music Usage / Branded Content
+  declaration, « Confirmer pour l'heure prévue » or « Publier maintenant »); a confirmed reel is posted by `tt_publish`
+  at the Short's time (FILE_UPLOAD, status polled; failure = back to the notification). Unaudited app = private posts:
+  the composer is only sent with /tiktok until the audit; site pages /terms and /privacy (BTR Studio section) for it. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
   for each reel (feed ones first), cover (`pipeline.reel_cover`: sharp 4K guest stills kept at render time in
