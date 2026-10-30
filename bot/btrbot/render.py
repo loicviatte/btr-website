@@ -143,20 +143,30 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
 def cover_box(W: int, H: int, face: dict) -> tuple[float, float, float, float]:
     """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: full height when the face sits in the upper
     part; a face lower in the frame is brought up to ~1/3 of the cover by cropping closer (never closer than 60 % of
-    the height, never cutting the head), so the hook below does not run over it."""
+    the height, never cutting the head), so the hook below does not run over it. face["zoom"] (Loïc's « zoom x1.25 »)
+    tightens that window around the face, which keeps its place on the cover."""
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
-    h = H if c <= 0.36 * H else min(H, max(0.6 * H, fh * 2.6, (H - c) / 0.68))
-    y0 = max(0.0, min(H - h, c - 0.32 * h))
-    sw = h * 9 / 16
-    x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))
+    if abs(W / H - 9 / 16) < 0.02:                     # already vertical (a frame of the edit)
+        x0, y0, sw, h = 0.0, 0.0, float(W), float(H)
+    else:
+        h = H if c <= 0.36 * H else min(H, max(0.6 * H, fh * 2.6, (H - c) / 0.68))
+        y0 = max(0.0, min(H - h, c - 0.32 * h))
+        sw = h * 9 / 16
+        x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))
+    z = min(1.5, max(1.0, float(face.get("zoom") or 1)))
+    if z > 1:
+        cx = face.get("cx", 0.5) * W
+        x0, y0 = cx - (cx - x0) / z, c - (c - y0) / z
+        sw, h = sw / z, h / z
+        x0, y0 = max(0.0, min(W - sw, x0)), max(0.0, min(H - h, y0))
     return x0, y0, sw, h
 
 
 def cover_crop(src: Image.Image, face: dict) -> Image.Image:
     W, H = src.size
-    if abs(W / H - 9 / 16) < 0.02:                     # already vertical (a frame of the edit)
-        return src
     x0, y0, sw, h = cover_box(W, H, face)
+    if (x0, y0, sw, h) == (0.0, 0.0, float(W), float(H)):
+        return src
     return src.crop((int(x0), int(y0), int(x0 + sw), int(y0 + h)))
 
 
@@ -167,10 +177,7 @@ TEXT_BOTTOM = 1400                                   # bottom of the hook block 
 def grid_check(W: int, H: int, face: dict, text_top: float = 900.0) -> dict:
     """Where the head (hair included) and the hook land on the cover, and whether both stay whole in the 3:4 grid
     crops (centre = Instagram's default, haut = the team's rule « face and text inside the top 1080×1440 »)."""
-    if abs(W / H - 9 / 16) < 0.02:
-        x0, y0, sw, h = 0.0, 0.0, float(W), float(H)
-    else:
-        x0, y0, sw, h = cover_box(W, H, face)
+    x0, y0, sw, h = cover_box(W, H, face)
     k = 1920 / h
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
     head_top, chin = (c - 0.6 * fh - y0) * k, (c + 0.6 * fh - y0) * k     # forehead (hair may go), chin

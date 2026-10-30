@@ -156,11 +156,13 @@ TOOLS = [
     {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "
                                           "« next » pour la suivante) et/ou autre accroche (small = petits mots, big = "
                                           "mot(s) en très gros, gold = dernier(s) mot(s) en or italique ; uniquement des "
-                                          "mots dits dans le reel, dans l'ordre). Si le reel est validé, Drive et ClickUp "
-                                          "sont mis à jour.",
+                                          "mots dits dans le reel, dans l'ordre) et/ou zoom sur la tête (zoom = facteur, "
+                                          "1.05 à 1.5, ex. « zoom x1.25 » ; 1 = sans zoom ; gardé pour cette photo). "
+                                          "Si le reel est validé, Drive et ClickUp sont mis à jour.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "photo": {"type": ["integer", "string"]},
                                                        "small": {"type": "string"}, "big": {"type": "string"},
-                                                       "gold": {"type": "string"}}, "required": ["n"]}},
+                                                       "gold": {"type": "string"}, "zoom": {"type": "number"}},
+                     "required": ["n"]}},
     {"name": "reels_show", "description": "RENVOYER / REMONTRER / RÉAFFICHER des reels tels quels, sans rien refaire "
                                          "(« renvoie-moi les reels », « remontre-moi le 1, 2, 3 », « je veux les revoir »). "
                                          "Sans liste = tous les reels validés ou à valider. Instantané.",

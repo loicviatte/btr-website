@@ -692,9 +692,11 @@ class Pipeline:
             out["cover"] = cover
         return out
 
-    def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None) -> dict:
+    def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None,
+                   zoom: float | None = None) -> dict:
         """The cover of reel n: the best 4K still of the guest (eyes open, lively; the model looks at the faces),
-        the hook in the validated template. `text` / `pick` = Loïc's choice (other words, other photo number)."""
+        the hook in the validated template. `text` / `pick` = Loïc's choice (other words, other photo number);
+        `zoom` = closer on the head (1.05-1.5), kept for this photo when the cover is made again."""
         work = ep.dir / "reels" / f"r{n:02d}"
         cdir = work / "cover"
         cands = json.loads((cdir / "cands.json").read_text()) if (cdir / "cands.json").exists() else []
@@ -723,7 +725,10 @@ class Pipeline:
                 if not [x for x in render.grid_check(W, H, cands[i])["issues"] if "visage" in x or "menton" in x]:
                     order = [i] + [j for j in order if j != i]
                     break
-        c = cands[order[0]]
+        if zoom is None:
+            zoom = item.get("cover_zoom") if order[0] + 1 == item.get("cover_pick") else None
+        zoom = round(min(1.5, max(1.0, float(zoom or 1))), 2)
+        c = {**cands[order[0]], "zoom": zoom}
         hook = cover_hook(text, item.get("said", "")) if text else None
         hook = hook or (item.get("captions") or {}).get("cover")
         if not hook:                                   # captions written before the cover existed: ask for the hook
@@ -735,6 +740,7 @@ class Pipeline:
         chk_p = out.parent / (out.stem + ".check.json")
         chk = json.loads(chk_p.read_text()) if chk_p.exists() else {}
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands),
+                "cover_zoom": zoom,
                 "cover_issues": chk.get("issues", []), "cover_grid": str(out.parent / (out.stem + "_grille.jpg"))}
 
     def _mouth_checker(self, work: Path):

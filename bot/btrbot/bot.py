@@ -904,7 +904,7 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
-    async def reel_cover(n, photo=None, small=None, big=None, gold=None):
+    async def reel_cover(n, photo=None, small=None, big=None, gold=None, zoom=None):
         ep = reels_or_fail()
         n = int(n)
         item = RS(ep).data["items"].get(str(n)) or {}
@@ -913,7 +913,10 @@ def tool_handlers(ctx, images: list) -> dict:
         text = {"small": small or "", "big": big or "", "gold": gold or ""} if (big or gold or small) else None
         if photo == "next":
             photo = (int(item.get("cover_pick") or 1) % max(1, int(item.get("cover_count") or 1))) + 1
-        return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None), limit=5 * 60)
+        if zoom and not photo:                             # zoom alone = closer on the photo already chosen
+            photo = item.get("cover_pick")
+        return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None,
+                                                          float(zoom) if zoom else None), limit=5 * 60)
 
     async def reels_resend(nums=None):
         ep = reels_or_fail()
@@ -1387,11 +1390,12 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
                    "Pour changer : « le 3 finalement en feed », « cover reel 2 : autre photo ».")
 
 
-async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
+async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None = None):
     item = reel_item(ep, n)
-    await say(ctx, f"🖼 Reel {n} : je refais la cover" + (f" avec la photo {photo}" if photo else "") + "…")
+    await say(ctx, f"🖼 Reel {n} : je refais la cover" + (f" avec la photo {photo}" if photo else "")
+              + (f", zoom x{zoom:g} sur la tête" if zoom and zoom > 1 else "") + "…")
     try:
-        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo)
+        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo, zoom)
     except Exception as e:  # noqa: BLE001
         await say(ctx, f"⚠️ Cover du reel {n} : <code>{esc(str(e)[-200:])}</code>")
         return
@@ -1817,17 +1821,26 @@ async def on_button(update: Update, ctx):
 
 
 async def reel_fast_path(ctx, text: str) -> bool:
-    """« reel 5 photo 13 », « cover 5 d'autres photos » : done at once, without the chat model (which sometimes only
-    said it did it)."""
+    """« reel 5 photo 13 », « reel 5 photo 11 zoom 1.25 », « cover 5 zoom x1.25 », « cover 5 d'autres photos » : done
+    at once, without the chat model (which sometimes only said it did it)."""
     low = text.lower().strip()
-    m = re.match(r"^(?:la\s+)?(?:cover\s+)?(?:du\s+)?r[ée]el\s*(\d+)\s*[:,-]?\s*(?:cover\s*)?(?:la\s+)?photo\s*(?:n°|numéro)?\s*(\d+)\s*$", low)
+    zoom = r"(?:\s*[:,-]?\s*zoom\s*(?:de\s+)?x?\s*(\d+(?:[.,]\d+)?))"
+    m = re.match(r"^(?:la\s+)?(?:cover\s+)?(?:du\s+)?r[ée]el\s*(\d+)\s*[:,-]?\s*(?:cover\s*)?(?:la\s+)?photo\s*(?:n°|numéro)?\s*(\d+)"
+                 + zoom + r"?\s*$", low)
     m2 = re.match(r"^(?:cover|r[ée]el)\s*(?:du\s+)?(?:r[ée]el\s*)?(\d+)\s*[:,-]?\s*(?:trouve\s+)?(?:d['’]\s*)?autres?\s+photos?\s*$", low)
-    if not (m or m2):
+    m3 = re.match(r"^(?:la\s+)?(?:cover\s+)?(?:du\s+)?r[ée]el\s*(\d+)" + zoom + r"\s*$", low) or \
+        re.match(r"^cover\s*(\d+)" + zoom + r"\s*$", low)
+    if not (m or m2 or m3):
         return False
     MEMORY.add("user", text)
     h = tool_handlers(ctx, [])
     try:
-        out = await (h["reel_cover"](int(m.group(1)), photo=int(m.group(2))) if m else h["reels_cover_search"]([int(m2.group(1))]))
+        if m or m3:
+            z = (m or m3).group(3 if m else 2)
+            out = await h["reel_cover"](int((m or m3).group(1)), photo=int(m.group(2)) if m else None,
+                                        zoom=float(z.replace(",", ".")) if z else None)
+        else:
+            out = await h["reels_cover_search"]([int(m2.group(1))])
     except Exception as e:  # noqa: BLE001
         out = f"⚠️ {e}"
     await say(ctx, "👍 " + esc(out))
