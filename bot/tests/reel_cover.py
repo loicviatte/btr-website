@@ -25,15 +25,17 @@ ep.save()
 work = ep.dir / "reels" / "r01"
 work.mkdir(parents=True, exist_ok=True)
 info = R.probe(clip)
-samples = [(t, R.classify(cv2.imread(str(p)), pipe.faces)) for t, p in R.sample_frames(clip, 0, info["duration"], work / "frames")]
-cands = R.cover_candidates(clip, samples, [(0.0, info["duration"])], work / "cover")
+fr = R.sample_frames(clip, 0, info["duration"], work / "frames")
+samples = [(t, R.classify(cv2.imread(str(p)), pipe.faces)) for t, p in fr]
+cands = R.cover_search(clip, samples, dict(fr), work / "cover")
 print("stills:", len(cands), [c["t"] for c in cands])
 assert cands and all((work / "cover" / c["file"]).exists() for c in cands)
 seen = {}
 
 
 class FakeLLM:
-    def reel_cover_pick(self, sheet):
+    def reel_cover_pick(self, sheet, ref=None):
+        seen["ref"] = ref
         seen["sheet"] = sheet
         return [2, 1]
 
@@ -45,7 +47,7 @@ pipe.llm = FakeLLM()
 item = {"said": "I got a yacht for my husband", "captions": {"instagram": "x", "tiktok": "y"}}
 res = pipe.reel_cover(ep, 1, item)
 print(res)
-assert Path(res["cover"]).exists() and seen.get("sheet") and res["cover_text"]["gold"] == "YACHT"
+assert Path(res["cover"]).exists() and seen.get("sheet") and Path(seen["ref"]).exists() and res["cover_text"]["gold"] == "YACHT"
 assert res["cover_pick"] == (2 if len(cands) > 1 else 1)
 bad = pipe.reel_cover(ep, 1, dict(item, cover_text=res["cover_text"]), text={"small": "I never", "big": "GOT", "gold": "IT"})
 assert bad["cover_text"]["gold"] == "YACHT", bad                       # words not said: hook kept from captions

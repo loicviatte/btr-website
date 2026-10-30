@@ -835,6 +835,13 @@ def tool_handlers(ctx, images: list) -> dict:
             return f"reel {n} déjà validé" + ("" if ig is None else " ; choix feed noté pour le rangement")
         return bg(ctx, f"Reel {n} validé", validate_reel(ctx, ep, n))
 
+    async def reels_cover_search(nums):
+        ep = reels_or_fail()
+        nums = [int(x) for x in nums or [] if str(x).isdigit() or isinstance(x, int)]
+        if not nums:
+            return "dis-moi quels reels"
+        return bg(ctx, f"Nouvelles covers (reels {', '.join(map(str, nums))})", better_covers(ctx, ep, nums))
+
     async def reel_undrop(n):
         ep = reels_or_fail()
         return bg(ctx, f"Reel {n} récupéré", undrop_reel(ctx, ep, int(n)))
@@ -867,7 +874,7 @@ def tool_handlers(ctx, images: list) -> dict:
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
-            "reels_file": reels_file, "reel_undrop": reel_undrop,
+            "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1350,6 +1357,30 @@ async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None):
 
 def pipe_cover_text(text: dict) -> dict:
     return {k: (v.upper() if k != "small" else v) for k, v in text.items()}
+
+
+async def better_covers(ctx, ep, nums: list[int]):
+    """« Trouve de meilleurs screenshots » : for each reel, a wider search of sharp 4K stills, the cover chosen again
+    (photo compared with the approved cover), sent with the other candidates; Drive / ClickUp updated if filed."""
+    from pathlib import Path
+    for n in nums:
+        item = reel_item(ep, n)
+        try:
+            count = await run(pipe.reel_cover_search, ep, n)
+            item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+            RS(ep).save()
+        except Exception as e:  # noqa: BLE001
+            log.exception("cover search")
+            await say(ctx, f"⚠️ Reel {n} : <code>{esc(str(e)[-200:])}</code>")
+            continue
+        sheet = Path(item["cover"]).parent / "cover" / "sheet.jpg"
+        if sheet.exists():
+            with open(sheet, "rb") as f:
+                await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Reel {n} : {count} photos nettes du guest. Pour en "
+                                                                  f"prendre une autre : « cover reel {n} : photo 5 ».")
+        await send_cover(ctx, ep, n)
+        if item.get("filed"):
+            await share_reel(ctx, ep, n)
 
 
 async def send_cover(ctx, ep, n: int):

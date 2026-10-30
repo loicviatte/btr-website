@@ -752,6 +752,54 @@ def cover_candidates(clip: Path, samples: list[tuple[float, dict]], ranges: list
     return out
 
 
+def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, out_dir: Path, k: int = 16) -> list[dict]:
+    """A wider choice of cover stills: every sampled moment where the guest is alone on screen, scored on sharpness of
+    the face (no motion blur), its size and how high it sits, at least 0.8 s apart; the best k taken from the 4K."""
+    import cv2
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in out_dir.glob("c_*.jpg"):
+        p.unlink()
+    pool = []
+    for t, c in samples:
+        if c.get("kind") not in ("guest", "unsure") or "face" not in c or t not in frames:
+            continue
+        f = c["face"]
+        img = cv2.imread(str(frames[t]), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        H, W = img.shape
+        x0, x1 = int((f["cx"] - f.get("fw", 0.1) / 2) * W), int((f["cx"] + f.get("fw", 0.1) / 2) * W)
+        y0, y1 = int((f["cy"] - f["fh"] / 2) * H), int((f["cy"] + f["fh"] / 2) * H)
+        crop = img[max(0, y0):max(1, y1), max(0, x0):max(1, x1)]
+        if crop.size < 100:
+            continue
+        crop = cv2.resize(crop, (128, int(128 * crop.shape[0] / max(1, crop.shape[1]))))
+        pool.append((t, f, float(cv2.Laplacian(crop, cv2.CV_64F).var())))
+    if not pool:
+        return []
+    sharp = sorted(x[2] for x in pool)
+    big = sorted(x[1]["fh"] for x in pool)
+
+    def rank(v, arr):
+        return sum(1 for a in arr if a <= v) / len(arr)
+    scored = sorted(pool, key=lambda x: -(0.55 * rank(x[2], sharp) + 0.25 * rank(x[1]["fh"], big)
+                                          + (0.2 if x[1]["cy"] <= 0.38 else 0.0)))
+    chosen: list = []
+    for t, f, _ in scored:
+        if all(abs(t - u) >= 0.8 for u, _ in chosen):
+            chosen.append((t, f))
+        if len(chosen) == k:
+            break
+    out = []
+    for i, (t, f) in enumerate(sorted(chosen)):
+        jpg = out_dir / f"c_{i:02d}.jpg"
+        run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
+        if jpg.exists():
+            out.append({"file": jpg.name, "t": round(t, 3), **{x: f[x] for x in ("cx", "cy", "fh", "fw", "top") if x in f}})
+    (out_dir / "cands.json").write_text(json.dumps(out))
+    return out
+
+
 def slim(work: Path, keep_final: bool = True) -> None:
     """After a reel is validated (keep the final file) or dropped (keep nothing): the 4K source goes."""
     for p in work.glob("clip*"):        # the 4K section; the edit (base.mp4, audio, edit.json) stays for fixes

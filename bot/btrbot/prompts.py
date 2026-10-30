@@ -160,9 +160,12 @@ in gold italic (may be empty). Example: {{"small": "They just", "big": "DON'T", 
 short words each, in UPPER CASE.
 Return ONLY JSON: {{"instagram": "...", "tiktok": "...", "cover": {{"small": "...", "big": "...", "gold": "..."}}}}"""
 
-REEL_COVER_PICK = """These are numbered close-ups of a podcast guest's face, taken from a vertical video. Pick the best ones for the
-cover of the reel: both eyes fully open, a natural lively expression (a smile or a strong, engaged look), mouth not
-caught mid-word in an odd shape, face sharp, not blurred by motion, looking at the host or slightly to the side.
+REEL_COVER_PICK = """The first image is a reel cover Loïc approved: the style to match. The second image shows numbered candidates for
+the cover of another reel, each framed as the cover would be (the bottom part is darkened: the hook text goes there).
+Pick the best ones, like the approved cover: the guest's face sharp (no motion blur), both eyes open and visible (also
+behind glasses), a lively, engaged expression (a smile, a strong emotion, mid-thought), looking at the host or slightly
+to the side, mouth natural (not caught mid-word in an odd shape), no hand or microphone in front of the face, head and
+shoulders well placed in the upper part of the frame.
 Return ONLY JSON: {{"best": [numbers, best first, up to 3]}}"""
 
 REEL_ARBITRATE = """Two transcriptions of the same podcast audio disagree in a few places: an automatic speech model ("audio")

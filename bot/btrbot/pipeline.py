@@ -484,10 +484,11 @@ class Pipeline:
         if not ranges:
             raise RuntimeError("rien à garder après la retouche")
         a, b = ranges[0][0], ranges[-1][1]
-        samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in R.sample_frames(clip, a, b, work / "frames")]
+        fr = R.sample_frames(clip, a, b, work / "frames")
+        samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
         shots = R.shot_layouts(samples, scene, a, b)
         try:
-            R.cover_candidates(clip, samples, ranges, work / "cover")       # 4K stills for the reel cover
+            R.cover_search(clip, samples, dict(fr), work / "cover")         # sharp 4K stills for the reel cover
         except Exception:  # noqa: BLE001
             log.exception("reel cover stills")
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
@@ -657,8 +658,9 @@ class Pipeline:
             order = [pick - 1]
         elif len(cands) > 1:
             try:
+                from .config import ASSETS
                 sheet = render.cover_sheet([cdir / c["file"] for c in cands], cands, cdir / "sheet.jpg")
-                best = [i - 1 for i in self.llm.reel_cover_pick(sheet) if 1 <= i <= len(cands)]
+                best = [i - 1 for i in self.llm.reel_cover_pick(sheet, ASSETS / "cover_ref.jpg") if 1 <= i <= len(cands)]
                 order = best + [i for i in order if i not in best]
             except Exception:  # noqa: BLE001
                 log.exception("cover pick")
@@ -672,6 +674,32 @@ class Pipeline:
         out = render.reel_cover(cdir, cdir / c["file"], c, hook, ep.get("guest_name") or "",
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
+
+    def reel_cover_search(self, ep: Episode, n: int) -> int:
+        """More and better cover stills for reel n (the 4K section of the moment downloaded again, sampled every
+        0.33 s, sharp guest faces kept), then the cover is chosen again from them. Returns the number of stills."""
+        import shutil
+
+        import cv2
+
+        from . import reels as R
+        work = ep.dir / "reels" / f"r{n:02d}"
+        tags = sorted(work.glob("words_*.json"))
+        if not tags:
+            raise RuntimeError("le moment de ce reel n'est plus sur le serveur")
+        a, b = (int(float(x)) for x in tags[-1].stem.split("_")[1:3])
+        clip = R.download_section(ep.video_id, a, b, work / f"clipcover_{a}_{b}.mp4", self.cfg.ytdlp_cookies)
+        try:
+            info = R.probe(clip)
+            frames = dict(R.sample_frames(clip, 0.0, info["duration"], work / "frames_cover", fps=3.0))
+            samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in frames.items()]
+            cands = R.cover_search(clip, samples, frames, work / "cover")
+        finally:
+            clip.unlink(missing_ok=True)
+            shutil.rmtree(work / "frames_cover", ignore_errors=True)
+        if not cands:
+            raise RuntimeError("aucune image nette du guest seul dans ce moment")
+        return len(cands)
 
     def reel_ig_slots(self, ep: Episode, taken: set[str]) -> list[str] | None:
         """The days (« ven. 31.10 ») of this episode's Instagram reel slots still free in ClickUp (None: not connected)."""

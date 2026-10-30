@@ -132,12 +132,17 @@ class LLM:
                                                            feedback=feedback), 1500, tier="work",
                           task="reels (retour sous-titres)")
 
-    def reel_cover_pick(self, sheet: Path) -> list[int]:
-        img = base64.standard_b64encode(sheet.read_bytes()).decode()
-        r = self._json([
-            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
+    def reel_cover_pick(self, sheet: Path, ref: Path | None = None) -> list[int]:
+        content = []
+        if ref and Path(ref).exists():
+            content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                        "data": base64.standard_b64encode(Path(ref).read_bytes()).decode()}})
+        content += [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                         "data": base64.standard_b64encode(sheet.read_bytes()).decode()}},
             {"type": "text", "text": prompts.REEL_COVER_PICK},
-        ], max_tokens=300, tier="vision_cheap", task="reels (cover)")
+        ]
+        r = self._json(content, max_tokens=300, tier="work", task="reels (cover)")
         return [int(i) for i in r.get("best", []) if str(i).isdigit()]
 
     def reel_names(self, guest: str, title: str, text: str, context: str) -> dict:

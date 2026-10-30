@@ -50,6 +50,8 @@ Comment tu travailles :
     sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
   · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces
     mots sur le même bloc). « j'ai jeté par erreur », « reviens en arrière » sur un reel jeté = reel_undrop.
+  · Quand on parle des reels, « miniatures », « covers », « screenshots » = les COVERS des reels (reel_cover pour un
+    changement précis, reels_cover_search pour de meilleures photos), JAMAIS les miniatures de l'épisode YouTube.
   · la COVER / miniature d'un reel (« autre photo », « mets la 3 », « texte : they just / DON'T / CARE ») = reel_cover.
   · Les reels rangés vont sur Drive (dossier du guest) et dans ClickUp (lien, légendes, cover). Si Drive ou ClickUp ne
     sont pas connectés, dis-lui d'envoyer /connect.
@@ -131,6 +133,12 @@ TOOLS = [
                                          "seulement TikTok + Shorts ; sur un reel déjà rangé, le déplace.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "instagram": {"type": "boolean"}},
                       "required": ["n"]}},
+    {"name": "reels_cover_search", "description": "Chercher de meilleures photos pour les COVERS (miniatures) des reels "
+                                                 "(« trouve de meilleurs screenshots pour les miniatures, garde la 8 ») : "
+                                                 "nums = les reels à refaire (pas ceux qu'il garde). Différent des "
+                                                 "miniatures de l'épisode YouTube.",
+     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}},
+                      "required": ["nums"]}},
     {"name": "reel_undrop", "description": "Annuler « jeter » sur le reel n (jeté par erreur, « reviens en arrière ») : "
                                           "il revient à valider, avec le même fichier.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
