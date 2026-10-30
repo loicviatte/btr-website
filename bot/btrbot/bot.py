@@ -64,16 +64,25 @@ async def run(fn, *a):
     return await asyncio.to_thread(fn, *a)
 
 
+JOB_LIMIT = 45 * 60      # a heavy job never holds the queue longer than this (a stuck download, a hung ffmpeg)
+
+
 async def guarded(ctx, label: str, coro):
-    """Run one heavy step at a time and report errors on Telegram instead of dying silently."""
+    """Run one heavy step at a time and report errors on Telegram instead of dying silently. A job stuck beyond
+    JOB_LIMIT is abandoned (Loïc is told), so the jobs waiting behind it are never blocked for hours."""
     import time
     async with LOCK:
         RUNNING.update(label=label, since=time.time())
+        WAITING.pop(label, None)
         ok = False
         try:
-            r = await coro
+            r = await asyncio.wait_for(coro, timeout=JOB_LIMIT)
             ok = True
             return r
+        except asyncio.TimeoutError:
+            log.error("job timeout: %s", label)
+            await say(ctx, f"⚠️ « {esc(label)} » était bloqué depuis {JOB_LIMIT // 60} min : je l'abandonne et je passe "
+                           "à la suite. Redemande-le si besoin.")
         except DryRun as e:
             await say(ctx, f"🧪 {esc(e)}")
         except Exception as e:  # noqa: BLE001
@@ -84,10 +93,20 @@ async def guarded(ctx, label: str, coro):
             LAST.update(label=label, at=time.time(), ok=ok)
 
 
+WAITING: dict = {}          # jobs waiting for the one running (label → since)
+
+
 def bg(ctx, label: str, coro) -> str:
-    """Start a heavy job in the background (one at a time) and say so: the chat stays responsive meanwhile."""
+    """Start a heavy job in the background (one at a time) and say so: the chat stays responsive meanwhile. When it
+    has to wait for another job, Loïc is told right away which one (never a silent wait)."""
     import time
-    queued = f" (en file d'attente derrière « {RUNNING['label']} », lancé il y a {int(time.time() - RUNNING['since'])} s)" if RUNNING else ""
+    queued = ""
+    if RUNNING:
+        mins = int(time.time() - RUNNING["since"]) // 60
+        queued = f" (en file d'attente derrière « {RUNNING['label']} », lancé il y a {mins} min)"
+        WAITING[label] = time.time()
+        asyncio.create_task(say(ctx, f"⏳ « {esc(label)} » attend la fin de « {esc(RUNNING['label'])} » (en cours depuis "
+                                     f"{mins} min)."))
     asyncio.create_task(guarded(ctx, label, coro))
     return f"lancé en arrière-plan : {label}{queued}"
 
@@ -562,6 +581,8 @@ def assistant_context(ep) -> str:
             lines.append(f"Badge PART {p} sur les miniatures de cet épisode.")
     if RUNNING:
         lines.append(f"EN COURS : {RUNNING['label']} (depuis {int(time.time() - RUNNING['since'])} s).")
+    if WAITING:
+        lines.append("EN ATTENTE derrière lui : " + ", ".join(WAITING) + ".")
     if LAST:
         lines.append(f"Dernier travail terminé : {LAST['label']} ({'ok' if LAST['ok'] else 'ÉCHEC'}, il y a {int(time.time() - LAST['at'])} s).")
     if AGENT_LOCK.locked():

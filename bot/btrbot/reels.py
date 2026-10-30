@@ -50,6 +50,7 @@ def norm(s: str) -> str:
 
 
 def run(cmd: list, **kw) -> subprocess.CompletedProcess:
+    kw.setdefault("timeout", 1200)                     # no ffmpeg call may hang the queue
     return subprocess.run([str(c) for c in cmd], check=True, capture_output=True, text=True, **kw)
 
 
@@ -71,7 +72,7 @@ def download_section(video_id: str, a: int, b: int, dest: Path, cookies: Path | 
                    if height >= 2160 else f"bv*[height<={height}][vcodec^=avc1]/bv*[height<={height}]/b[height<={height}]"),
         "merge_output_format": "mp4", "outtmpl": str(dest.with_suffix(".%(ext)s")),
         "download_ranges": download_range_func(None, [(a, b)]),
-        "quiet": True, "no_warnings": True, "noprogress": True,
+        "quiet": True, "no_warnings": True, "noprogress": True, "socket_timeout": 30, "retries": 3,
     }
     if cookies and cookies.exists():
         opts["cookiefile"] = str(cookies)
@@ -816,8 +817,12 @@ def cover_search(clip: Path, samples: list[tuple[float, dict]], frames: dict, ou
     for i, (t, f) in enumerate(sorted(chosen)):
         jpg = out_dir / f"c_{i:02d}.jpg"
         if still_src:                                  # the full-resolution stream: only 16 frames fetched
-            run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{offset + t:.3f}", "-i", still_src, "-frames:v", "1",
-                 "-q:v", "2", jpg])
+            try:
+                run(["ffmpeg", "-y", "-loglevel", "error", "-rw_timeout", "30000000", "-ss", f"{offset + t:.3f}",
+                     "-i", still_src, "-frames:v", "1", "-q:v", "2", jpg], timeout=90)
+            except Exception:  # noqa: BLE001                # the stream did not answer: this frame from the 720p
+                run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2",
+                     jpg], timeout=60)
         else:
             run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", clip, "-frames:v", "1", "-q:v", "2", jpg])
         if jpg.exists():
