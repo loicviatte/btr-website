@@ -2630,6 +2630,19 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("covers_zoom2_shorts_1030"):  # same new framing for the TikTok + Shorts covers
+                    reg.data["covers_zoom2_shorts_1030"] = True
+                    reg.save()
+                    redo = [int(k) for k, it in sorted(rs["items"].items(), key=lambda kv: int(kv[0]))
+                            if it.get("filed") and not it.get("instagram", True) and it.get("cover")]
+                    if redo:
+                        await say(app, f"🖼 Covers TikTok + Shorts {', '.join(map(str, redo))} : je les refais aussi avec le "
+                                       "nouveau cadrage (2x plus serré, texte juste sous le visage), même photo. "
+                                       "Valide-les ensuite (✅ Cover OK).")
+                        for k in redo:
+                            it = rs["items"][str(k)]
+                            bg(app, f"Cover du reel {k}", redo_cover(app, ep, k, None, it.get("cover_pick"),
+                                                                       it.get("cover_zoom")), limit=8 * 60)
                 if not reg.data.get("covers_zoom2_1030"):        # 30.10.2026: 2x closer, hook right under the chin
                     reg.data["covers_zoom2_1030"] = True
                     reg.save()
