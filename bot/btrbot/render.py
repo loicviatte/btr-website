@@ -140,7 +140,13 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
     return jpg
 
 
-def cover_box(W: int, H: int, face: dict) -> tuple[float, float, float, float]:
+GRID = {"centre": (240, 1680), "haut": (0, 1440)}   # Instagram profile grid (3:4) out of the 9:16 cover
+TEXT_BOTTOM = 1400                                   # bottom of the hook block (bottom: 520 px in the template)
+HAIR = 1.4      # top of the hair above the face centre, in face heights (fringe and volume included)
+AIR = 40        # px of air above the head in the grid tile (Loïc: the whole head and a little air, like « They just DON'T CARE »)
+
+
+def cover_box(W: int, H: int, face: dict, air: bool = True) -> tuple[float, float, float, float]:
     """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: full height when the face sits in the upper
     part; a face lower in the frame is brought up to ~1/3 of the cover by cropping closer (never closer than 60 % of
     the height, never cutting the head), so the hook below does not run over it. face["zoom"] (Loïc's « zoom x1.25 »)
@@ -159,6 +165,9 @@ def cover_box(W: int, H: int, face: dict) -> tuple[float, float, float, float]:
         x0, y0 = cx - (cx - x0) / z, c - (c - y0) / z
         sw, h = sw / z, h / z
         x0, y0 = max(0.0, min(W - sw, x0)), max(0.0, min(H - h, y0))
+    need = c - HAIR * fh - (GRID["centre"][0] + AIR) * h / 1920       # whole head + a little air in the grid tile
+    if air and need < y0:
+        y0 = max(0.0, need)
     return x0, y0, sw, h
 
 
@@ -170,21 +179,19 @@ def cover_crop(src: Image.Image, face: dict) -> Image.Image:
     return src.crop((int(x0), int(y0), int(x0 + sw), int(y0 + h)))
 
 
-GRID = {"centre": (240, 1680), "haut": (0, 1440)}   # Instagram profile grid (3:4) out of the 9:16 cover
-TEXT_BOTTOM = 1400                                   # bottom of the hook block (bottom: 520 px in the template)
 
 
-def grid_check(W: int, H: int, face: dict, text_top: float = 900.0) -> dict:
+def grid_check(W: int, H: int, face: dict, text_top: float = 900.0, air: bool = True) -> dict:
     """Where the head (hair included) and the hook land on the cover, and whether both stay whole in the 3:4 grid
     crops (centre = Instagram's default, haut = the team's rule « face and text inside the top 1080×1440 »)."""
-    x0, y0, sw, h = cover_box(W, H, face)
+    x0, y0, sw, h = cover_box(W, H, face, air)
     k = 1920 / h
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
-    head_top, chin = (c - 0.6 * fh - y0) * k, (c + 0.6 * fh - y0) * k     # forehead (hair may go), chin
+    head_top, chin = (c - HAIR * fh - y0) * k, (c + 0.6 * fh - y0) * k  # top of the hair, chin
     issues = []
     for name, (a, b) in GRID.items():
-        if head_top < a + 10:
-            issues.append(f"visage coupé en haut (grille {name})")
+        if head_top < a + AIR - 2:
+            issues.append(f"haut de la tête coupé ou collé au bord (grille {name})")
         if TEXT_BOTTOM > b - 10:
             issues.append(f"texte coupé en bas (grille {name})")
     if chin > text_top + 60:

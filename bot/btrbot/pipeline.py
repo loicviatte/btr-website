@@ -720,28 +720,73 @@ class Pipeline:
                 log.exception("cover pick")
         if pick is None:                               # the best photo whose head stays whole in the grid crops
             from PIL import Image
-            for i in order[:6]:
+            for i in order[:8]:
                 W, H = Image.open(cdir / cands[i]["file"]).size
-                if not [x for x in render.grid_check(W, H, cands[i])["issues"] if "visage" in x or "menton" in x]:
+                if not [x for x in render.grid_check(W, H, cands[i])["issues"] if "tête" in x or "menton" in x]:
                     order = [i] + [j for j in order if j != i]
                     break
         if zoom is None:
             zoom = item.get("cover_zoom") if order[0] + 1 == item.get("cover_pick") else None
         zoom = round(min(1.5, max(1.0, float(zoom or 1))), 2)
         c = {**cands[order[0]], "zoom": zoom}
+        still = cdir / c["file"]
+        still, c = self._cover_air(cdir, still, c)      # head too close to the top: a little set generated above
         hook = cover_hook(text, item.get("said", "")) if text else None
         hook = hook or (item.get("captions") or {}).get("cover")
         if not hook:                                   # captions written before the cover existed: ask for the hook
             hook = self.reel_captions(ep, item.get("said", "")).get("cover")
         hook = hook or cover_hook(None, item.get("said", ""), fallback=True)
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
-        out = render.reel_cover(cdir, cdir / c["file"], c, hook, ep.get("guest_name") or "",
+        out = render.reel_cover(cdir, still, c, hook, ep.get("guest_name") or "",
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
         chk_p = out.parent / (out.stem + ".check.json")
         chk = json.loads(chk_p.read_text()) if chk_p.exists() else {}
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands),
                 "cover_zoom": zoom,
                 "cover_issues": chk.get("issues", []), "cover_grid": str(out.parent / (out.stem + "_grille.jpg"))}
+
+    def _cover_air(self, cdir: Path, still: Path, face: dict) -> tuple[Path, dict]:
+        """When the photo has no room above the head (full-height window), the window is cut out and LaMa generates
+        the set above it, so the whole head plus a little air stays in Instagram's grid tile. Returns the still to
+        use and its face (unchanged when there is enough room)."""
+        import math
+        from PIL import Image
+        from . import imaging
+        im = Image.open(still).convert("RGB")
+        W, H = im.size
+        if not [x for x in render.grid_check(W, H, face)["issues"] if "tête" in x]:
+            return still, face
+        x0, y0, sw, h = render.cover_box(W, H, face)
+        c, fh = face["cy"] * H - y0, face["fh"] * H
+        T = render.GRID["centre"][0] + render.AIR + 4
+        e = int(math.ceil((T * h / 1920 - c + render.HAIR * fh) / (1 - T / 1920)))
+        if e <= 0 or e > 0.6 * h:
+            return still, face
+        ws = (h + e) * 9 / 16
+        if ws > W:
+            return still, face
+        cx = face.get("cx", 0.5) * W
+        xn = max(0.0, min(W - ws, cx - ws / 2))
+        crop = im.crop((int(xn), int(y0), int(xn + ws), int(y0 + h)))
+        out = imaging.extend_top(self.cfg.models_dir, crop, e)
+        path = cdir / f"{Path(still).stem}_air.jpg"
+        out.save(path, quality=95)
+        Hn = out.height
+        nf = {**face, "cx": (cx - xn) / out.width, "cy": (c + e) / Hn, "fh": fh / Hn, "zoom": 1.0}
+        log.info("cover air: +%d px above %s", e, Path(still).name)
+        return path, nf
+
+    def cover_needs_air(self, ep: Episode, n: int, item: dict) -> bool:
+        """The cover in place has the head cut or stuck to the top of the grid tile (rule of 30.10.2026)."""
+        from PIL import Image
+        cdir = ep.dir / "reels" / f"r{n:02d}" / "cover"
+        try:
+            cands = json.loads((cdir / "cands.json").read_text())
+            c = {**cands[int(item.get("cover_pick") or 1) - 1], "zoom": item.get("cover_zoom") or 1}
+            W, H = Image.open(cdir / c["file"]).size
+        except Exception:  # noqa: BLE001
+            return False
+        return bool([x for x in render.grid_check(W, H, c, air=False)["issues"] if "tête" in x])   # as rendered before
 
     def _mouth_checker(self, work: Path):
         """For the cover stills: which candidate frames show the mouth open (Haiku looks at a sheet of faces)."""
