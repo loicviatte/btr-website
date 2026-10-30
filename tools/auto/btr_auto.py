@@ -35,6 +35,7 @@ Spec (data/episodes/<slug>.json)
 For a part 2, put only the new part in "parts" and add "addPartTo": "<existing slug>"; the existing page keeps
 its part 1 (transcript, chapters, reels…) and gets the new part appended. chain/atlas/about may then be given to
 replace the existing ones (omit to keep them).
+Optional "playlist": {"title", "artist", "sec", "part"}: the guest's song (see tools/auto/btr_playlist.py).
 """
 import hashlib, html, json, os, re, shutil, subprocess, sys
 
@@ -463,6 +464,9 @@ def apply(spec_path):
     spec = json.load(open(spec_path, encoding='utf-8'))
     is_part2 = bool(spec.get('addPartTo'))
     notes = []
+    import btr_playlist as PL
+    slug_now = spec.get('addPartTo') or spec['slug']
+    keep_box = PL.get_box(slug_now)
     if is_part2:
         slug = spec['addPartTo']
         old = spec_from_page(slug)
@@ -511,6 +515,12 @@ def apply(spec_path):
         BP.update_atlas(spec)
         notes.append(f'Created {page_of(spec["slug"])}; updated Episodes, Search and {prev_page}.')
         target = spec
+    import btr_playlist as PL
+    if spec.get('playlist'):
+        PL.apply_spec(spec)
+        notes.append(f'Playlist: "{spec["playlist"]["title"]}" by {spec["playlist"]["artist"]} on the page and the home list.')
+    elif keep_box:   # part 2 without a new song: keep part 1's box
+        PL.put_box(slug_now, keep_box)
     notes.append('Also updated Main (hero, previous episodes, chain teaser, World Atlas card), Chain and Atlas. Now: npm run compile && npm run build && node tools/auto/smoke.js <slug> "<name>"')
     print('\n'.join(notes))
     return target
@@ -531,6 +541,10 @@ if __name__ == '__main__':
         import btr_pages as BP
         done = BP.atlas_sync(sys.argv[2])
         print('Atlas cards filled from the carousel research: ' + (', '.join(done) if done else 'none'))
+    elif cmd == 'playlist':
+        import btr_playlist as PL
+        PL.set_episode(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], int(sys.argv[6]), sys.argv[7] if len(sys.argv) > 7 else 'he')
+        print('home list:', 'added' if PL.add_home(sys.argv[3], sys.argv[4]) else 'already there')
     elif cmd == 'stats':
         import btr_stats
         btr_stats.update_about()

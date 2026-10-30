@@ -66,6 +66,11 @@ Format: see the docstring at the top of `tools/auto/btr_auto.py`. Rules:
 - `chain.leaves`: the question this guest records for the next guest (text + `sec`). Null if not in this part.
 - `atlas`: the country the guest lands on when opening the World Atlas (`country`, `slug`, `sec` = the draw).
   Null if there is no draw. If the map uses another name (e.g. "Dem. Rep. Congo"), add `mapName`.
+- `playlist`: the guest's song for the Break The Routine playlist (Marius asks "what's your favorite song to dance to
+  right now… we'll add it to our playlist"): `{"title", "artist", "sec", "part"}`, `sec` = when Marius asks. Check the
+  exact title and artist on the web (auto captions mangle names: "Mekka" was "Manteca", "Gamella" was Kamo Mphela) and
+  write them as Spotify shows them. If the guest names no clear song, leave `playlist` out and say so to Loïc.
+  `apply` puts it in the episode sidebar and in the home page list; Loïc adds it to the Spotify playlist himself.
 - `atlasCards`: leave it out. The site shows a "coming soon" card for the new country; the Instagram carousel task
   (step 6) does the researched, fact-checked slides, and `atlas-sync` copies them to the site.
 - Part 2: `"addPartTo": "<existing slug>"`, `parts` = only the new part; give `chain`/`atlas` found in this part.
@@ -114,7 +119,7 @@ If uploading or firing fails, say so in the message to Loïc.
 
 ## 7. Tell Loïc (in French, short)
 What went online (guest, episode page link `https://www.breaktheroutinepodcast.com/episodes/<slug>`), the chain
-question and the country picked, and anything uncertain (e.g. "pas trouvé la question de la Chain").
+question, the country picked, the playlist song to add on Spotify, and anything uncertain (e.g. "pas trouvé la question de la Chain").
 
 If something fails and can't be fixed safely: don't push, leave the folder without `done`, and tell Loïc what
 blocked.
