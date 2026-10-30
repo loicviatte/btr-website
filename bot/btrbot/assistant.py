@@ -48,6 +48,8 @@ Comment tu travailles :
   · Déroulé : 1) il valide ou jette chaque reel ; 2) quand tout est décidé, le bot lui demande lesquels vont en feed
     Instagram (boutons) ; 3) « Ranger » : covers + Drive + ClickUp. « le 2 et le 5 en feed » = reels_file(feed=[2, 5]) ;
     sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
+    Si le contexte dit que TOUS les reels sont rangés, n'annonce ni boutons ni question de feed : « je valide les covers »
+    = c'est fini, réponds en une ligne avec le récap (où va chaque reel), sans lancer d'outil.
   · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces
     mots sur le même bloc). « j'ai jeté par erreur », « reviens en arrière » sur un reel jeté = reel_undrop.
   · « renvoie-moi / remontre-moi les reels » = reels_show (aucun travail refait). « refais / remonte avec les nouvelles

@@ -1553,7 +1553,7 @@ async def share_reel(ctx, ep, n: int, quiet: bool = False) -> str:
     res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken,
                     item.get("instagram", True))
     item["links"] = res.get("links") or item.get("links") or {}
-    for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig", "drive_ids", "file_base"):
+    for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig", "drive_ids", "file_base", "clickup_name"):
         if res.get(k):
             item[k] = res[k]
     RS(ep).save()
@@ -1673,8 +1673,17 @@ def reels_context() -> str:
              + " | ".join(f"{c['n']}. {c.get('title')} ({int(c['end_s'] - c['start_s'])} s)" for c in rs["cands"]),
              "Cochés : " + (", ".join(map(str, sorted(rs.get("sel") or []))) or "aucun")]
     for k, it in sorted(rs.get("items", {}).items(), key=lambda kv: int(kv[0])):
-        lines.append(f"Reel {k} : {status.get(it.get('status'), 'en attente')}, {it.get('duration', '?')} s, décalages début/fin "
-                     f"{it.get('shift')}, phrases coupées {it.get('cuts') or 'aucune'}. Dit : {str(it.get('said', ''))[:300]}")
+        filed = ""
+        if it.get("filed"):
+            filed = (f" RANGÉ ({'feed + TikTok + Shorts' if it.get('instagram', True) else 'TikTok + Shorts'}) : Drive "
+                     f"{it.get('file_base', '')}.mp4 + cover, tâche ClickUp « {it.get('clickup_name') or it.get('clickup_task')} » "
+                     f"(approved, légendes dedans).")
+        lines.append(f"Reel {k} : {status.get(it.get('status'), 'en attente')},{filed} {it.get('duration', '?')} s, décalages "
+                     f"début/fin {it.get('shift')}, phrases coupées {it.get('cuts') or 'aucune'}. Dit : {str(it.get('said', ''))[:300]}")
+    unfiled = reels_unfiled(ep)
+    lines.append("Rangement : " + (f"reels validés pas encore rangés : {', '.join(map(str, unfiled))} (question du feed à venir)"
+                                   if unfiled else "TOUS les reels validés sont rangés (Drive + ClickUp) : plus de question "
+                                   "de feed ni de bouton à attendre. Une cover se change avec reel_cover ; tout est fini sinon."))
     return "\n".join(lines)
 
 
