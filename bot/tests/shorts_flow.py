@@ -146,10 +146,11 @@ async def main():
     assert "Rien à programmer" in sent[-1][0], sent[-1][0]
     # Loïc moves the Short of reel 1
     item = rs.data["items"]["1"]
-    item["short_at"] = shorts.iso(shorts.parse_choice("25.11 19h", real_now))
+    want = item["short_at"] = shorts.iso(shorts.parse_choice("25.11 19h", real_now))
     rs.save()
     await bot.shorts_go(ctx)
-    assert yt[item["yt_short"]["id"]]["publishAt"] == item["short_at"] and len(yt) == 2, yt
+    assert yt[item["yt_short"]["id"]]["publishAt"] == want and len(yt) == 2, yt
+    assert "short_at" not in item and tasks["T1"]["due_date"] == int(shorts.parse(want).timestamp() * 1000)
     assert "déplacé" in sent[-1][0], sent[-1][0]
     # deleted on YouTube → sent again
     del yt[item["yt_short"]["id"]]
