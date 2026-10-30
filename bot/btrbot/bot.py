@@ -23,6 +23,8 @@ log = logging.getLogger("btrbot")
 cfg = Settings()
 reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
+from . import share as _share  # noqa: E402
+_share.load_handles(cfg.data_dir)                 # guests' Instagram @ confirmed by Loïc
 LOCK = asyncio.Lock()
 RUNNING: dict = {}          # the heavy job running now (label, since), for « c'est fait ? »
 LAST: dict = {}             # the last heavy job finished (label, at, ok)
@@ -927,6 +929,15 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
 
+    async def guest_instagram(handle, guest=None):
+        from . import share
+        ep = reel_ep()
+        g = guest or (reg.data.get("handle_ask") or {}).get("guest") or (ep.get("guest_name") if ep else "")
+        if not g:
+            return "quel guest ?"
+        await set_guest_handle(ctx, g, "" if str(handle).lower() in ("", "none", "aucun") else str(handle))
+        return "fait (message envoyé)"
+
     async def covers_ok_t(nums=None):
         ep = reels_or_fail()
         await covers_ok(ctx, ep, [int(x) for x in nums or []] or None)
@@ -959,7 +970,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
-            "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t,
+            "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1407,6 +1418,11 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
     feed = [n for n in (feed if feed is not None else d.get("feed") or []) if n in todo]
     order = feed + [n for n in todo if n not in feed]
     await say(ctx, f"🗂 Je range {len(order)} reels ({len(feed)} en feed) : covers, Drive, ClickUp…")
+    if feed:
+        try:
+            await ask_handle(ctx, ep)
+        except Exception:  # noqa: BLE001
+            log.exception("ask handle")
     lines = []
     for n in order:
         item = reel_item(ep, n)
@@ -1946,6 +1962,83 @@ async def ig_job(ctx, ep, n: int, it: dict, step: str):
         IG_BUSY.clear()
 
 
+# ---------------------------------------------------------------- guest's Instagram @ (caption @ + collab invite)
+async def ask_handle(ctx, ep):
+    """Unknown @ for this guest: the bot looks it up on the web and asks Loïc to confirm (once per guest)."""
+    from . import share
+    guest = ep.get("guest_name") or ""
+    if not guest or share.guest_handle(guest) is not None or (reg.data.get("handle_ask") or {}).get("guest") == guest:
+        return
+    reg.data["handle_ask"] = {"guest": guest, "vid": ep.video_id, "cand": ""}
+    reg.save()
+    try:
+        found = await run(pipe.guest_instagram, ep)
+    except Exception:  # noqa: BLE001
+        log.exception("guest instagram")
+        found = {}
+    h = found.get("handle") or ""
+    reg.data["handle_ask"]["cand"] = h
+    reg.save()
+    rows = [[B(f"✅ @{h}", callback_data="igh:ok")]] if h else []
+    rows.append([B("Pas d'Instagram", callback_data="igh:none")])
+    text = (f"📸 Instagram de <b>{esc(guest)}</b> (le @ dans la légende + l'invitation collab) : je pense que c'est "
+            f"<b>@{esc(h)}</b>" + (f" ({esc(found.get('evidence', ''))})" if found.get("evidence") else "")
+            + ("" if found.get("sure") else ", pas sûr") + ". Confirme, ou écris le bon @." if h else
+            f"📸 Je n'ai pas trouvé l'Instagram de <b>{esc(guest)}</b> (pour le @ dans la légende et l'invitation collab). "
+            "Écris son @ ici.")
+    await say(ctx, text, reply_markup=K(rows))
+
+
+async def set_guest_handle(ctx, guest: str, handle: str):
+    """Saved for good (data/handles.json); the captions of this guest's reels get the @ (ClickUp text refreshed);
+    Instagram posts not yet out use it with the collab invite."""
+    from . import share
+    handle = handle.lstrip("@").strip()
+    share.set_handle(cfg.data_dir, guest, handle)
+    if (reg.data.get("handle_ask") or {}).get("guest") == guest:
+        reg.data.pop("handle_ask", None)
+        reg.save()
+    todo = []
+    for f in sorted((reg.root / "episodes").glob("*/reels.json")):
+        ep = reg.episode(f.parent.name)
+        if share.guest_key(ep.get("guest_name") or "") != share.guest_key(guest):
+            continue
+        for k, it in RS(ep).data.get("items", {}).items():
+            if it.get("captions") and not (it.get("ig_post") or {}).get("posted"):
+                it["captions"] = share.apply_handle(it["captions"], guest, handle or None)
+                if it.get("filed"):
+                    todo.append((ep, int(k)))
+        RS(ep).save()
+    await say(ctx, (f"✅ @{esc(handle)} enregistré pour {esc(guest)} : @ dans les légendes Instagram + invitation collab "
+                    f"(avec @mariusiepure) au moment du post." if handle else
+                    f"✅ Noté : {esc(guest)} n'a pas d'Instagram, seul @mariusiepure sera invité en collab.")
+              + (" Je mets à jour les légendes dans ClickUp." if todo else ""))
+
+    async def refresh():
+        for ep, n in todo:
+            await share_reel(ctx, ep, n, quiet=True, cover=False)
+    if todo:
+        bg(ctx, "Légendes ClickUp (@ du guest)", refresh())
+
+
+async def handle_reply(ctx, text: str) -> bool:
+    """Answer to ask_handle typed in the chat: « @kierabrunton », « kierabrunton », « pas d'instagram »."""
+    ask = reg.data.get("handle_ask") or {}
+    if not ask.get("guest"):
+        return False
+    low = text.strip().lower()
+    if re.fullmatch(r"(pas|aucun|no|none)\b.{0,25}", low) and ("insta" in low or low in ("pas", "aucun", "none", "no")):
+        await set_guest_handle(ctx, ask["guest"], "")
+        return True
+    m = re.fullmatch(r"(?:c['’]est\s+)?@([A-Za-z0-9._]{2,30})", text.strip()) or \
+        re.fullmatch(r"(?:https?://)?(?:www\.)?instagram\.com/([A-Za-z0-9._]{2,30})/?(?:\?\S*)?", text.strip())
+    if not m:
+        return False
+    MEMORY.add("user", text)
+    await set_guest_handle(ctx, ask["guest"], m.group(1))
+    return True
+
+
 async def covers_ok(ctx, ep, nums: list[int] | None = None):
     """Loïc validates covers: ClickUp « ready », which schedules the Shorts (shorts_watch)."""
     items = RS(ep).data.get("items", {})
@@ -1967,6 +2060,10 @@ async def covers_ok(ctx, ep, nums: list[int] | None = None):
     if not done:
         await say(ctx, "Aucun reel rangé avec une cover à valider" + (f" ({', '.join(map(str, skip))} pas rangé)" if skip else "") + ".")
         return
+    try:
+        await ask_handle(ctx, ep)
+    except Exception:  # noqa: BLE001
+        log.exception("ask handle")
     await say(ctx, f"✅ Cover{'s' if len(done) > 1 else ''} {', '.join(map(str, done))} validée{'s' if len(done) > 1 else ''} "
                    "→ ClickUp « ready ». Je programme les Shorts YouTube.")
     await shorts_watch(ctx)
@@ -2113,6 +2210,13 @@ async def on_button(update: Update, ctx):
         return
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data in ("igh:ok", "igh:none"):
+        ask = reg.data.get("handle_ask") or {}
+        if not ask.get("guest"):
+            await say(ctx, "C'est déjà noté.")
+            return
+        await set_guest_handle(ctx, ask["guest"], ask.get("cand", "") if q.data == "igh:ok" else "")
         return
     if q.data == "ysch":
         await shorts_watch(ctx)
@@ -2320,6 +2424,8 @@ async def on_text(update: Update, ctx):
     if await on_secret(update, ctx, text):
         return
     if await reel_fast_path(ctx, text):
+        return
+    if await handle_reply(ctx, text):
         return
     low = text.lower()
     ep = reg.episode(reg.active) if reg.active else None

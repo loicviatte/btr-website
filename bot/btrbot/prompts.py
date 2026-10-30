@@ -237,3 +237,13 @@ MOUTH_OPEN = """These are numbered close-ups of the same person's face, taken fr
 List ONLY the numbers where the mouth is OPEN: lips apart, talking, teeth or inside of the mouth visible (a wide smile
 showing teeth counts as open). A closed mouth or lips together (even smiling) is not open.
 Return ONLY JSON: {{"open": [numbers]}}"""
+
+
+GUEST_INSTAGRAM = """Find the Instagram account of {guest}, the guest of this episode of Break The Routine, a DanceSport
+podcast (Latin & Ballroom; hosted by Marius Iepure). Episode title and description:
+{context}
+
+Search the web. Only give an account you are confident is this exact person (the dancer / coach / judge, not a namesake):
+verified badge, link from their own website, competition profile, or the episode itself. Never guess a handle from the name.
+Answer with JSON only: {{"handle": "username without @, or empty if not found", "sure": true/false,
+"evidence": "one short line in French: where you found it"}}"""

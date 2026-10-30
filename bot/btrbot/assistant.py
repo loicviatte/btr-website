@@ -158,6 +158,11 @@ TOOLS = [
                                          "aussi sur Instagram, dans l'ordre de publication (« le 2 et le 5 en feed, "
                                          "range »). Les autres vont sur TikTok + Shorts seulement.",
      "input_schema": {"type": "object", "properties": {"feed": {"type": "array", "items": {"type": "integer"}}}}},
+    {"name": "guest_instagram", "description": "Enregistrer l'Instagram d'un guest (« l'insta de Kiera c'est "
+                                              "@kierabrunton », « elle n'a pas d'insta » = handle « none »). Sert au @ "
+                                              "dans la légende et à l'invitation collab.",
+     "input_schema": {"type": "object", "properties": {"handle": {"type": "string"}, "guest": {"type": "string",
+                      "description": "nom complet du guest ; vide = le guest en cours"}}, "required": ["handle"]}},
     {"name": "covers_ok", "description": "Loïc VALIDE des covers de reels (« je valide les covers », « cover 3 ok ») : "
                                         "tâche ClickUp → « ready », ce qui programme le Short YouTube. Sans nums = "
                                         "toutes les covers rangées pas encore validées.",

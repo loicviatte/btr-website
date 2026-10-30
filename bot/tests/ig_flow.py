@@ -101,3 +101,36 @@ async def main():
 
 
 asyncio.run(main())
+
+
+# ---- guest's Instagram @ ----
+caps = {"instagram": "“Hook.”\n\nKiera Brunton on judging: “x”\n\nWhy? Tell us in the comments.", "collab": ["mariusiepure"]}
+c = share.apply_handle(caps, "Kiera Brunton", "kierabrunton")
+assert "\n\n@kierabrunton on judging" in c["instagram"] and c["collab"] == ["kierabrunton", "mariusiepure"], c
+assert share.apply_handle(c, "Kiera Brunton", "kierabrunton")["instagram"] == c["instagram"]
+assert share.apply_handle(caps, "Kiera Brunton", None)["collab"] == ["mariusiepure"]
+
+
+async def handles():
+    EP2 = bot.reg.episode("VIDIG000002")
+    EP2["guest_name"] = "Kiera Brunton"
+    EP2.save()
+    r2 = Reels.of(EP2)
+    r2.data = {"cands": [], "sel": [], "items": {"1": {"status": "ok", "captions": dict(caps)}}}
+    r2.save()
+    bot.pipe.guest_instagram = lambda ep: {"handle": "kierabrunton", "sure": True, "evidence": "compte vérifié"}
+    await bot.ask_handle(ctx, EP2)
+    assert "@kierabrunton" in sent[-1] and bot.reg.data["handle_ask"]["cand"] == "kierabrunton"
+    n = len(sent)
+    await bot.ask_handle(ctx, EP2)                       # asked once only
+    assert len(sent) == n
+    assert await bot.handle_reply(ctx, "@kiera.brunton_")
+    assert share.guest_handle("Kiera Brunton") == "kiera.brunton_" and "handle_ask" not in bot.reg.data
+    assert "@kiera.brunton_ on judging" in r2.data["items"]["1"]["captions"]["instagram"]
+    assert not await bot.handle_reply(ctx, "@someone")    # nothing pending any more
+    share.load_handles(bot.cfg.data_dir)
+    assert share.guest_handle("kiera brunton") == "kiera.brunton_"
+    print("OK handles")
+
+
+asyncio.run(handles())

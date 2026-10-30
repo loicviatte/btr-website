@@ -1021,6 +1021,14 @@ class Pipeline:
         return cur
 
     # ---- Instagram (btrbot/instagram.py): the bot posts the reel itself at its time --------------------------
+    def guest_instagram(self, ep: Episode) -> dict:
+        guest = ep.get("guest_name") or ""
+        try:
+            desc = self.yt.video(ep.video_id)["snippet"].get("description", "")
+        except Exception:  # noqa: BLE001
+            desc = ""
+        return self.llm.guest_instagram(guest, f"{self.reel_title(ep)}\n\n{desc}")
+
     def ig_prepare(self, ep: Episode, n: int, item: dict) -> dict:
         """Upload reel n to Instagram as a container ready to publish (caption, collaborators, cover, placement from
         the ClickUp task: « Grid » = also in the profile grid, else Reels tab only). Retries without the cover if
@@ -1029,7 +1037,8 @@ class Pipeline:
         from . import instagram, share
         sec = share.Secrets(self.cfg.data_dir)
         ig = instagram.Instagram(sec)
-        caps = item.get("captions") or {}
+        guest = ep.get("guest_name") or ""
+        caps = share.apply_handle(item.get("captions") or {}, guest, share.guest_handle(guest))   # latest @ known
         grid = False
         token, tid = sec.get("clickup_token"), item.get("clickup_task")
         if token and tid:
@@ -1040,17 +1049,23 @@ class Pipeline:
                 log.exception("clickup placement")
         cover_id = (item.get("drive_ids") or {}).get("cover")
         cover = f"https://drive.usercontent.google.com/download?id={cover_id}&export=download" if cover_id else None
-        note = ""
-        try:
-            cid = ig.container(Path(item["file"]), caps.get("instagram") or "", caps.get("collab") or [], cover, grid)
-            ig.wait(cid)
-        except RuntimeError:
-            if not cover:
-                raise
-            log.exception("instagram with cover")
-            cid = ig.container(Path(item["file"]), caps.get("instagram") or "", caps.get("collab") or [], None, grid)
-            ig.wait(cid)
-            note = "Instagram a refusé la cover : mets-la à la main dans l'app (reel → Modifier → Couverture)."
+        collab = caps.get("collab") or []
+        tries = [(cover, collab, "")]
+        if cover:
+            tries.append((None, collab, "Instagram a refusé la cover : mets-la à la main dans l'app (reel → Modifier → "
+                                        "Couverture)."))
+        if collab:
+            tries.append((None, [], "Instagram a refusé la cover et/ou les invitations collab : ajoute-les à la main "
+                                    "dans l'app (reel → Modifier)."))
+        for k, (cov, col, note) in enumerate(tries):
+            try:
+                cid = ig.container(Path(item["file"]), caps.get("instagram") or "", col, cov, grid)
+                ig.wait(cid)
+                break
+            except RuntimeError:
+                if k == len(tries) - 1:
+                    raise
+                log.exception("instagram try %s", k)
         return {"container": cid, "made": datetime.now(timezone.utc).isoformat(), "grid": grid, "note": note}
 
     def ig_publish(self, item: dict) -> dict:

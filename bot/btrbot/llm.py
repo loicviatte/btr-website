@@ -174,6 +174,29 @@ class LLM:
         found = re.findall(r"\{[^{}]*\"fixes\"\s*:\s*\[.*?\]\s*\}", text_out, re.S)
         return json.loads(found[-1]) if found else {"fixes": []}
 
+    def guest_instagram(self, guest: str, context: str) -> dict:
+        """The guest's Instagram @, found with the server-side web search; Loïc confirms it before use."""
+        kw = dict(model=MODELS["work"], max_tokens=2000, system=prompts.SYSTEM,
+                  tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+                  messages=[{"role": "user", "content": prompts.GUEST_INSTAGRAM.format(guest=guest, context=context[:3000])}])
+        try:
+            msg = self.create("reels (instagram du guest)", **kw)
+        except anthropic.BadRequestError:
+            return {"handle": "", "sure": False, "evidence": "recherche web indisponible"}
+        for _ in range(3):
+            if getattr(msg, "stop_reason", "") != "pause_turn":
+                break
+            kw["messages"] = kw["messages"][:1] + [{"role": "assistant", "content": msg.content}]
+            msg = self.create("reels (instagram du guest)", **kw)
+        text_out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        found = re.findall(r"\{[^{}]*\"handle\"[^{}]*\}", text_out, re.S)
+        try:
+            d = json.loads(found[-1]) if found else {}
+        except ValueError:
+            d = {}
+        h = re.sub(r"[^A-Za-z0-9._]", "", str(d.get("handle") or ""))[:30]
+        return {"handle": h, "sure": bool(d.get("sure")) and bool(h), "evidence": str(d.get("evidence") or "")[:200]}
+
     def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
                                                        text=text[:4000]), 1500, task="reels (légendes)")

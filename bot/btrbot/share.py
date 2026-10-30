@@ -409,7 +409,39 @@ HANDLES = {"oti mabuse": "otimabuse", "marius iepure": "mariusiepure"}
 
 
 def guest_handle(guest: str) -> str | None:
+    """The guest's Instagram @ (without @); "" = Loïc said there is none; None = unknown (the bot asks)."""
     return HANDLES.get(_norm(guest))
+
+
+def load_handles(data_dir: Path) -> None:
+    """Handles Loïc confirmed for new guests (data/handles.json, "" = no Instagram), on top of HANDLES."""
+    try:
+        HANDLES.update(json.loads((Path(data_dir) / "handles.json").read_text()))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def set_handle(data_dir: Path, guest: str, handle: str) -> None:
+    path = Path(data_dir) / "handles.json"
+    try:
+        d = json.loads(path.read_text())
+    except Exception:  # noqa: BLE001
+        d = {}
+    d[_norm(guest)] = handle.lstrip("@").strip()
+    path.write_text(json.dumps(d, ensure_ascii=False, indent=1))
+    HANDLES[_norm(guest)] = d[_norm(guest)]
+
+
+def apply_handle(caps: dict, guest: str, handle: str | None) -> dict:
+    """Instagram caption « Guest on … » → « @handle on … » and the collab invites (guest + Marius)."""
+    caps = dict(caps or {})
+    ig = caps.get("instagram") or ""
+    if handle and guest:
+        ig = re.sub(r"(^|\n)" + re.escape(guest) + r"(?= on )", lambda m: m.group(1) + "@" + handle, ig, count=1)
+    if ig:
+        caps["instagram"] = ig
+    caps["collab"] = [h for h in (handle, "mariusiepure") if h]
+    return caps
 
 
 def guest_key(guest: str) -> str:
