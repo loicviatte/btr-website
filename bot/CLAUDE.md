@@ -77,9 +77,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   cover `assets/cover_ref.jpg`; « de meilleurs screenshots » = tool reels_cover_search → `pipeline.reel_cover_search`
   downloads the moment again and samples it every 0.33 s; every search avoids stills already shown (cover/seen.json)
   and gives half mouth open / half mouth closed (Haiku on `render.mouth_sheet`); every cover is checked for the
-  Instagram profile grid (`render.grid_check`: whole head (hair top = cy − HAIR 1.4 face heights) + AIR 40 px and the
-  hook inside the 3:4 crops, centre 240-1680 and top 0-1440; `cover_box` frames close like « They just DON'T CARE » (head = FILL 640 px of the
-  1920 cover, never closer than half a 4K frame) with the hair top at 240 + AIR;
+  Instagram profile grid (`render.grid_check`: whole head (hair top = cy − HAIR 0.85, chin = cy + CHIN 0.5 face heights) + AIR 40 px
+  inside the 3:4 crops (centre 240-1680 = Instagram, top 0-1440), hook inside the centre crop; `cover_box` frames close (Loïc 30.10: head = FILL 820 px of the 1920 cover, never closer
+  than 28 % of a 4K frame, sharpened) with the hair top at 240 + AIR; the hook starts TEXT_GAP under the chin (template
+  top, moved up only if it would leave the grid tile) and the dark / gold veils follow it;
   the picker skips photos that fail; a chosen photo without room gets the set generated above the head by LaMa,
   `pipeline._cover_air`; IG re-uploads if the cover changed after the container, `bot.cover_sig`) and sent with `render.grid_preview` (9:16 + both 3:4 crops); hook = consecutive words really said, template
   `templates/reel_cover.html` = the validated « They just DON'T CARE. » cover), then `pipeline.reel_share` (`share.py`):

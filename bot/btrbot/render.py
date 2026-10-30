@@ -141,22 +141,22 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
 
 
 GRID = {"centre": (240, 1680), "haut": (0, 1440)}   # Instagram profile grid (3:4) out of the 9:16 cover
-TEXT_BOTTOM = 1400                                   # bottom of the hook block (bottom: 520 px in the template)
-HAIR = 1.4      # top of the hair above the face centre, in face heights (fringe and volume included)
+HAIR = 0.85     # top of the hair above the face-box centre, in face heights (measured on the Oti covers, 30.10)
+CHIN = 0.5      # chin below the face-box centre, in face heights
 AIR = 40        # px of air above the head in the grid tile (Loïc: the whole head and a little air, like « They just DON'T CARE »)
+TEXT_GAP = 24   # the hook starts just under the chin (Loïc: under the face, never over it)
 
 
-FILL = 640      # head height (hair → chin) on the 1920 px cover: as close as « They just DON'T CARE », chin above the hook
+FILL = 820      # head height (hair → chin) on the 1920 px cover: close (Loïc 30.10: « 2x plus zoomé »), the hook under the chin
 
 
 def cover_box(W: int, H: int, face: dict, air: bool = True) -> tuple[float, float, float, float]:
     """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: close on the guest like the validated
     « They just DON'T CARE. » cover (head = FILL px of the 1920 cover, so the chin lands just above the hook), the top
-    of the hair a little under the top of Instagram's 3:4 grid tile (AIR). Never closer than half the frame height (4K
-    stills stay sharp). face["zoom"] (Loïc's « zoom x1.25 ») tightens that window around the face."""
+    of the hair a little under the top of Instagram's 3:4 grid tile (AIR). Never closer than 28 % of a 4K frame. face["zoom"] (Loïc's « zoom x1.25 ») tightens that window around the face."""
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
-    head = (HAIR + 0.6) * fh
-    h = min(float(H), max(head * 1920 / FILL, (0.5 if H >= 2000 else 0.8) * H))
+    head = (HAIR + CHIN) * fh
+    h = min(float(H), max(head * 1920 / FILL, (0.28 if H >= 2000 else 0.5) * H))
     sw = h * 9 / 16
     if sw > W:
         sw, h = float(W), W * 16 / 9
@@ -178,20 +178,21 @@ def cover_crop(src: Image.Image, face: dict) -> Image.Image:
 
 
 
-def grid_check(W: int, H: int, face: dict, text_top: float = 900.0, air: bool = True) -> dict:
+def grid_check(W: int, H: int, face: dict, text_top: float = 1200.0, air: bool = True,
+               text_bottom: float = 1600.0) -> dict:
     """Where the head (hair included) and the hook land on the cover, and whether both stay whole in the 3:4 grid
     crops (centre = Instagram's default, haut = the team's rule « face and text inside the top 1080×1440 »)."""
     x0, y0, sw, h = cover_box(W, H, face, air)
     k = 1920 / h
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
-    head_top, chin = (c - HAIR * fh - y0) * k, (c + 0.6 * fh - y0) * k  # top of the hair, chin
+    head_top, chin = (c - HAIR * fh - y0) * k, (c + CHIN * fh - y0) * k  # top of the hair, chin
     issues = []
     for name, (a, b) in GRID.items():
         if head_top < a + AIR - 2:
             issues.append(f"haut de la tête coupé ou collé au bord (grille {name})")
-        if TEXT_BOTTOM > b - 10:
+        if name == "centre" and text_bottom > b - 10:    # Instagram's grid = centre crop; the hook sits under the chin
             issues.append(f"texte coupé en bas (grille {name})")
-    if chin > text_top + 60:
+    if chin > text_top + 40:
         issues.append("texte sur le menton")
     return {"head_top": round(head_top), "chin": round(chin), "text_top": round(text_top), "issues": issues}
 
@@ -222,10 +223,21 @@ def reel_cover(work: Path, still: Path, face: dict, text: dict, guest_name: str,
     """Reel cover 1080×1920 (template validated on Oti P2 « They just DON'T CARE. »): the 4K still cut to 9:16 on
     the guest's face (full height), dark + gold veils, then the hook: small line / BIG / BIG gold italic, and the name."""
     work.mkdir(parents=True, exist_ok=True)
-    crop = cover_crop(Image.open(still).convert("RGB"), face)
-    crop.resize((1080, 1920), Image.LANCZOS).save(work / "cover_bg.jpg", quality=94)
+    from PIL import ImageFilter
+    src = Image.open(still).convert("RGB")
+    crop = cover_crop(src, face)
+    bg = crop.resize((1080, 1920), Image.LANCZOS)
+    if crop.height < 1100:                                  # strong zoom on a 4K still: a touch of sharpening
+        bg = bg.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
+    bg.save(work / "cover_bg.jpg", quality=94)
+    W0, H0 = src.size
+    x0, y0, sw, h = cover_box(W0, H0, face)
+    chin = (face.get("cy", 0.35) * H0 + CHIN * face.get("fh", 0.2) * H0 - y0) * 1920 / h
+    top = int(min(max(chin + TEXT_GAP, 700), 1500))
+    pct = top / 19.2
     html = env.get_template("reel_cover.html").render(
-        assets=ASSETS.as_uri(), bg="cover_bg.jpg", name=guest_name,
+        assets=ASSETS.as_uri(), bg="cover_bg.jpg", name=guest_name, top=top, limit=GRID["centre"][1] - 40,
+        d0=round(pct - 8, 1), d1=round(pct + 4, 1), d2=round(pct + 16, 1), g0=round(pct + 10, 1),
         **{k: str(text.get(k) or "").replace("'", "’") for k in ("small", "big", "gold")})
     page = work / "reel_cover.html"
     page.write_text(html)
@@ -234,7 +246,7 @@ def reel_cover(work: Path, still: Path, face: dict, text: dict, guest_name: str,
     Image.open(png).convert("RGB").save(out, quality=94)
     png.unlink(missing_ok=True)
     W, H = Image.open(still).size
-    chk = grid_check(W, H, face, float(info.get("top") or 900))
+    chk = grid_check(W, H, face, float(info.get("top") or 900), text_bottom=float(info.get("bottom") or 1400))
     (out.parent / (out.stem + ".check.json")).write_text(__import__("json").dumps(chk))
     grid_preview(out, out.parent / (out.stem + "_grille.jpg"))
     return out

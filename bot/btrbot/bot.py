@@ -2630,15 +2630,15 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
-                if not reg.data.get("covers_zoom_1030"):         # 30.10.2026: closer, whole head + a little air in the grid
-                    reg.data["covers_zoom_1030"] = True
+                if not reg.data.get("covers_zoom2_1030"):        # 30.10.2026: 2x closer, hook right under the chin
+                    reg.data["covers_zoom2_1030"] = True
                     reg.save()
                     redo = [int(k) for k, it in sorted(rs["items"].items(), key=lambda kv: int(kv[0]))
                             if it.get("filed") and it.get("instagram", True) and it.get("cover")
                             and not (it.get("ig_post") or {}).get("posted")]
                     if redo:
-                        await say(app, f"🖼 Covers feed {', '.join(map(str, redo))} : je les refais plus serrées sur la tête, "
-                                       "comme « They just DON'T CARE », tête entière avec un peu d'air dans la grille "
+                        await say(app, f"🖼 Covers feed {', '.join(map(str, redo))} : je les refais 2x plus serrées sur la tête, "
+                                       "le texte juste sous le visage, tête entière avec un peu d'air dans la grille "
                                        "Instagram, même photo. Valide-les ensuite (✅ Cover OK).")
                         for k in redo:
                             it = rs["items"][str(k)]

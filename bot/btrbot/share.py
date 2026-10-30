@@ -30,7 +30,7 @@ IG_SCHEDULED, IG_POSTED = "eb8ad4fc-67be-4503-acca-7c14e6ad370d", "3594b624-2ee1
 GRID = "b64d9e9c-6809-4527-9511-736f4d21ca4e"           # Instagram placement « Grid » (orderindex 0)
 YT_SCHEDULED, YT_POSTED = "a95e6c4c-35e7-4a87-8705-fcd3dc7592e0", "530bf62a-705a-4647-b596-364aff465ebf"
 WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
-            "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” to the episode, no link in the description.")
+            "Cover: whole head + hook inside Instagram's 3:4 grid tile (centre).\nShorts: set “Related video” to the episode, no link in the description.")
 WHERE_SHORT = ("Where: TikTok + YouTube Shorts only (not Instagram)\n"
                "Shorts: set “Related video” to the episode, no link in the description.")
 # Content calendar statuses: to generate → generated → approved (filed) → ready (Loïc validated the cover: the bot
