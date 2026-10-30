@@ -14,8 +14,9 @@ env = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_aut
 def _shot(html: Path, out_png: Path, w: int, h: int) -> dict:
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        b = p.chromium.launch()
+        b = p.chromium.launch(timeout=60000)
         pg = b.new_page(viewport={"width": w, "height": h})
+        pg.set_default_timeout(60000)
         pg.goto(html.as_uri())
         pg.evaluate("document.fonts.ready")
         pg.wait_for_load_state("networkidle")

@@ -67,7 +67,7 @@ async def run(fn, *a):
 JOB_LIMIT = 45 * 60      # a heavy job never holds the queue longer than this (a stuck download, a hung ffmpeg)
 
 
-async def guarded(ctx, label: str, coro):
+async def guarded(ctx, label: str, coro, limit: int | None = None):
     """Run one heavy step at a time and report errors on Telegram instead of dying silently. A job stuck beyond
     JOB_LIMIT is abandoned (Loïc is told), so the jobs waiting behind it are never blocked for hours."""
     import time
@@ -76,12 +76,12 @@ async def guarded(ctx, label: str, coro):
         WAITING.pop(label, None)
         ok = False
         try:
-            r = await asyncio.wait_for(coro, timeout=JOB_LIMIT)
+            r = await asyncio.wait_for(coro, timeout=limit or JOB_LIMIT)
             ok = True
             return r
         except asyncio.TimeoutError:
             log.error("job timeout: %s", label)
-            await say(ctx, f"⚠️ « {esc(label)} » était bloqué depuis {JOB_LIMIT // 60} min : je l'abandonne et je passe "
+            await say(ctx, f"⚠️ « {esc(label)} » était bloqué depuis {(limit or JOB_LIMIT) // 60} min : je l'abandonne et je passe "
                            "à la suite. Redemande-le si besoin.")
         except DryRun as e:
             await say(ctx, f"🧪 {esc(e)}")
@@ -96,7 +96,7 @@ async def guarded(ctx, label: str, coro):
 WAITING: dict = {}          # jobs waiting for the one running (label → since)
 
 
-def bg(ctx, label: str, coro) -> str:
+def bg(ctx, label: str, coro, limit: int | None = None) -> str:
     """Start a heavy job in the background (one at a time) and say so: the chat stays responsive meanwhile. When it
     has to wait for another job, Loïc is told right away which one (never a silent wait)."""
     import time
@@ -107,7 +107,7 @@ def bg(ctx, label: str, coro) -> str:
         WAITING[label] = time.time()
         asyncio.create_task(say(ctx, f"⏳ « {esc(label)} » attend la fin de « {esc(RUNNING['label'])} » (en cours depuis "
                                      f"{mins} min)."))
-    asyncio.create_task(guarded(ctx, label, coro))
+    asyncio.create_task(guarded(ctx, label, coro, limit))
     return f"lancé en arrière-plan : {label}{queued}"
 
 
@@ -886,7 +886,8 @@ def tool_handlers(ctx, images: list) -> dict:
             prefs = [x for x in str(reg.data.get("cover_want", "")).split(" | ") if x] + [str(want)[:200]]
             reg.data["cover_want"] = " | ".join(dict.fromkeys(prefs))[-600:]
             reg.save()
-        return bg(ctx, f"Nouvelles covers (reels {', '.join(map(str, nums))})", better_covers(ctx, ep, nums))
+        return bg(ctx, f"Nouvelles covers (reels {', '.join(map(str, nums))})", better_covers(ctx, ep, nums),
+                  limit=6 * 60 * len(nums))
 
     async def reel_undrop(n):
         ep = reels_or_fail()
@@ -912,7 +913,7 @@ def tool_handlers(ctx, images: list) -> dict:
         text = {"small": small or "", "big": big or "", "gold": gold or ""} if (big or gold or small) else None
         if photo == "next":
             photo = (int(item.get("cover_pick") or 1) % max(1, int(item.get("cover_count") or 1))) + 1
-        return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None))
+        return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None), limit=5 * 60)
 
     async def reels_resend(nums=None):
         ep = reels_or_fail()
@@ -2052,6 +2053,8 @@ async def on_boot(app):
 
 
 def main():
+    import socket
+    socket.setdefaulttimeout(120)        # Google APIs (httplib2) have no timeout of their own: never hang a job forever
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     # concurrent updates: he can keep talking while a render or a frame search runs (heavy jobs share LOCK)
     app = Application.builder().token(cfg.telegram_token).post_init(on_boot).concurrent_updates(True).build()
