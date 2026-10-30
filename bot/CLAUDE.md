@@ -43,7 +43,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   description, chapters; a fix must sound like the heard word; cached in edit.json["names"], shown in the preview),
   placement (`vary` + `place`: mostly centred, 2 pages off-centre every 8 (l / r / lower / stair), a page never starts below the last word of the previous one nor in the bottom third). A restart resumes interrupted reels; when the reel rules
   change, bump `bot.REELS_RULES` so Loïc gets one « Renvoyer les reels » button after the deploy. Loïc publishes
-  the reels himself: the bot never posts them. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
+  the reels himself on Instagram and TikTok. YouTube Shorts (`btrbot/shorts.py` planner, `bot.shorts_*`,
+  `pipeline.short_upload`, `YouTube.upload_short/reschedule/statuses`): every filed reel is sent private with a
+  publishAt, YouTube makes it public by itself; time = Loïc's choice (item["short_at"], tool shorts_schedule « short 2 le
+  4.11 à 19h ») > ClickUp due date (18:00 London if no time) > already scheduled > next day without a Short; plan shown
+  after « Ranger » and with /shorts (tool shorts_plan), nothing sent before his « ▶️ Programmer » tap or message;
+  ClickUp YouTube field Scheduled → Posted (`shorts_sync` in the 15-min poll), Short link in the task, the bot's own
+  « Short · » task gets the publishing time as due date (Drive file renamed). A public Short is never touched again.
+  Related video can't be set by the API (Loïc in Studio). Test: `tests/shorts_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
   for each reel (feed ones first), cover (`pipeline.reel_cover`: sharp 4K guest stills kept at render time in

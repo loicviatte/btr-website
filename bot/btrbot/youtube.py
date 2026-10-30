@@ -1,4 +1,4 @@
-"""YouTube Data API v3: find unlisted uploads, read captions, update title/description/thumbnail."""
+"""YouTube Data API v3: find unlisted uploads, read captions, update title/description/thumbnail, schedule Shorts."""
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -112,6 +112,41 @@ class YouTube:
 
     def set_thumbnail(self, vid: str, jpg: Path) -> None:
         self.svc.thumbnails().set(videoId=vid, media_body=MediaFileUpload(str(jpg), mimetype="image/jpeg")).execute()
+
+    # ---- Shorts (validated reels, scheduled: private until publishAt) ---------------------------------
+    def upload_short(self, path: Path, title: str, description: str, publish_at: str, category: str = "22",
+                     tags: list[str] | None = None) -> dict:
+        """New private video that YouTube makes public by itself at publish_at (RFC 3339, UTC). Vertical and under
+        3 min = a Short. Resumable upload in 8 MB chunks."""
+        body = {"snippet": {"title": title[:100], "description": description[:5000], "categoryId": category or "22",
+                            "tags": tags or [], "defaultLanguage": "en", "defaultAudioLanguage": "en"},
+                "status": {"privacyStatus": "private", "publishAt": publish_at, "selfDeclaredMadeForKids": False,
+                           "containsSyntheticMedia": False}}
+        media = MediaFileUpload(str(path), mimetype="video/mp4", chunksize=8 << 20, resumable=True)
+        req = self.svc.videos().insert(part="snippet,status", body=body, media_body=media)
+        resp = None
+        while resp is None:
+            _, resp = req.next_chunk(num_retries=3)
+        return resp
+
+    def reschedule(self, vid: str, publish_at: str) -> None:
+        """New publishAt for a Short that is still waiting (private + scheduled). Never touches a public video."""
+        st = self.video(vid)["status"]
+        if st.get("privacyStatus") != "private" or not st.get("publishAt"):
+            raise RuntimeError("ce Short est déjà publié (ou n'est plus programmé) : je n'y touche pas")
+        body = {"id": vid, "status": {"privacyStatus": "private", "publishAt": publish_at}}
+        for keep in ("embeddable", "license", "publicStatsViewable", "selfDeclaredMadeForKids", "containsSyntheticMedia"):
+            if keep in st:
+                body["status"][keep] = st[keep]
+        self.svc.videos().update(part="status", body=body).execute()
+
+    def statuses(self, ids: list[str]) -> dict[str, dict]:
+        """id → status (privacyStatus, uploadStatus, publishAt…); missing ids = deleted videos."""
+        out = {}
+        for i in range(0, len(ids), 50):
+            r = self.svc.videos().list(part="status", id=",".join(ids[i:i + 50])).execute()
+            out.update({v["id"]: v["status"] for v in r.get("items", [])})
+        return out
 
 
 def _minutes_over(iso: str, minutes: int) -> bool:

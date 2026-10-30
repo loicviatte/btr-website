@@ -936,6 +936,75 @@ class Pipeline:
                 out["clickup_error"] = str(e)[-300:]
         return out
 
+    # ---- YouTube Shorts of the filed reels (btrbot/shorts.py) ------------------------------------------------
+    def shorts_lookup(self, rows: list[tuple[str, dict]]) -> dict:
+        """rows = [(key, item)] → key → {"task_at": ClickUp date as a publishing time or None,
+        "status": YouTube status of the Short already sent (None = deleted on YouTube), "checked": bool}."""
+        from datetime import datetime, timezone
+        from . import share, shorts
+        now = datetime.now(timezone.utc)
+        out = {k: {"task_at": None, "status": None, "checked": False} for k, _ in rows}
+        token = share.Secrets(self.cfg.data_dir).get("clickup_token")
+        if token:
+            cu = share.ClickUp(token)
+            for k, it in rows:
+                if it.get("clickup_task"):
+                    try:
+                        out[k]["task_at"] = shorts.due_at(cu.task(it["clickup_task"]), now)
+                    except Exception:  # noqa: BLE001
+                        log.exception("clickup task")
+        ids = {(it.get("yt_short") or {}).get("id"): k for k, it in rows if (it.get("yt_short") or {}).get("id")}
+        if ids:
+            st = self.yt.statuses(list(ids))
+            for vid, k in ids.items():
+                out[k].update(status=st.get(vid), checked=True)
+        return out
+
+    def short_upload(self, ep: Episode, n: int, item: dict, publish_at: str) -> dict:
+        """Reel n → a private YouTube Short published by YouTube itself at publish_at (or the new time, if it was
+        already sent and is still waiting). Then ClickUp: YouTube field « Scheduled »; on the bot's own « Short · … »
+        task, the due date becomes the publishing time (so the Drive file is named for it)."""
+        from . import share
+        caps = item.get("captions") or {}
+        guest = ep.get("guest_name") or self.reel_title(ep)
+        title = caps.get("short_title") or f"{guest} | Break The Routine"
+        desc = caps.get("short_desc") or f"{guest} on Break The Routine.\n\n#BreakTheRoutine #DanceSport #Shorts"
+        ys = item.get("yt_short") or {}
+        locked = False
+        if ys.get("id"):
+            self.yt.reschedule(ys["id"], publish_at)
+            vid = ys["id"]
+        else:
+            try:
+                cat = self.yt.video(ep.video_id)["snippet"].get("categoryId") or "22"
+            except Exception:  # noqa: BLE001
+                cat = "22"
+            tags = [t.lstrip("#") for t in re.findall(r"#\w+", desc) if t.lower() != "#shorts"]
+            r = self.yt.upload_short(Path(item["file"]), title, desc, publish_at, cat, tags)
+            vid = r["id"]
+            locked = not (r.get("status") or {}).get("publishAt")      # YouTube refused the schedule (app not audited?)
+        out = {"id": vid, "at": publish_at, "url": f"https://youtube.com/shorts/{vid}", "locked": locked}
+        token = share.Secrets(self.cfg.data_dir).get("clickup_token")
+        tid = item.get("clickup_task")
+        if token and tid:
+            try:
+                cu = share.ClickUp(token)
+                cu.set_field(tid, share.F_YT, share.YT_SCHEDULED)
+                if item.get("clickup_kind") == "short":
+                    from . import shorts
+                    ms = int(shorts.parse(publish_at).timestamp() * 1000)
+                    cu.update(tid, due_date=ms, due_date_time=True)
+            except Exception as e:  # noqa: BLE001
+                log.exception("clickup short")
+                out["clickup_error"] = str(e)[-200:]
+        return out
+
+    def short_posted(self, item: dict) -> None:
+        from . import share
+        token = share.Secrets(self.cfg.data_dir).get("clickup_token")
+        if token and item.get("clickup_task"):
+            share.ClickUp(token).set_field(item["clickup_task"], share.F_YT, share.YT_POSTED)
+
     def ep_number(self, ep: Episode) -> int | None:
         """BTR episode number of the guest (Kiera Brunton = 1 … Oti Mabuse = 13; both parts share it). A new guest
         gets the next number the first time a reel of theirs is filed; Loïc can correct it (ep["ep_number"])."""

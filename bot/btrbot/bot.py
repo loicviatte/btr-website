@@ -263,6 +263,10 @@ async def poll_drive(ctx):
 async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
     await poll_drive(ctx)
     try:
+        await shorts_sync(ctx)
+    except Exception as e:  # noqa: BLE001
+        log.warning("shorts sync failed: %s", e)
+    try:
         vids = await run(pipe.yt.unlisted_ready)
     except Exception as e:  # noqa: BLE001
         log.warning("poll failed: %s", e)
@@ -922,10 +926,33 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
 
+    async def shorts_plan_t():
+        return await shorts_show(ctx)
+
+    async def shorts_schedule(dates=None):
+        from datetime import datetime, timezone
+        from . import shorts
+        if dates:
+            ep = reels_or_fail()
+            now = datetime.now(timezone.utc)
+            for k, v in dates.items():
+                item = RS(ep).data["items"].get(str(int(k)))
+                if not item or not item.get("filed"):
+                    return f"le reel {k} n'est pas rangé : pas de Short"
+                if (item.get("yt_short") or {}).get("posted"):
+                    return f"le Short du reel {k} est déjà en ligne : je n'y touche plus"
+                try:
+                    item["short_at"] = shorts.iso(shorts.parse_choice(str(v), now))
+                except ValueError as e:
+                    return str(e)
+            RS(ep).save()
+        return bg(ctx, "Shorts YouTube", shorts_go(ctx), limit=60 * 60)
+
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
+            "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1388,6 +1415,10 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
     RS(ep).save()
     await say(ctx, "\n\n".join(lines) + "\n\nLes légendes sont dans chaque tâche ClickUp (blocs à copier). "
                    "Pour changer : « le 3 finalement en feed », « cover reel 2 : autre photo ».")
+    try:
+        await shorts_show(ctx)
+    except Exception:  # noqa: BLE001
+        log.exception("shorts plan")
 
 
 async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None = None):
@@ -1531,7 +1562,7 @@ async def send_cover(ctx, ep, n: int):
                             f"{item.get('cover_count', 1)}]")
 
 
-async def share_reel(ctx, ep, n: int, quiet: bool = False) -> str:
+async def share_reel(ctx, ep, n: int, quiet: bool = False, cover: bool = True) -> str:
     """Cover (if missing), Drive + ClickUp for a validated reel. quiet: return the summary line instead of saying it."""
     from pathlib import Path
     item = reel_item(ep, n)
@@ -1541,7 +1572,8 @@ async def share_reel(ctx, ep, n: int, quiet: bool = False) -> str:
             RS(ep).save()
         except Exception:  # noqa: BLE001
             log.exception("cover")
-    await send_cover(ctx, ep, n)
+    if cover:
+        await send_cover(ctx, ep, n)
     from .pipeline import CAPTIONS_V
     if (item.get("captions") or {}).get("v") != CAPTIONS_V and item.get("said"):
         caps = await run(pipe.reel_captions, ep, item["said"])        # captions in the current approved format
@@ -1661,6 +1693,131 @@ async def on_reel_button(ctx, q, d: str):
         await say(ctx, esc(bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, n))))
 
 
+# ---------------------------------------------------------------- YouTube Shorts (btrbot/shorts.py)
+# Every filed reel becomes a Short, sent private with a publishing time: YouTube makes it public by itself. Nothing is
+# sent without Loïc's go (button « Programmer » or his message); a Short already public is never touched again.
+def shorts_items() -> list:
+    """Filed reels of every episode whose Short is not online yet, in publishing order (episode, feed first, number)."""
+    out = []
+    for f in sorted((reg.root / "episodes").glob("*/reels.json")):
+        ep = reg.episode(f.parent.name)
+        for k, it in RS(ep).data.get("items", {}).items():
+            if it.get("status") == "ok" and it.get("filed") and it.get("file") and not (it.get("yt_short") or {}).get("posted"):
+                out.append((ep, int(k), it))
+    return sorted(out, key=lambda x: (x[0].video_id, not x[2].get("instagram", True), x[1]))
+
+
+async def shorts_plan() -> list:
+    from datetime import datetime, timezone
+    from . import shorts
+    items = shorts_items()
+    rows = [(f"{ep.video_id}:{n}", dict(it)) for ep, n, it in items]
+    look = await run(pipe.shorts_lookup, rows) if rows else {}
+    entries = []
+    for ep, n, it in items:
+        key = f"{ep.video_id}:{n}"
+        info = look.get(key) or {}
+        ys = it.get("yt_short") or {}
+        if ys.get("id") and info.get("checked"):
+            st = info.get("status")
+            if st is None:                                   # deleted on YouTube: will be sent again
+                it.pop("yt_short", None)
+                it.get("links", {}).pop("short", None)
+                RS(ep).save()
+                ys = {}
+            elif st.get("privacyStatus") != "private" or not st.get("publishAt"):
+                continue                                     # already public: shorts_sync marks it, never touched
+        entries.append({"key": key, "ep": ep, "n": n, "item": it, "vid": ys.get("id"), "cur_at": shorts.parse(ys.get("at")),
+                        "task_at": info.get("task_at"), "chosen": shorts.parse(it.get("short_at"))})
+    return shorts.plan(entries, datetime.now(timezone.utc))
+
+
+def short_name(p) -> str:
+    cand = reel_cand(p["ep"], p["n"]) or {}
+    return f"Reel {p['n']} · {esc(cand.get('title') or '')}"
+
+
+async def shorts_show(ctx) -> str:
+    from . import shorts
+    plan = await shorts_plan()
+    if not plan:
+        await say(ctx, "▶️ Aucun reel rangé en attente de Short YouTube.")
+        return "rien à programmer"
+    lines = ["▶️ <b>YouTube Shorts</b> : envoyés en privé, YouTube les publie tout seul à l'heure dite (heure de Londres)."]
+    eps = {p["ep"].video_id for p in plan}
+    for p in plan:
+        who = f"{esc(pipe.reel_title(p['ep']))} · " if len(eps) > 1 else ""
+        state = {"upload": "", "move": " · à déplacer", None: " · ✅ déjà programmé"}[p["action"]]
+        lines.append(f"• {who}{short_name(p)} → <b>{shorts.label(p['at'])}</b> ({p['why']}){state}")
+    todo = [p for p in plan if p["action"]]
+    lines.append("\nPour changer : « short 2 le 4.11 à 19h » (ou change la date dans ClickUp et redemande /shorts).")
+    kb = K([[B(f"▶️ Programmer sur YouTube ({len(todo)})", callback_data="ysch")]]) \
+        if todo else None
+    await say(ctx, "\n".join(lines), reply_markup=kb)
+    return f"plan envoyé ({len(todo)} à programmer)"
+
+
+async def shorts_go(ctx):
+    from . import shorts
+    plan = [p for p in await shorts_plan() if p["action"]]
+    if not plan:
+        await say(ctx, "▶️ Rien à programmer : tous les Shorts sont déjà programmés.")
+        return
+    await say(ctx, f"▶️ J'envoie {len(plan)} Short{'s' if len(plan) > 1 else ''} sur YouTube (privés jusqu'à l'heure dite)…")
+    lines, warn = [], ""
+    for p in plan:
+        ep, n, it = p["ep"], p["n"], p["item"]
+        try:
+            res = await run(pipe.short_upload, ep, n, dict(it), shorts.iso(p["at"]))
+        except Exception as e:  # noqa: BLE001
+            log.exception("short upload")
+            msg = str(e)
+            if "quota" in msg.lower() or "uploadLimitExceeded" in msg:
+                lines.append(f"{short_name(p)} : ⚠️ limite d'envois YouTube du jour atteinte. Redemande /shorts demain.")
+                break
+            lines.append(f"{short_name(p)} : ⚠️ <code>{esc(msg[-200:])}</code>")
+            continue
+        it["yt_short"] = {"id": res["id"], "at": res["at"]}
+        it.setdefault("links", {})["short"] = res["url"]
+        RS(ep).save()
+        if res.get("locked"):
+            warn = ("\n\n⚠️ YouTube a gardé la vidéo en privé sans programmation : l'app Google n'est sans doute pas "
+                    "encore vérifiée par YouTube. Regarde dans YouTube Studio et dis-moi ce que tu vois.")
+        try:
+            await share_reel(ctx, ep, n, quiet=True, cover=False)   # link in ClickUp, Drive file named for the date
+        except Exception:  # noqa: BLE001
+            log.exception("share after short")
+        verb = "déplacé" if p["action"] == "move" else "programmé"
+        extra = f" · ClickUp : {esc(res['clickup_error'])}" if res.get("clickup_error") else ""
+        lines.append(f"{short_name(p)} : {verb} <b>{shorts.label(p['at'])}</b> · <a href=\"{res['url']}\">lien</a>{extra}")
+    await say(ctx, "\n".join(lines) + warn + "\n\nÀ faire dans YouTube Studio si tu veux : « Vidéo associée » = l'épisode "
+                   "(pas possible par l'API).")
+
+
+async def shorts_sync(ctx):
+    """Every poll: Shorts whose time has passed and that YouTube made public → ClickUp « Posted » + a message."""
+    from datetime import datetime, timezone
+    from . import shorts
+    now = datetime.now(timezone.utc)
+    due = [(ep, n, it) for ep, n, it in shorts_items()
+           if (it.get("yt_short") or {}).get("id") and (shorts.parse(it["yt_short"].get("at")) or now) <= now]
+    if not due:
+        return
+    st = await run(pipe.yt.statuses, [it["yt_short"]["id"] for _, _, it in due])
+    for ep, n, it in due:
+        s = st.get(it["yt_short"]["id"])
+        if not s or s.get("privacyStatus") != "public":
+            continue
+        it["yt_short"]["posted"] = True
+        RS(ep).save()
+        try:
+            await run(pipe.short_posted, dict(it))
+        except Exception:  # noqa: BLE001
+            log.exception("clickup posted")
+        await say(ctx, f"▶️ Short en ligne : {short_name({'ep': ep, 'n': n})} · "
+                       f"<a href=\"{it['links'].get('short')}\">YouTube</a> (ClickUp : Posted)")
+
+
 def reels_context() -> str:
     """For the chat model. Called on the event loop only (the store is never read from another thread)."""
     ep = reel_ep()
@@ -1678,6 +1835,14 @@ def reels_context() -> str:
             filed = (f" RANGÉ ({'feed + TikTok + Shorts' if it.get('instagram', True) else 'TikTok + Shorts'}) : Drive "
                      f"{it.get('file_base', '')}.mp4 + cover, tâche ClickUp « {it.get('clickup_name') or it.get('clickup_task')} » "
                      f"(approved, légendes dedans).")
+            ys = it.get("yt_short") or {}
+            if ys.get("posted"):
+                filed += " Short YouTube EN LIGNE."
+            elif ys.get("id"):
+                from . import shorts
+                filed += f" Short YouTube programmé {shorts.label(shorts.parse(ys['at']))} (Londres)."
+            else:
+                filed += " Short YouTube pas encore programmé (/shorts)."
         lines.append(f"Reel {k} : {status.get(it.get('status'), 'en attente')},{filed} {it.get('duration', '?')} s, décalages "
                      f"début/fin {it.get('shift')}, phrases coupées {it.get('cuts') or 'aucune'}. Dit : {str(it.get('said', ''))[:300]}")
     unfiled = reels_unfiled(ep)
@@ -1760,6 +1925,9 @@ async def on_button(update: Update, ctx):
         return
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data == "ysch":
+        await say(ctx, esc(bg(ctx, "Shorts YouTube", shorts_go(ctx), limit=60 * 60)))
         return
     if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:")):
         await on_reel_button(ctx, q, q.data)
@@ -1854,6 +2022,12 @@ async def reel_fast_path(ctx, text: str) -> bool:
         out = f"⚠️ {e}"
     await say(ctx, "👍 " + esc(out))
     return True
+
+
+async def shorts_cmd(update: Update, ctx):
+    if not allowed(update):
+        return
+    await guarded(ctx, "Plan des Shorts", shorts_show(ctx))
 
 
 async def connect_cmd(update: Update, ctx):
@@ -2113,6 +2287,7 @@ def main():
     app.add_handler(CommandHandler("couts", couts_cmd))
     app.add_handler(CommandHandler("reels", reels_cmd))
     app.add_handler(CommandHandler("connect", connect_cmd))
+    app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

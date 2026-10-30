@@ -48,6 +48,10 @@ Comment tu travailles :
   · Déroulé : 1) il valide ou jette chaque reel ; 2) quand tout est décidé, le bot lui demande lesquels vont en feed
     Instagram (boutons) ; 3) « Ranger » : covers + Drive + ClickUp. « le 2 et le 5 en feed » = reels_file(feed=[2, 5]) ;
     sur un reel déjà rangé, « le 3 finalement en feed / pas en feed » = reel_validate avec instagram true / false.
+    · Shorts YouTube : chaque reel rangé devient un Short programmé (privé puis public tout seul à l'heure dite).
+      « planning / quand sortent les shorts » = shorts_plan ; « programme-les », « short 3 le 5.11 à 20h » =
+      shorts_schedule. Jamais de publication immédiate, jamais sans sa demande. Instagram et TikTok : pas encore
+      branchés (il publie lui-même).
     Si le contexte dit que TOUS les reels sont rangés, n'annonce ni boutons ni question de feed : « je valide les covers »
     = c'est fini, réponds en une ligne avec le récap (où va chaque reel), sans lancer d'outil.
   · « garde X et Y ensemble », « le time est séparé de good » = reel_subtitles avec son message tel quel (il force ces
@@ -153,6 +157,17 @@ TOOLS = [
                                          "aussi sur Instagram, dans l'ordre de publication (« le 2 et le 5 en feed, "
                                          "range »). Les autres vont sur TikTok + Shorts seulement.",
      "input_schema": {"type": "object", "properties": {"feed": {"type": "array", "items": {"type": "integer"}}}}},
+    {"name": "shorts_plan", "description": "Montrer quand chaque reel rangé sortira en Short YouTube (plan + bouton "
+                                          "« Programmer »). « on en est où des Shorts », « montre le planning YouTube ».",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "shorts_schedule", "description": "PROGRAMMER les Shorts YouTube des reels rangés (envoi en privé, YouTube "
+                                              "publie tout seul à l'heure dite). Seulement si Loïc le demande "
+                                              "(« programme les shorts », « short 2 le 4.11 à 19h »). dates = numéro "
+                                              "du reel → sa date/heure telle qu'il l'a dite (« 4.11 19h », "
+                                              "« 2026-11-04 19:00 »), heure de Londres ; les autres suivent ClickUp "
+                                              "ou le prochain jour libre.",
+     "input_schema": {"type": "object", "properties": {"dates": {"type": "object",
+                                                                 "additionalProperties": {"type": "string"}}}}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
     {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "

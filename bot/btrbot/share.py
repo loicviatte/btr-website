@@ -26,6 +26,7 @@ F_IG, IG_NO, IG_TODO = ("00e62fea-52fd-4927-82b1-712e64a799e7", "6d3b3f7c-8782-4
                         "2e187c73-0476-4683-a90e-3d0899df3076")
 F_TT, TT_TODO = "a02e2e2c-eb04-47ba-bb85-0d9c9d77fbcd", "4d699c14-5ae2-4817-8f34-70f029e3c8d7"
 F_YT, YT_TODO = "42cc05f2-218b-405a-ad1b-6069c5e2b04a", "93280cc0-4dd6-4654-b1cf-b3fa39cd1949"
+YT_SCHEDULED, YT_POSTED = "a95e6c4c-35e7-4a87-8705-fcd3dc7592e0", "530bf62a-705a-4647-b596-364aff465ebf"
 WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
             "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” to the episode, no link in the description.")
 WHERE_SHORT = ("Where: TikTok + YouTube Shorts only (not Instagram)\n"
@@ -367,6 +368,9 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
     lines = [MARK, "", f"**Reel validé le {today}** : « {title} » ({item.get('duration', '?')} s) · {where}", "",
              f"- Vidéo : {links.get('video', '—')}", f"- Cover : {links.get('cover', '—')}",
              f"- Dossier Drive : {links.get('folder', '—')}", f"- Épisode : {video_url}"]
+    if links.get("short"):
+        at = (item.get("yt_short") or {}).get("at")
+        lines.append(f"- YouTube Short : {links['short']}" + (f" (programmé par le bot, en ligne le {_when(at)})" if at else ""))
     if base:
         lines.append(f"- Fichier : {base}.mp4")
     lines.append("")
@@ -380,6 +384,12 @@ def description(old: str, links: dict, item: dict, title: str, video_url: str, t
                   f"Titre : {caps['short_title']}", "", caps.get("short_desc") or ""]
     return (keep + "\n\n" if keep else "") + "\n".join(lines)
 
+
+
+def _when(at: str) -> str:
+    from . import shorts
+    dt = shorts.parse(at)
+    return shorts.label(dt) + " (Londres)" if dt else at
 
 # BTR episode numbers (order of the guests' first episode on the channel); new guests get the next one automatically
 EP_NUMBERS = {"kiera brunton": 1, "michael shelton": 2, "jaime dieguez": 3, "nicole cutler": 4, "james wilson": 5,
