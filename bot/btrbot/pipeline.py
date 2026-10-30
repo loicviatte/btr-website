@@ -716,6 +716,13 @@ class Pipeline:
                 order = best + [i for i in order if i not in best]
             except Exception:  # noqa: BLE001
                 log.exception("cover pick")
+        if pick is None:                               # the best photo whose head stays whole in the grid crops
+            from PIL import Image
+            for i in order[:6]:
+                W, H = Image.open(cdir / cands[i]["file"]).size
+                if not [x for x in render.grid_check(W, H, cands[i])["issues"] if "visage" in x or "menton" in x]:
+                    order = [i] + [j for j in order if j != i]
+                    break
         c = cands[order[0]]
         hook = cover_hook(text, item.get("said", "")) if text else None
         hook = hook or (item.get("captions") or {}).get("cover")
@@ -725,7 +732,10 @@ class Pipeline:
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
         out = render.reel_cover(cdir, cdir / c["file"], c, hook, ep.get("guest_name") or "",
                                 work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
-        return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands)}
+        chk_p = out.parent / (out.stem + ".check.json")
+        chk = json.loads(chk_p.read_text()) if chk_p.exists() else {}
+        return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands),
+                "cover_issues": chk.get("issues", []), "cover_grid": str(out.parent / (out.stem + "_grille.jpg"))}
 
     def _mouth_checker(self, work: Path):
         """For the cover stills: which candidate frames show the mouth open (Haiku looks at a sheet of faces)."""

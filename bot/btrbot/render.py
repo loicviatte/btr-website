@@ -139,19 +139,71 @@ def square(work: Path, guest_cx: float, marius_cx: float, quote: dict, guest_nam
     return jpg
 
 
-def cover_crop(src: Image.Image, face: dict) -> Image.Image:
-    """The 9:16 window of the cover on a 4K still: full height when the face sits in the upper part; a face lower in
-    the frame is brought up to ~1/3 of the cover by cropping closer (never closer than 60 % of the height, never
-    cutting the head), so the hook below does not run over it."""
-    W, H = src.size
-    if abs(W / H - 9 / 16) < 0.02:                     # already vertical (a frame of the edit)
-        return src
+def cover_box(W: int, H: int, face: dict) -> tuple[float, float, float, float]:
+    """(x0, y0, width, height) of the cover's 9:16 window in a W×H still: full height when the face sits in the upper
+    part; a face lower in the frame is brought up to ~1/3 of the cover by cropping closer (never closer than 60 % of
+    the height, never cutting the head), so the hook below does not run over it."""
     c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
     h = H if c <= 0.36 * H else min(H, max(0.6 * H, fh * 2.6, (H - c) / 0.68))
     y0 = max(0.0, min(H - h, c - 0.32 * h))
     sw = h * 9 / 16
     x0 = max(0.0, min(W - sw, face.get("cx", 0.5) * W - sw / 2))
+    return x0, y0, sw, h
+
+
+def cover_crop(src: Image.Image, face: dict) -> Image.Image:
+    W, H = src.size
+    if abs(W / H - 9 / 16) < 0.02:                     # already vertical (a frame of the edit)
+        return src
+    x0, y0, sw, h = cover_box(W, H, face)
     return src.crop((int(x0), int(y0), int(x0 + sw), int(y0 + h)))
+
+
+GRID = {"centre": (240, 1680), "haut": (0, 1440)}   # Instagram profile grid (3:4) out of the 9:16 cover
+TEXT_BOTTOM = 1400                                   # bottom of the hook block (bottom: 520 px in the template)
+
+
+def grid_check(W: int, H: int, face: dict, text_top: float = 900.0) -> dict:
+    """Where the head (hair included) and the hook land on the cover, and whether both stay whole in the 3:4 grid
+    crops (centre = Instagram's default, haut = the team's rule « face and text inside the top 1080×1440 »)."""
+    if abs(W / H - 9 / 16) < 0.02:
+        x0, y0, sw, h = 0.0, 0.0, float(W), float(H)
+    else:
+        x0, y0, sw, h = cover_box(W, H, face)
+    k = 1920 / h
+    c, fh = face.get("cy", 0.35) * H, face.get("fh", 0.2) * H
+    head_top, chin = (c - 0.6 * fh - y0) * k, (c + 0.6 * fh - y0) * k     # forehead (hair may go), chin
+    issues = []
+    for name, (a, b) in GRID.items():
+        if head_top < a + 10:
+            issues.append(f"visage coupé en haut (grille {name})")
+        if TEXT_BOTTOM > b - 10:
+            issues.append(f"texte coupé en bas (grille {name})")
+    if chin > text_top + 60:
+        issues.append("texte sur le menton")
+    return {"head_top": round(head_top), "chin": round(chin), "text_top": round(text_top), "issues": issues}
+
+
+def grid_preview(cover: Path, out: Path) -> Path:
+    """The cover as the profile grid shows it: full 9:16, then the 3:4 crops (centre, haut), side by side."""
+    from PIL import ImageDraw, ImageFont
+    im = Image.open(cover).convert("RGB")
+    tiles = [("reel 9:16", im)] + [(f"grille 3:4 ({n})", im.crop((0, a, 1080, b))) for n, (a, b) in GRID.items()]
+    th = 640
+    sizes = [(int(t.width * th / t.height), th) for _, t in tiles]
+    sheet = Image.new("RGB", (sum(w for w, _ in sizes) + 20 * (len(tiles) - 1), th + 44), (20, 20, 20))
+    d = ImageDraw.Draw(sheet)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
+    except OSError:
+        font = ImageFont.load_default()
+    x = 0
+    for (label, t), (w, h) in zip(tiles, sizes):
+        sheet.paste(t.resize((w, h), Image.LANCZOS), (x, 44))
+        d.text((x + 6, 8), label, fill=(254, 203, 122), font=font)
+        x += w + 20
+    sheet.save(out, quality=88)
+    return out
 
 
 def reel_cover(work: Path, still: Path, face: dict, text: dict, guest_name: str, out: Path) -> Path:
@@ -166,9 +218,13 @@ def reel_cover(work: Path, still: Path, face: dict, text: dict, guest_name: str,
     page = work / "reel_cover.html"
     page.write_text(html)
     png = work / "reel_cover.png"
-    _shot(page, png, 1080, 1920)
+    info = _shot(page, png, 1080, 1920) or {}
     Image.open(png).convert("RGB").save(out, quality=94)
     png.unlink(missing_ok=True)
+    W, H = Image.open(still).size
+    chk = grid_check(W, H, face, float(info.get("top") or 900))
+    (out.parent / (out.stem + ".check.json")).write_text(__import__("json").dumps(chk))
+    grid_preview(out, out.parent / (out.stem + "_grille.jpg"))
     return out
 
 

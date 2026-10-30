@@ -1514,6 +1514,13 @@ async def send_cover(ctx, ep, n: int):
                                     caption=f"🖼 Cover du reel {n} : « {words} », photo {item.get('cover_pick', 1)}/"
                                             f"{item.get('cover_count', 1)}. Pour changer : « cover reel {n} : autre photo » "
                                             "ou « cover reel {n} : texte … ».".replace("{n}", str(n))[:1000])
+    grid = item.get("cover_grid")
+    if grid and Path(grid).exists():
+        issues = item.get("cover_issues") or []
+        verdict = ("✅ visage et texte entiers dans la grille Instagram (3:4, centre et haut)" if not issues
+                   else "⚠️ " + " ; ".join(issues) + f". Essaie « cover reel {n} : autre photo ».")
+        with open(grid, "rb") as f:
+            await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Reel {n} · aperçu grille : {verdict}"[:1000])
     MEMORY.add("assistant", f"[cover du reel {n} envoyée : « {words} », photo {item.get('cover_pick', 1)} sur "
                             f"{item.get('cover_count', 1)}]")
 
