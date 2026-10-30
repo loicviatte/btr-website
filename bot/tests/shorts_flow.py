@@ -68,7 +68,7 @@ rs.data = {"cands": [{"n": i, "title": f"Moment {i}", "start_s": 0, "end_s": 30}
                            "clickup_kind": "slot"},
                      "3": {"status": "dropped"}}}
 rs.save()
-tasks = {"T1": {"id": "T1"}, "T2": {"id": "T2", "due_date": str(due)}}
+tasks = {"T1": {"id": "T1", "status": {"status": "ready"}}, "T2": {"id": "T2", "due_date": str(due), "status": {"status": "ready"}}}
 calls = []
 
 
@@ -83,7 +83,9 @@ class FakeCU:
         calls.append(("field", tid, v))
 
     def update(self, tid, **kw):
-        calls.append(("update", tid, kw))
+        calls.append(("update", tid, dict(kw)))
+        if "status" in kw:
+            kw["status"] = {"status": kw["status"]}
         tasks[tid].update(kw)
 
 
@@ -136,7 +138,8 @@ async def main():
     assert it2["yt_short"]["at"] == "2026-11-20T18:00:00Z", it2
     assert it1["links"]["short"].startswith("https://youtube.com/shorts/")
     assert ("field", "T1", share.YT_SCHEDULED) in calls and any(c[0] == "update" and c[1] == "T1" for c in calls)
-    assert not any(c[0] == "update" and c[1] == "T2" for c in calls)          # a calendar slot keeps Loïc's date
+    assert not any(c[0] == "update" and c[1] == "T2" and "due_date" in c[2] for c in calls)   # a slot keeps Loïc's date
+    assert tasks["T2"]["status"]["status"] == "scheduled"
     assert "Rien à programmer" not in sent[-1][0] and "lien" in sent[-1][0], sent[-1][0]
     # nothing left to do
     await bot.shorts_go(ctx)
@@ -166,6 +169,37 @@ async def main():
                           "T", "u", "30.10", False)
     assert "YouTube Short : https://youtube.com/shorts/S3" in d and "mer. 25.11 19:00" in d, d
     print("OK flow")
+
+    # ---- the ClickUp-driven flow: cover OK → ready → scheduled ----
+    jobs = []
+    bot.bg = lambda c, label, coro, limit=None: jobs.append(coro) or "lancé"
+    ep2 = bot.reg.episode("VIDSHORTS02")
+    ep2["guest_name"] = "Kiera Brunton"
+    ep2.save()
+    rs2 = Reels.of(ep2)
+    rs2.data = {"id": 7, "cands": [{"n": 1, "title": "Ready one", "start_s": 0, "end_s": 30}], "sel": [1],
+                "items": {"1": {"status": "ok", "filed": True, "file": str(video), "instagram": False,
+                                "clickup_task": "T9", "clickup_kind": "short"}}}
+    rs2.save()
+    tasks["T9"] = {"id": "T9", "status": {"status": "approved"}}
+    before = len(yt)
+    await bot.shorts_watch(ctx)                       # approved: nothing happens
+    assert not jobs and len(yt) == before
+    await bot.covers_ok(ctx, ep2)
+    assert tasks["T9"]["status"]["status"] == "ready" and rs2.data["items"]["1"]["cover_ok"]
+    assert len(jobs) == 1, jobs
+    await jobs.pop()
+    assert len(yt) == before + 1 and tasks["T9"]["status"]["status"] == "scheduled", tasks["T9"]
+    await bot.shorts_watch(ctx)                       # nothing left
+    assert not jobs
+    # Loïc moves the date in ClickUp → the Short follows
+    new = int(datetime(2026, 12, 2, 12, 0, tzinfo=shorts.TZ).timestamp() * 1000)
+    tasks["T9"].update(due_date=str(new), due_date_time=False)
+    await bot.shorts_watch(ctx)
+    await jobs.pop()
+    sid = rs2.data["items"]["1"]["yt_short"]["id"]
+    assert yt[sid]["publishAt"] == "2026-12-02T18:00:00Z", yt[sid]
+    print("OK ready flow")
 
 
 asyncio.run(main())

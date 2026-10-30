@@ -31,6 +31,9 @@ WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts
             "Cover: face and text inside the top 1080×1440.\nShorts: set “Related video” to the episode, no link in the description.")
 WHERE_SHORT = ("Where: TikTok + YouTube Shorts only (not Instagram)\n"
                "Shorts: set “Related video” to the episode, no link in the description.")
+# Content calendar statuses: to generate → generated → approved (filed) → ready (Loïc validated the cover: the bot
+# schedules) → scheduled → posted
+LATER = ("ready", "scheduled", "posted")
 MARK = "———— BTR Studio ————"                 # everything below is rewritten by the bot at each validation
 FOLDER = "BTR Reels"
 MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}

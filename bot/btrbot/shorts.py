@@ -2,7 +2,7 @@
 
 Every filed reel becomes a Short, uploaded private with a publishAt: YouTube makes it public by itself at that time.
 The time comes from (first match): Loïc's own choice (item["short_at"]), the ClickUp task's due date (at HOUR when
-it has no time), the time already scheduled, else the next day without a Short (one per day, from tomorrow).
+it has no time; Loïc's planned times are kept), the time already scheduled, else the next day without a Short (one per day, from tomorrow).
 """
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -40,7 +40,10 @@ def due_at(task: dict | None, now: datetime) -> datetime | None:
         d = datetime.fromtimestamp(int(due) / 1000, TZ)
     except (TypeError, ValueError):
         return None
-    if not task.get("due_date_time"):
+    timed = task.get("due_date_time")
+    if timed is None:            # not always in the API answer: a date without time is stored at midnight / 4 am
+        timed = (d.hour, d.minute) not in ((0, 0), (3, 0), (4, 0), (23, 0))
+    if not timed:
         d = d.replace(hour=HOUR[0], minute=HOUR[1], second=0, microsecond=0)
     return d if d >= now + LEAD else None
 
@@ -78,7 +81,9 @@ def plan(entries: list[dict], now: datetime) -> list[dict]:
     out, busy = [], set()
     for e in entries:
         cur = e.get("cur_at")
-        if e.get("chosen"):
+        if e.get("vid") and cur and cur < now + LEAD:      # going out now: never moved
+            at, why = cur, "en cours de publication"
+        elif e.get("chosen"):
             at, why = e["chosen"], "ton choix"
         elif e.get("task_at"):
             at, why = e["task_at"], "date ClickUp"

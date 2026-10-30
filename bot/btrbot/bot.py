@@ -264,8 +264,9 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
     await poll_drive(ctx)
     try:
         await shorts_sync(ctx)
+        await shorts_watch(ctx)
     except Exception as e:  # noqa: BLE001
-        log.warning("shorts sync failed: %s", e)
+        log.warning("shorts sync/watch failed: %s", e)
     try:
         vids = await run(pipe.yt.unlisted_ready)
     except Exception as e:  # noqa: BLE001
@@ -926,6 +927,11 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = reels_or_fail()
         return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
 
+    async def covers_ok_t(nums=None):
+        ep = reels_or_fail()
+        await covers_ok(ctx, ep, [int(x) for x in nums or []] or None)
+        return "fait (message envoyé)"
+
     async def shorts_plan_t():
         return await shorts_show(ctx)
 
@@ -946,13 +952,14 @@ def tool_handlers(ctx, images: list) -> dict:
                 except ValueError as e:
                     return str(e)
             RS(ep).save()
-        return bg(ctx, "Shorts YouTube", shorts_go(ctx), limit=60 * 60)
+        await shorts_watch(ctx)
+        return "lancé (seuls les reels en « ready » dans ClickUp, cover validée, sont programmés)"
 
     return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
-            "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule,
+            "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -1415,10 +1422,8 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
     RS(ep).save()
     await say(ctx, "\n\n".join(lines) + "\n\nLes légendes sont dans chaque tâche ClickUp (blocs à copier). "
                    "Pour changer : « le 3 finalement en feed », « cover reel 2 : autre photo ».")
-    try:
-        await shorts_show(ctx)
-    except Exception:  # noqa: BLE001
-        log.exception("shorts plan")
+    await say(ctx, "Dernière étape : valide chaque cover (« ✅ Cover OK », ou écris « je valide les covers »). La tâche "
+                   "ClickUp passe en « ready » et je programme le Short YouTube tout seul.")
 
 
 async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None = None):
@@ -1434,6 +1439,11 @@ async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom
         await say(ctx, "Ces mots ne sont pas dits tels quels dans le reel : je garde l'accroche d'avant. "
                        "Donne-moi des mots exacts, dans l'ordre.")
     item.update(res)
+    if item.pop("cover_ok", None):
+        try:
+            await run(pipe.reel_status, dict(item), "approved", ("ready",))   # validate the new cover again
+        except Exception:  # noqa: BLE001
+            log.exception("clickup approved")
     RS(ep).save()
     if item.get("filed"):
         await share_reel(ctx, ep, n)                      # sends the cover; same Drive link, new cover on ClickUp
@@ -1546,8 +1556,10 @@ async def send_cover(ctx, ep, n: int):
         return
     t = item.get("cover_text") or {}
     words = " / ".join(x for x in (t.get("small"), t.get("big"), t.get("gold")) if x)
+    kb = K([[B("✅ Cover OK", callback_data=f"rcov:{RS(ep).data.get('id')}:{n}")]]) \
+        if item.get("status") == "ok" and not item.get("cover_ok") else None
     with open(item["cover"], "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["cover"]).name,
+        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["cover"]).name, reply_markup=kb,
                                     caption=f"🖼 Cover du reel {n} : « {words} », photo {item.get('cover_pick', 1)}/"
                                             f"{item.get('cover_count', 1)}. Pour changer : « cover reel {n} : autre photo » "
                                             "ou « cover reel {n} : texte … ».".replace("{n}", str(n))[:1000])
@@ -1687,6 +1699,12 @@ async def on_reel_button(ctx, q, d: str):
             await q.edit_message_reply_markup(dispatch_kb(ep))
         except Exception:  # noqa: BLE001
             pass
+    elif parts[0] == "rcov" and n:
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+        await covers_ok(ctx, ep, [n])
     elif parts[0] == "rfile":
         await say(ctx, esc(bg(ctx, "Rangement des reels", file_reels(ctx, ep))))
     elif parts[0] == "rno" and n:
@@ -1707,7 +1725,7 @@ def shorts_items() -> list:
     return sorted(out, key=lambda x: (x[0].video_id, not x[2].get("instagram", True), x[1]))
 
 
-async def shorts_plan() -> list:
+async def shorts_plan(ready_only: bool = False) -> list:
     from datetime import datetime, timezone
     from . import shorts
     items = shorts_items()
@@ -1727,8 +1745,11 @@ async def shorts_plan() -> list:
                 ys = {}
             elif st.get("privacyStatus") != "private" or not st.get("publishAt"):
                 continue                                     # already public: shorts_sync marks it, never touched
+        if ready_only and not ys.get("id") and info.get("cu_status") != "ready":
+            continue                                         # waits for « ready » (cover validated)
         entries.append({"key": key, "ep": ep, "n": n, "item": it, "vid": ys.get("id"), "cur_at": shorts.parse(ys.get("at")),
-                        "task_at": info.get("task_at"), "chosen": shorts.parse(it.get("short_at"))})
+                        "task_at": info.get("task_at"), "chosen": shorts.parse(it.get("short_at")),
+                        "cu_status": info.get("cu_status")})
     return shorts.plan(entries, datetime.now(timezone.utc))
 
 
@@ -1748,20 +1769,30 @@ async def shorts_show(ctx) -> str:
     for p in plan:
         who = f"{esc(pipe.reel_title(p['ep']))} · " if len(eps) > 1 else ""
         state = {"upload": "", "move": " · à déplacer", None: " · ✅ déjà programmé"}[p["action"]]
+        if not p.get("vid") and p.get("cu_status") != "ready":
+            state = " · ⏳ attend « ✅ Cover OK »"
         lines.append(f"• {who}{short_name(p)} → <b>{shorts.label(p['at'])}</b> ({p['why']}){state}")
-    todo = [p for p in plan if p["action"]]
-    lines.append("\nPour changer : « short 2 le 4.11 à 19h » (ou change la date dans ClickUp et redemande /shorts).")
-    kb = K([[B(f"▶️ Programmer sur YouTube ({len(todo)})", callback_data="ysch")]]) \
-        if todo else None
+    todo = [p for p in plan if p["action"] and (p.get("vid") or p.get("cu_status") == "ready")]
+    lines.append("\nC'est automatique : « ready » dans ClickUp = programmé (vérifié toutes les 15 min). Pour changer : "
+                 "change la date dans ClickUp, ou écris « short 2 le 4.11 à 19h ».")
+    kb = K([[B(f"▶️ Programmer maintenant ({len(todo)})", callback_data="ysch")]]) if todo else None
     await say(ctx, "\n".join(lines), reply_markup=kb)
     return f"plan envoyé ({len(todo)} à programmer)"
 
 
-async def shorts_go(ctx):
+async def shorts_go(ctx, ready_only: bool = False, quiet: bool = False):
     from . import shorts
-    plan = [p for p in await shorts_plan() if p["action"]]
+    full = await shorts_plan(ready_only)
+    for p in full:                                   # sent earlier but still « ready » in ClickUp
+        if not p["action"] and p.get("vid") and p.get("cu_status") == "ready":
+            try:
+                await run(pipe.reel_status, dict(p["item"]), "scheduled", ("ready",))
+            except Exception:  # noqa: BLE001
+                log.exception("clickup scheduled")
+    plan = [p for p in full if p["action"]]
     if not plan:
-        await say(ctx, "▶️ Rien à programmer : tous les Shorts sont déjà programmés.")
+        if not quiet:
+            await say(ctx, "▶️ Rien à programmer : tous les Shorts sont déjà programmés.")
         return
     await say(ctx, f"▶️ J'envoie {len(plan)} Short{'s' if len(plan) > 1 else ''} sur YouTube (privés jusqu'à l'heure dite)…")
     lines, warn = [], ""
@@ -1778,6 +1809,8 @@ async def shorts_go(ctx):
             lines.append(f"{short_name(p)} : ⚠️ <code>{esc(msg[-200:])}</code>")
             continue
         it["yt_short"] = {"id": res["id"], "at": res["at"]}
+        if it.get("clickup_kind") == "short" and not res.get("clickup_error"):
+            it.pop("short_at", None)                 # the ClickUp date holds it now: changing it there moves the Short
         it.setdefault("links", {})["short"] = res["url"]
         RS(ep).save()
         if res.get("locked"):
@@ -1790,8 +1823,55 @@ async def shorts_go(ctx):
         verb = "déplacé" if p["action"] == "move" else "programmé"
         extra = f" · ClickUp : {esc(res['clickup_error'])}" if res.get("clickup_error") else ""
         lines.append(f"{short_name(p)} : {verb} <b>{shorts.label(p['at'])}</b> · <a href=\"{res['url']}\">lien</a>{extra}")
-    await say(ctx, "\n".join(lines) + warn + "\n\nÀ faire dans YouTube Studio si tu veux : « Vidéo associée » = l'épisode "
-                   "(pas possible par l'API).")
+    await say(ctx, "\n".join(lines) + warn + "\n\nClickUp : « scheduled ». Changer une date = la changer dans ClickUp, je "
+                   "suis. À faire dans YouTube Studio si tu veux : « Vidéo associée » = l'épisode (pas possible par l'API).")
+
+
+SHORTS_BUSY: dict = {}
+
+
+async def shorts_watch(ctx):
+    """ClickUp is the trigger: a reel task in « ready » (cover validated) gets its Short scheduled; a date changed in
+    ClickUp moves a Short that is still waiting. Runs with every poll and right after « cover OK »."""
+    if SHORTS_BUSY or RUNNING.get("label") == "Shorts YouTube" or "Shorts YouTube" in WAITING:
+        return
+    plan = await shorts_plan(ready_only=True)
+    if not any(p["action"] or (p.get("vid") and p.get("cu_status") == "ready") for p in plan):
+        return
+    SHORTS_BUSY["on"] = True
+
+    async def go():
+        try:
+            await shorts_go(ctx, ready_only=True, quiet=True)
+        finally:
+            SHORTS_BUSY.clear()
+    bg(ctx, "Shorts YouTube", go(), limit=60 * 60)
+
+
+async def covers_ok(ctx, ep, nums: list[int] | None = None):
+    """Loïc validates covers: ClickUp « ready », which schedules the Shorts (shorts_watch)."""
+    items = RS(ep).data.get("items", {})
+    nums = nums or sorted(int(k) for k, it in items.items() if it.get("filed") and not it.get("cover_ok"))
+    done, skip = [], []
+    for n in nums:
+        it = items.get(str(n)) or {}
+        if not it.get("filed"):
+            skip.append(n)
+            continue
+        it["cover_ok"] = True
+        try:
+            await run(pipe.reel_status, dict(it), "ready", ("to generate", "generated", "approved"))
+        except Exception as e:  # noqa: BLE001
+            log.exception("clickup ready")
+            await say(ctx, f"⚠️ Reel {n} : ClickUp <code>{esc(str(e)[-150:])}</code>")
+        done.append(n)
+    RS(ep).save()
+    if not done:
+        await say(ctx, "Aucun reel rangé avec une cover à valider" + (f" ({', '.join(map(str, skip))} pas rangé)" if skip else "") + ".")
+        return
+    await say(ctx, f"✅ Cover{'s' if len(done) > 1 else ''} {', '.join(map(str, done))} validée{'s' if len(done) > 1 else ''} "
+                   "→ ClickUp « ready ». Je programme les Shorts YouTube.")
+    await shorts_watch(ctx)
 
 
 async def shorts_sync(ctx):
@@ -1835,6 +1915,7 @@ def reels_context() -> str:
             filed = (f" RANGÉ ({'feed + TikTok + Shorts' if it.get('instagram', True) else 'TikTok + Shorts'}) : Drive "
                      f"{it.get('file_base', '')}.mp4 + cover, tâche ClickUp « {it.get('clickup_name') or it.get('clickup_task')} » "
                      f"(approved, légendes dedans).")
+            filed += " Cover validée (ClickUp ready)." if it.get("cover_ok") else " Cover PAS encore validée."
             ys = it.get("yt_short") or {}
             if ys.get("posted"):
                 filed += " Short YouTube EN LIGNE."
@@ -1846,9 +1927,13 @@ def reels_context() -> str:
         lines.append(f"Reel {k} : {status.get(it.get('status'), 'en attente')},{filed} {it.get('duration', '?')} s, décalages "
                      f"début/fin {it.get('shift')}, phrases coupées {it.get('cuts') or 'aucune'}. Dit : {str(it.get('said', ''))[:300]}")
     unfiled = reels_unfiled(ep)
+    to_ok = sorted(int(k) for k, it in rs.get("items", {}).items() if it.get("filed") and not it.get("cover_ok"))
     lines.append("Rangement : " + (f"reels validés pas encore rangés : {', '.join(map(str, unfiled))} (question du feed à venir)"
                                    if unfiled else "TOUS les reels validés sont rangés (Drive + ClickUp) : plus de question "
-                                   "de feed ni de bouton à attendre. Une cover se change avec reel_cover ; tout est fini sinon."))
+                                   "de feed ni de bouton de feed à attendre. Une cover se change avec reel_cover. "
+                                   + (f"Covers à valider : {', '.join(map(str, to_ok))} (« je valide les covers » = covers_ok, "
+                                      "→ ClickUp ready → Shorts programmés)." if to_ok else
+                                      "Covers toutes validées : les Shorts se programment tout seuls.")))
     return "\n".join(lines)
 
 
@@ -1927,9 +2012,9 @@ async def on_button(update: Update, ctx):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
     if q.data == "ysch":
-        await say(ctx, esc(bg(ctx, "Shorts YouTube", shorts_go(ctx), limit=60 * 60)))
+        await shorts_watch(ctx)
         return
-    if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:")):
+    if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:", "rcov:")):
         await on_reel_button(ctx, q, q.data)
         return
     if q.data == "part:redo":
@@ -2238,6 +2323,11 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("covers_ok_1030"):          # 30.10.2026: « Je valide toutes les covers »
+                    reg.data["covers_ok_1030"] = True
+                    reg.save()
+                    if any(it.get("filed") and not it.get("cover_ok") for it in rs["items"].values()):
+                        await covers_ok(app, ep)
                 if not stuck:
                     await maybe_dispatch(app, ep)                     # all decided before the restart: next step
                 if reg.data.get("reels_files") != REELS_FILES:            # one folder per guest, calendar file names

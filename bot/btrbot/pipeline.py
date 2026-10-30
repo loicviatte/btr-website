@@ -914,7 +914,9 @@ class Pipeline:
                 old = ((share.WHERE_IG if instagram else share.WHERE_SHORT) if out.get("clickup_new")
                        else task.get("markdown_description") or task.get("description") or "")
                 name = share.slot_name(task.get("name", ""), label, title) if kind == "slot" else task.get("name", "")
-                cu.update(task["id"], name=name, status="approved",
+                cur = (task.get("status") or {}).get("status", "") if isinstance(task.get("status"), dict) else ""
+                st = {} if cur.lower() in share.LATER else {"status": "approved"}    # ready / scheduled / posted stay
+                cu.update(task["id"], name=name, **st,
                           markdown_content=share.description(old, out["links"], item, title, url, share.today_str(),
                                                              instagram, base))
                 task["name"] = name
@@ -950,7 +952,9 @@ class Pipeline:
             for k, it in rows:
                 if it.get("clickup_task"):
                     try:
-                        out[k]["task_at"] = shorts.due_at(cu.task(it["clickup_task"]), now)
+                        t = cu.task(it["clickup_task"])
+                        out[k]["task_at"] = shorts.due_at(t, now)
+                        out[k]["cu_status"] = ((t.get("status") or {}).get("status") or "").lower()
                     except Exception:  # noqa: BLE001
                         log.exception("clickup task")
         ids = {(it.get("yt_short") or {}).get("id"): k for k, it in rows if (it.get("yt_short") or {}).get("id")}
@@ -990,6 +994,7 @@ class Pipeline:
             try:
                 cu = share.ClickUp(token)
                 cu.set_field(tid, share.F_YT, share.YT_SCHEDULED)
+                self.reel_status(item, "scheduled", only_from=("to generate", "generated", "approved", "ready"), cu=cu)
                 if item.get("clickup_kind") == "short":
                     from . import shorts
                     ms = int(shorts.parse(publish_at).timestamp() * 1000)
@@ -998,6 +1003,22 @@ class Pipeline:
                 log.exception("clickup short")
                 out["clickup_error"] = str(e)[-200:]
         return out
+
+    def reel_status(self, item: dict, status: str, only_from: tuple = (), cu=None) -> str | None:
+        """ClickUp status of the reel's task → status (only when it is now one of only_from, if given).
+        Returns the status it had, None when there is no task / no ClickUp."""
+        from . import share
+        if not item.get("clickup_task"):
+            return None
+        if cu is None:
+            token = share.Secrets(self.cfg.data_dir).get("clickup_token")
+            if not token:
+                return None
+            cu = share.ClickUp(token)
+        cur = ((cu.task(item["clickup_task"]).get("status") or {}).get("status") or "").lower()
+        if cur != status and (not only_from or cur in only_from):
+            cu.update(item["clickup_task"], status=status)
+        return cur
 
     def short_posted(self, item: dict) -> None:
         from . import share

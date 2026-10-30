@@ -47,9 +47,13 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `pipeline.short_upload`, `YouTube.upload_short/reschedule/statuses`): every filed reel is sent private with a
   publishAt, YouTube makes it public by itself; time = Loïc's choice (item["short_at"], tool shorts_schedule « short 2 le
   4.11 à 19h ») > ClickUp due date (18:00 London if no time) > already scheduled > next day without a Short; plan shown
-  after « Ranger » and with /shorts (tool shorts_plan), nothing sent before his « ▶️ Programmer » tap or message;
-  ClickUp YouTube field Scheduled → Posted (`shorts_sync` in the 15-min poll), Short link in the task, the bot's own
-  « Short · » task gets the publishing time as due date (Drive file renamed). A public Short is never touched again.
+  ClickUp is the trigger: statuses to generate → generated → approved (filed) → ready → scheduled → posted; Loïc
+  validates a cover (« ✅ Cover OK » on the cover, tool covers_ok) → task « ready » (`bot.covers_ok`); `bot.shorts_watch`
+  (every poll + right after) schedules ready reels, then the task goes « scheduled » (YouTube only for now); a date changed
+  in ClickUp moves a waiting Short; a new cover puts the task back to approved; re-filing never moves a task back from
+  ready/scheduled/posted. ClickUp times are kept (date-only = 18:00 London, `shorts.due_at`). /shorts (tool shorts_plan)
+  shows the plan; YouTube field Scheduled → Posted (`shorts_sync`), Short link in the task, the bot's own « Short · »
+  task gets the publishing time as due date (Drive file renamed). A public Short is never touched again.
   Related video can't be set by the API (Loïc in Studio). Test: `tests/shorts_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
