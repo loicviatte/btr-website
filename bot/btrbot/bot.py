@@ -2139,6 +2139,20 @@ async def tt_posted(ctx, vid: str, n: int):
 TT_SET = {"c": "disable_comment", "d": "disable_duet", "s": "disable_stitch"}
 
 
+def T(fr: str, en: str) -> str:
+    """TikTok screens in English when Loïc records the demo for TikTok's review (« /tiktok en », back with « /tiktok fr »)."""
+    return en if reg.data.get("tt_en") else fr
+
+
+PRIVACY_EN = {"PUBLIC_TO_EVERYONE": "Everyone", "MUTUAL_FOLLOW_FRIENDS": "Friends", "FOLLOWER_OF_CREATOR": "Followers",
+              "SELF_ONLY": "Only me"}
+
+
+def tt_privacy(code: str) -> str:
+    from . import tiktok
+    return (PRIVACY_EN if reg.data.get("tt_en") else tiktok.PRIVACY_FR).get(code, code)
+
+
 def tt_card(ep, n: int):
     from . import shorts, tiktok
     it = reel_item(ep, n)
@@ -2147,44 +2161,51 @@ def tt_card(ep, n: int):
     who = cr.get("creator_nickname") or cr.get("creator_username") or "?"
     at = shorts.parse((it.get("yt_short") or {}).get("at"))
     lines = [f"🎵 <b>TikTok · {short_name({'ep': ep, 'n': n})}</b>",
-             f"Compte : <b>{esc(who)}</b>" + (f" (@{esc(cr['creator_username'])})" if cr.get("creator_username") else ""),
-             "Quand : " + (f"<b>{shorts.label(at)}</b> (Londres)" if at else "pas encore programmé (le Short d'abord)"),
-             f"Légende :\n<pre>{esc((it.get('captions') or {}).get('tiktok') or '')}</pre>"]
+             T("Compte", "Account") + f" : <b>{esc(who)}</b>" + (f" (@{esc(cr['creator_username'])})" if cr.get("creator_username") else ""),
+             T("Quand", "When") + " : " + (f"<b>{shorts.label(at)}</b> " + T("(Londres)", "(London)") if at
+                                          else T("pas encore programmé (le Short d'abord)", "not scheduled yet")),
+             T("Légende", "Caption") + f" :\n<pre>{esc((it.get('captions') or {}).get('tiktok') or '')}</pre>"]
     mx = cr.get("max_video_post_duration_sec")
     if mx and float(it.get("duration") or 0) > float(mx):
-        lines.append(f"⚠️ La vidéo dure {it.get('duration')} s, ce compte accepte {mx} s maximum.")
+        lines.append(T(f"⚠️ La vidéo dure {it.get('duration')} s, ce compte accepte {mx} s maximum.",
+                       f"⚠️ The video lasts {it.get('duration')} s, this account accepts {mx} s at most."))
     pl = st.get("privacy_level")
-    lines.append("Visibilité : " + (f"<b>{tiktok.PRIVACY_FR.get(pl, pl)}</b>" if pl else "<b>à choisir</b>"))
+    lines.append(T("Visibilité", "Who can view") + " : " + (f"<b>{tt_privacy(pl)}</b>" if pl else T("<b>à choisir</b>", "<b>choose</b>")))
     if st.get("commercial"):
         if st.get("brand_content_toggle"):
-            lines.append("Contenu commercial : sera étiqueté « Partenariat rémunéré ».")
+            lines.append(T("Contenu commercial : sera étiqueté « Partenariat rémunéré ».",
+                           "Commercial content: your video will be labeled “Paid partnership”."))
         elif st.get("brand_organic_toggle"):
-            lines.append("Contenu commercial : sera étiqueté « Contenu promotionnel ».")
+            lines.append(T("Contenu commercial : sera étiqueté « Contenu promotionnel ».",
+                           "Commercial content: your video will be labeled “Promotional content”."))
         else:
-            lines.append("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque ».")
-    lines.append("En publiant, tu acceptes la Music Usage Confirmation de TikTok"
-                 + (" et sa Branded Content Policy." if st.get("brand_content_toggle") else "."))
+            lines.append(T("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque ».",
+                           "Commercial content: choose “Your brand” and/or “Branded content”."))
+    lines.append(T("En publiant, tu acceptes la Music Usage Confirmation de TikTok", "By posting, you agree to TikTok's Music Usage Confirmation")
+                 + (T(" et sa Branded Content Policy.", " and Branded Content Policy.") if st.get("brand_content_toggle") else "."))
     if tt.get("confirmed"):
-        lines.append("✅ <b>Confirmé</b> : le bot publiera à l'heure dite. Tu peux encore changer et reconfirmer.")
+        lines.append(T("✅ <b>Confirmé</b> : le bot publiera à l'heure dite. Tu peux encore changer et reconfirmer.",
+                       "✅ <b>Confirmed</b>: the bot will post at the scheduled time. You can still change and confirm again."))
     key = f"ttc:{ep.video_id}:{n}"
     opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
-    rows = [[B(("● " if pl == o else "") + tiktok.PRIVACY_FR.get(o, o), callback_data=f"{key}:p:{i}")
+    rows = [[B(("● " if pl == o else "") + tt_privacy(o), callback_data=f"{key}:p:{i}")
              for i, o in enumerate(opts)][k:k + 2] for k in range(0, len(opts), 2)]
     tog = []
-    for code, label, dis in (("c", "Commentaires", "comment_disabled"), ("d", "Duo", "duet_disabled"),
+    for code, label, dis in (("c", T("Commentaires", "Comments"), "comment_disabled"), ("d", T("Duo", "Duet"), "duet_disabled"),
                              ("s", "Stitch", "stitch_disabled")):
         if cr.get(dis):
             tog.append(B(f"🚫 {label}", callback_data=f"{key}:x"))
         else:
             tog.append(B(("❌ " if st.get(TT_SET[code]) else "✅ ") + label, callback_data=f"{key}:{code}"))
     rows.append(tog)
-    rows.append([B(("☑️ " if st.get("commercial") else "⬜ ") + "Contenu commercial", callback_data=f"{key}:m")])
+    rows.append([B(("☑️ " if st.get("commercial") else "⬜ ") + T("Contenu commercial", "Commercial content"), callback_data=f"{key}:m")])
     if st.get("commercial"):
-        rows.append([B(("☑️ " if st.get("brand_organic_toggle") else "⬜ ") + "Ta marque", callback_data=f"{key}:o"),
-                     B(("☑️ " if st.get("brand_content_toggle") else "⬜ ") + "Contenu de marque", callback_data=f"{key}:b")])
-    rows.append([B("✅ Confirmer pour l'heure prévue", callback_data=f"{key}:go"),
-                 B("▶️ Publier maintenant", callback_data=f"{key}:now")])
-    rows.append([B("📥 Envoyer en brouillon dans TikTok", callback_data=f"{key}:draft")])
+        rows.append([B(("☑️ " if st.get("brand_organic_toggle") else "⬜ ") + T("Ta marque", "Your brand"), callback_data=f"{key}:o"),
+                     B(("☑️ " if st.get("brand_content_toggle") else "⬜ ") + T("Contenu de marque", "Branded content"),
+                       callback_data=f"{key}:b")])
+    rows.append([B(T("✅ Confirmer pour l'heure prévue", "✅ Confirm for the scheduled time"), callback_data=f"{key}:go"),
+                 B(T("▶️ Publier maintenant", "▶️ Post now"), callback_data=f"{key}:now")])
+    rows.append([B(T("📥 Envoyer en brouillon dans TikTok", "📥 Send as a draft to TikTok"), callback_data=f"{key}:draft")])
     return "\n".join(lines), K(rows)
 
 
@@ -2197,7 +2218,7 @@ async def tt_compose(ctx, ep, n: int):
     try:
         tt["creator"] = await run(lambda: tiktok.TikTok(share.Secrets(cfg.data_dir)).creator_info())
     except share.NotConnected:
-        await say(ctx, "TikTok n'est pas encore connecté : /connect.")
+        await say(ctx, T("TikTok n'est pas encore connecté : /connect.", "TikTok is not connected yet: /connect."))
         return
     except Exception as e:  # noqa: BLE001
         await say(ctx, f"⚠️ TikTok : <code>{esc(str(e)[-200:])}</code>")
@@ -2206,7 +2227,7 @@ async def tt_compose(ctx, ep, n: int):
     RS(ep).save()
     if it.get("file") and Path(it["file"]).exists():
         with open(it["file"], "rb") as f:
-            await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 Aperçu TikTok · {short_name({'ep': ep, 'n': n})}",
+            await ctx.bot.send_video(cfg.chat_id, f, caption=T("🎵 Aperçu TikTok · ", "🎵 TikTok preview · ") + short_name({'ep': ep, 'n': n}),
                                      supports_streaming=True, width=1080, height=1920,
                                      duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
     text, kb = tt_card(ep, n)
@@ -2222,13 +2243,15 @@ async def on_tt_button(ctx, q, data: str):
     st = tt.setdefault("settings", {})
     cr = tt.get("creator") or {}
     if tt.get("posted"):
-        await say(ctx, "Déjà publié sur TikTok.")
+        await say(ctx, T("Déjà publié sur TikTok.", "Already posted on TikTok."))
         return
     if act == "x":
-        await say(ctx, "Ce réglage est désactivé dans les paramètres de ton compte TikTok.")
+        await say(ctx, T("Ce réglage est désactivé dans les paramètres de ton compte TikTok.",
+                         "This setting is turned off in your TikTok account settings."))
         return
     if act == "draft":
-        await say(ctx, "📥 J'envoie la vidéo en brouillon dans la boîte TikTok du compte…")
+        await say(ctx, T("📥 J'envoie la vidéo en brouillon dans la boîte TikTok du compte…",
+                         "📥 Sending the video as a draft to the account's TikTok inbox…"))
         asyncio.create_task(tt_draft(ctx, ep, n))
         return
     if act == "p":
@@ -2246,16 +2269,18 @@ async def on_tt_button(ctx, q, data: str):
         st["brand_content_toggle"] = not st.get("brand_content_toggle")
         if st["brand_content_toggle"] and st.get("privacy_level") == "SELF_ONLY":
             st["privacy_level"] = None
-            await say(ctx, "Un contenu de marque ne peut pas être privé : choisis une autre visibilité.")
+            await say(ctx, T("Un contenu de marque ne peut pas être privé : choisis une autre visibilité.",
+                             "Branded content can't be private: choose another audience."))
     elif act in ("go", "now"):
         if not st.get("privacy_level"):
-            await say(ctx, "Choisis d'abord la visibilité.")
+            await say(ctx, T("Choisis d'abord la visibilité.", "Choose who can view this video first."))
             return
         if st.get("commercial") and not (st.get("brand_organic_toggle") or st.get("brand_content_toggle")):
-            await say(ctx, "Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque », ou décoche-le.")
+            await say(ctx, T("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque », ou décoche-le.",
+                             "Commercial content: choose “Your brand” and/or “Branded content”, or untick it."))
             return
         if st.get("brand_content_toggle") and st.get("privacy_level") == "SELF_ONLY":
-            await say(ctx, "Un contenu de marque ne peut pas être privé.")
+            await say(ctx, T("Un contenu de marque ne peut pas être privé.", "Branded content can't be private."))
             return
         tt["confirmed"] = True
         RS(ep).save()
@@ -2266,7 +2291,7 @@ async def on_tt_button(ctx, q, data: str):
         if act == "now":
             tt["sent"] = "now"
             RS(ep).save()
-            await say(ctx, "🎵 J'envoie sur TikTok…")
+            await say(ctx, T("🎵 J'envoie sur TikTok…", "🎵 Posting to TikTok…"))
             asyncio.create_task(tt_publish(ctx, ep, n))
     RS(ep).save()
     text, kb = tt_card(ep, n)
@@ -2300,8 +2325,9 @@ async def tt_publish(ctx, ep, n: int):
             for k in ("confirmed", "sent", "settings"):
                 tt.pop(k, None)
             RS(ep).save()
-            await say(ctx, f"🎵 {name} est publié sur TikTok en privé (Moi uniquement) : c'était un test, le reel reste "
-                           "prévu comme avant (notification à son heure).")
+            await say(ctx, T(f"🎵 {name} est publié sur TikTok en privé (Moi uniquement) : c'était un test, le reel reste "
+                             "prévu comme avant (notification à son heure).",
+                             f"🎵 {name} is posted on TikTok (Only me)."))
             return
         tt["posted"] = True
         RS(ep).save()
@@ -2310,9 +2336,8 @@ async def tt_publish(ctx, ep, n: int):
         except Exception:  # noqa: BLE001
             log.exception("clickup tt posted")
         private = tt["settings"].get("privacy_level") == "SELF_ONLY"
-        await say(ctx, f"🎵 {name} est en ligne sur TikTok"
-                       + (" (privé)" if private else f" ({tiktok.PRIVACY_FR.get(tt['settings']['privacy_level'], '')})")
-                       + ". ClickUp : Posted.")
+        await say(ctx, T(f"🎵 {name} est en ligne sur TikTok", f"🎵 {name} is live on TikTok")
+                       + f" ({tt_privacy(tt['settings']['privacy_level'])}). ClickUp : Posted.")
     except Exception as e:  # noqa: BLE001
         log.exception("tiktok post")
         tt.pop("confirmed", None)
@@ -2339,8 +2364,9 @@ async def tt_draft(ctx, ep, n: int):
                 break
         if st.get("status") == "FAILED" or not st.get("status"):
             raise RuntimeError(st.get("fail_reason") or "pas de réponse de TikTok")
-        await say(ctx, f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
-                       "et publie.\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
+        await say(ctx, T(f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
+                         "et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the notification "
+                         "in TikTok to edit and post it.") + "\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
     except Exception as e:  # noqa: BLE001
         log.exception("tiktok draft")
         await say(ctx, f"⚠️ Brouillon TikTok refusé : <code>{esc(str(e)[-200:])}</code>")
@@ -2351,6 +2377,13 @@ async def tiktok_cmd(update: Update, ctx):
     if not allowed(update):
         return
     from . import shorts
+    lang = [a.lower() for a in (ctx.args or []) if a.lower() in ("en", "fr")]
+    if lang:
+        reg.data["tt_en"] = lang[0] == "en"
+        reg.save()
+        await say(ctx, "🎵 TikTok screens in English (/tiktok fr to switch back)." if lang[0] == "en"
+                  else "🎵 Écrans TikTok en français.")
+        return
     args = [a for a in (ctx.args or []) if a.isdigit()]
     if args:
         ep = reel_ep()
@@ -2716,15 +2749,21 @@ async def connect_cmd(update: Update, ctx):
     msg.append("Sur app.clickup.com : ton avatar → Settings → Apps → API Token → Generate, copie le code « pk_… » et "
                "colle-le ici (j'efface ton message tout de suite).")
     tt_ok = bool(sec.get("tt_refresh"))
-    msg.append(f"\n<b>TikTok</b> {'✅ connecté' if tt_ok else '❌'}")
+    if reg.data.get("tt_en"):                         # demo for TikTok's review: only the TikTok part, in English
+        msg = []
+    msg.append(f"\n<b>TikTok</b> {T('✅ connecté', '✅ connected') if tt_ok else '❌'}")
     if sec.get("tt_client_key"):
         from . import tiktok
-        msg.append(f"<a href=\"{esc(tiktok.auth_url(sec.get('tt_client_key')))}\">{'Reconnecter' if tt_ok else 'Connecter'} "
-                   "le compte TikTok</a> : connecte-toi avec le compte BTR, accepte, puis colle ici le message « tiktok … » "
-                   "affiché par la page BTR.")
+        msg.append(f"<a href=\"{esc(tiktok.auth_url(sec.get('tt_client_key')))}\">"
+                   + T(f"{'Reconnecter' if tt_ok else 'Connecter'} le compte TikTok", "Log in with TikTok") + "</a> : "
+                   + T("connecte-toi avec le compte BTR, accepte, puis colle ici le message « tiktok … » affiché par la page BTR.",
+                       "authorize BTR Studio, then paste here the message shown by the BTR page."))
     elif not tt_ok:
         msg.append("developers.tiktok.com → app BTR Studio : colle ici « tiktok CLIENT_KEY CLIENT_SECRET » (j'efface ton "
                    "message), puis suis le lien que je t'envoie.")
+    if reg.data.get("tt_en"):
+        await say(ctx, "\n".join(msg).strip())
+        return
     from . import instagram
     ig_ok = sec.get("ig_username")
     msg.append(f"\n<b>Instagram</b> {'✅ @' + esc(ig_ok) if ig_ok else '❌'}")
@@ -2764,8 +2803,10 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
         else:
             try:
                 u = await run(tiktok.connect, sec, m_tt.group(1))
-                await say(ctx, f"✅ TikTok connecté ({esc(u.get('display_name') or 'compte')}). Message effacé. "
-                               "/tiktok = l'écran de publication du prochain reel.")
+                await say(ctx, T(f"✅ TikTok connecté ({esc(u.get('display_name') or 'compte')}). Message effacé. "
+                                 "/tiktok = l'écran de publication du prochain reel.",
+                                 f"✅ TikTok connected ({esc(u.get('display_name') or 'account')}). /tiktok opens the posting "
+                                 "screen of the next clip."))
             except Exception as e:  # noqa: BLE001
                 await say(ctx, f"⚠️ Connexion TikTok refusée : {esc(str(e)[-250:])}")
         return True

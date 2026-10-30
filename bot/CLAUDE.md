@@ -81,6 +81,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   disables them), commercial content (your brand / branded content, never private), Music Usage / Branded Content
   declaration, « Confirmer pour l'heure prévue » or « Publier maintenant »); a confirmed reel is posted by `tt_publish`
   at the Short's time (FILE_UPLOAD, status polled; failure = back to the notification). Unaudited app = private posts:
+  « /tiktok en » / « /tiktok fr » = TikTok screens (and /connect, TikTok part only) in English for the review demo (`T`).
   « 📥 Envoyer en brouillon » = Upload (video.upload, `tt_draft`, inbox draft). The composer is only sent with /tiktok until the audit; site pages /terms and /privacy (BTR Studio section) for it. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
