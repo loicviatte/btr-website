@@ -2296,6 +2296,13 @@ async def tt_publish(ctx, ep, n: int):
                 break
         if st.get("status") != "PUBLISH_COMPLETE":
             raise RuntimeError(st.get("fail_reason") or st.get("status") or "pas de réponse de TikTok")
+        if tt["settings"].get("privacy_level") == "SELF_ONLY":    # private = a test: the reel stays planned
+            for k in ("confirmed", "sent", "settings"):
+                tt.pop(k, None)
+            RS(ep).save()
+            await say(ctx, f"🎵 {name} est publié sur TikTok en privé (Moi uniquement) : c'était un test, le reel reste "
+                           "prévu comme avant (notification à son heure).")
+            return
         tt["posted"] = True
         RS(ep).save()
         try:
