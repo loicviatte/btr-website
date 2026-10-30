@@ -2314,8 +2314,9 @@ async def tt_publish(ctx, ep, n: int):
         tt["publish_id"] = pid
         RS(ep).save()
         st = {}
-        for _ in range(40):
-            await asyncio.sleep(15)
+        await say(ctx, T("🎵 Vidéo envoyée, TikTok la traite…", "🎵 Video uploaded, TikTok is processing it…"))
+        for _ in range(60):
+            await asyncio.sleep(5)
             st = await run(api.status, pid)
             if st.get("status") in ("PUBLISH_COMPLETE", "FAILED"):
                 break
@@ -2357,13 +2358,13 @@ async def tt_draft(ctx, ep, n: int):
         api = tiktok.TikTok(share.Secrets(cfg.data_dir))
         pid = await run(api.draft, Path(it["file"]))
         st = {}
-        for _ in range(40):
-            await asyncio.sleep(10)
+        for _ in range(12):                               # the inbox notification usually comes within a minute
+            await asyncio.sleep(5)
             st = await run(api.status, pid)
             if st.get("status") in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE", "FAILED"):
                 break
-        if st.get("status") == "FAILED" or not st.get("status"):
-            raise RuntimeError(st.get("fail_reason") or "pas de réponse de TikTok")
+        if st.get("status") == "FAILED":
+            raise RuntimeError(st.get("fail_reason") or "FAILED")
         await say(ctx, T(f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
                          "et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the notification "
                          "in TikTok to edit and post it.") + "\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
