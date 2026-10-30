@@ -10,7 +10,7 @@ export default function Privacy() {
       <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <a href="/" style={{ ...mono, fontSize: 12, letterSpacing: '0.12em', color: '#fecb7a', textDecoration: 'none' }}>← BREAK THE ROUTINE</a>
         <h1 style={{ ...mono, margin: '12px 0 0', fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.08 }}>Privacy</h1>
-        <p style={{ ...p, color: '#c9b8a6' }}>Last updated 26 October 2026.</p>
+        <p style={{ ...p, color: '#c9b8a6' }}>Last updated 30 October 2026.</p>
 
         <h2 style={h2}>Who we are</h2>
         <p style={p}>Break The Routine is a DanceSport podcast hosted by Marius Iepure, a Dance United &amp; Oti Marius Dance Studio production. This page explains what happens to your data on breaktheroutinepodcast.com. Contact: breaktheroutine@protonmail.com.</p>
@@ -25,6 +25,9 @@ export default function Privacy() {
 
         <h2 style={h2}>Hosting and our own YouTube data</h2>
         <p style={p}>The site is hosted by Vercel. To publish new episode pages, we read our own YouTube channel’s video details and captions through the YouTube API. We don’t access anyone else’s YouTube account. Our use of YouTube data follows the YouTube Terms of Service and the Google Privacy Policy.</p>
+
+        <h2 style={h2}>BTR Studio (our publishing tool)</h2>
+        <p style={p}>BTR Studio is the team’s private tool for publishing clips of our own episodes on our own YouTube, Instagram and TikTok accounts, through each platform’s official API. When a team member connects one of our accounts, the platform gives the tool an access token for that account only; it is kept on our private server, readable only by the tool, and never shared. From TikTok it reads the account’s basic profile (name, avatar) and the posting settings TikTok returns (allowed audiences, maximum video length), and it uploads the videos the team approved, with the caption and settings chosen before each post. It reads no other user’s data, no messages and no followers’ data. Tokens can be revoked at any time from the platform’s settings (on TikTok: Settings and privacy → Security → Apps and services); we then delete them from our server.</p>
 
         <h2 style={h2}>Your rights</h2>
         <p style={p}>You can ask us to see, correct or delete what you sent us at any time: write to breaktheroutine@protonmail.com.</p>
