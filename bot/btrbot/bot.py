@@ -1945,6 +1945,10 @@ async def ig_job(ctx, ep, n: int, it: dict, step: str):
             if res.get("note"):
                 await say(ctx, f"📸 {name} : {esc(res['note'])}")
         else:
+            if await run(pipe.ig_grid, dict(it)) != bool(ig.get("grid")):    # placement changed in ClickUp meanwhile
+                res = await run(pipe.ig_prepare, ep, n, dict(it))
+                ig.update(container=res["container"], made=res["made"], grid=res["grid"])
+                RS(ep).save()
             res = await run(pipe.ig_publish, dict(it))
             ig.update(posted=True, id=res["id"], permalink=res.get("permalink", ""))
             it.setdefault("links", {})["instagram"] = res.get("permalink") or ""

@@ -1039,14 +1039,7 @@ class Pipeline:
         ig = instagram.Instagram(sec)
         guest = ep.get("guest_name") or ""
         caps = share.apply_handle(item.get("captions") or {}, guest, share.guest_handle(guest))   # latest @ known
-        grid = False
-        token, tid = sec.get("clickup_token"), item.get("clickup_task")
-        if token and tid:
-            try:
-                v = share._field(share.ClickUp(token).task(tid), share.F_PLACEMENT)
-                grid = v in (0, "0", share.GRID) or (isinstance(v, dict) and v.get("id") == share.GRID)
-            except Exception:  # noqa: BLE001
-                log.exception("clickup placement")
+        grid = self.ig_grid(item)
         cover_id = (item.get("drive_ids") or {}).get("cover")
         cover = f"https://drive.usercontent.google.com/download?id={cover_id}&export=download" if cover_id else None
         collab = caps.get("collab") or []
@@ -1067,6 +1060,19 @@ class Pipeline:
                     raise
                 log.exception("instagram try %s", k)
         return {"container": cid, "made": datetime.now(timezone.utc).isoformat(), "grid": grid, "note": note}
+
+    def ig_grid(self, item: dict) -> bool:
+        """ClickUp « Instagram placement » of the reel's task: Grid = also in the profile grid (else Reels tab only)."""
+        from . import share
+        token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
+        if not (token and tid):
+            return False
+        try:
+            v = share._field(share.ClickUp(token).task(tid), share.F_PLACEMENT)
+        except Exception:  # noqa: BLE001
+            log.exception("clickup placement")
+            return False
+        return v in (0, "0", share.GRID) or (isinstance(v, dict) and v.get("id") == share.GRID)
 
     def ig_publish(self, item: dict) -> dict:
         from . import instagram, share

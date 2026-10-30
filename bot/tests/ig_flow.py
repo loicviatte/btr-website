@@ -42,6 +42,7 @@ share.Secrets.get = lambda self, k, d=None: SEC.get(k, d)
 calls = []
 p = bot.pipe
 p.ig_mark = lambda item, v: calls.append(("mark", v))
+p.ig_grid = lambda item: False
 p.ig_prepare = lambda ep, n, item: calls.append(("prepare", n)) or {"container": f"C{n}", "made": now.isoformat(),
                                                                        "grid": False, "note": ""}
 fail = [0]
