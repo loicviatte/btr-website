@@ -1888,7 +1888,16 @@ async def ig_tick(ctx):
     if IG_BUSY:
         return
     now = datetime.now(timezone.utc)
-    connected = bool(share.Secrets(cfg.data_dir).get("ig_token"))
+    sec = share.Secrets(cfg.data_dir)
+    connected = bool(sec.get("ig_token"))
+    exp = shorts.parse(sec.get("ig_expires"))
+    if connected and exp and exp - now < timedelta(days=7) and reg.data.get("ig_expiry_warned") != now.date().isoformat():
+        reg.data["ig_expiry_warned"] = now.date().isoformat()
+        reg.save()
+        await say(ctx, f"📸 L'accès Instagram expire {shorts.label(exp)} : refais un token dans l'Explorateur de l'API "
+                       "Graph (app BTR - Short) et colle « ID clé_secrète token » ici. /connect pour les étapes.")
+        if exp <= now:
+            connected = False
     items = sorted(ig_items(), key=lambda x: x[2]["yt_short"]["at"])
     for ep, n, it in items:                                # ClickUp: Instagram « Scheduled » (the bot holds it)
         ig = it.setdefault("ig_post", {})
@@ -2344,15 +2353,13 @@ async def connect_cmd(update: Update, ctx):
     ig_ok = sec.get("ig_username")
     msg.append(f"\n<b>Instagram</b> {'✅ @' + esc(ig_ok) if ig_ok else '❌'}")
     if not ig_ok:
-        msg.append("Sur ordinateur, 10 min, une seule fois (API officielle de Meta) :\n"
-                   "1. <a href=\"https://developers.facebook.com/apps/creation/\">developers.facebook.com/apps</a> → "
-                   "Créer une app → cas d'usage « Gérer les messages et le contenu sur Instagram » → « Configuration de "
-                   "l'API avec connexion Facebook ». Nom : BTR Studio. Pas besoin de la publier (mode développement).\n"
-                   "2. Paramètres de l'app → Général : copie l'<b>ID de l'app</b> et la <b>clé secrète</b>.\n"
-                   "3. <a href=\"https://developers.facebook.com/tools/explorer/\">Explorateur de l'API Graph</a> : choisis "
-                   "l'app BTR Studio, « Générer un token d'accès », coche <code>" + esc(instagram.SCOPES) + "</code>, connecte-toi et sélectionne la page Facebook BTR et le compte Instagram BTR. Copie le token (EAA…).\n"
-                   "4. Colle ici en un seul message : <code>ID clé_secrète token</code>. J'efface ton message tout de suite ; "
-                   "je ne garde que le token de la page (il n'expire pas).")
+        msg.append("Sur ordinateur, une seule fois (API officielle de Meta, app « BTR - Short ») :\n"
+                   "1. developers.facebook.com → app BTR - Short → Paramètres → Général : copie l'<b>ID de l'app</b> et "
+                   "la <b>clé secrète</b>.\n"
+                   "2. <a href=\"https://developers.facebook.com/tools/explorer/\">Explorateur de l'API Graph</a> : app "
+                   "BTR - Short, « Get User Access Token », permissions <code>" + esc(instagram.SCOPES) + "</code>, "
+                   "« Generate Access Token », coche la page Facebook BTR et le compte Instagram BTR. Copie le token (EAA…).\n"
+                   "3. Colle ici en un seul message : <code>ID clé_secrète token</code>. J'efface ton message tout de suite.")
     await say(ctx, "\n".join(msg))
 
 
@@ -2381,8 +2388,11 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
         from . import instagram
         try:
             user = await run(instagram.connect, sec, app_id.group(0), secret.group(0), meta.group(0))
+            kind = sec.get("ig_kind")
             await say(ctx, f"✅ Instagram connecté (@{esc(user)}). J'ai effacé ton message. Les reels feed en « ready » "
-                           "seront publiés par moi à leur heure, avec la cover et les invitations collab.")
+                           "seront publiés par moi à leur heure, avec la cover et les invitations collab."
+                      + (" Accès valable 60 jours : je te préviens une semaine avant pour le renouveler (même manip)."
+                         if kind == "user" else ""))
         except Exception as e:  # noqa: BLE001
             await say(ctx, f"⚠️ Connexion Instagram refusée : {esc(str(e)[-250:])}")
         return True

@@ -56,8 +56,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   task gets the publishing time as due date (Drive file renamed). A public Short is never touched again.
   Related video can't be set by the API (Loïc in Studio). Test: `tests/shorts_flow.py`.
   Instagram (`btrbot/instagram.py`, Graph API with Facebook Login v23.0, no third party): connected with /connect (Loïc
-  pastes « app_id app_secret EAA-token » from the Graph API Explorer; `instagram.connect` keeps only the never-expiring
-  Page token + IG id, message deleted, scrubbed from MEMORY). A feed reel (item["instagram"]) whose Short is scheduled
+  pastes « app_id app_secret EAA-token » from the Graph API Explorer; `instagram.connect` keeps the never-expiring
+  Page token + IG id, or, when the app can't get pages_show_list (BTR - Short), finds the Page / IG ids in the token's
+  grants (debug_token) and keeps the long-lived user token (ig_kind user, 60 days, `ig_tick` warns 7 days before);
+  message deleted, scrubbed from MEMORY). A feed reel (item["instagram"]) whose Short is scheduled
   is posted by the bot at the same time: `bot.ig_tick` every minute; ~45 min before = `pipeline.ig_prepare` (container,
   resumable upload of the local file, caption, collaborators = captions["collab"], cover_url = Drive direct link,
   retried without cover; ClickUp « Instagram placement » Grid = share_to_feed, else Reels tab only), at the time =

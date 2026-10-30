@@ -14,7 +14,7 @@ import requests
 from .share import NotConnected, Secrets
 
 GRAPH = "https://graph.facebook.com/v23.0"
-SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management"
+SCOPES = "instagram_basic,instagram_content_publish,pages_read_engagement"
 
 
 def _check(r: requests.Response) -> dict:
@@ -30,24 +30,63 @@ def _check(r: requests.Response) -> dict:
 
 
 def connect(secrets: Secrets, app_id: str, app_secret: str, user_token: str) -> str:
-    """Short user token → long-lived → the token of the Page linked to the Instagram account (no expiry).
-    Returns the Instagram @username. Nothing but the page token and ids is kept."""
+    """Short user token → long-lived → the token of the Page linked to the Instagram account (no expiry). Without
+    pages_show_list (not offered to every app), the Page and Instagram ids come from the token's own grants
+    (debug_token); if the Page token can't be read, the long-lived user token is kept (60 days, the bot warns).
+    Returns the Instagram @username."""
+    import datetime as dt
     long = _check(requests.get(f"{GRAPH}/oauth/access_token", timeout=30, params={
         "grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": app_secret,
-        "fb_exchange_token": user_token}))["access_token"]
-    pages = _check(requests.get(f"{GRAPH}/me/accounts", timeout=30, params={
-        "access_token": long, "fields": "id,name,access_token,instagram_business_account{id,username}",
-        "limit": 100})).get("data", [])
+        "fb_exchange_token": user_token}))
+    utok = long["access_token"]
+    fields = "id,name,access_token,instagram_business_account{id,username}"
+    pages = []
+    try:
+        pages = _check(requests.get(f"{GRAPH}/me/accounts", timeout=30, params={
+            "access_token": utok, "fields": fields, "limit": 100})).get("data", [])
+    except RuntimeError:
+        pass
+    ig_ids = []
+    if not any(p.get("instagram_business_account") for p in pages):
+        dbg = _check(requests.get(f"{GRAPH}/debug_token", timeout=30, params={
+            "input_token": utok, "access_token": f"{app_id}|{app_secret}"})).get("data", {})
+        grants = {g.get("scope"): g.get("target_ids") or [] for g in dbg.get("granular_scopes", [])}
+        ig_ids = grants.get("instagram_content_publish") or grants.get("instagram_basic") or []
+        pages = []
+        for pid in grants.get("pages_read_engagement") or []:
+            try:
+                pages.append(_check(requests.get(f"{GRAPH}/{pid}", timeout=30, params={"access_token": utok,
+                                                                                          "fields": fields})))
+            except RuntimeError:
+                pass
     pages = [p for p in pages if p.get("instagram_business_account")]
-    if not pages:
-        raise RuntimeError("aucune page Facebook reliée à un compte Instagram pro dans ce que tu as autorisé : "
-                           "recommence et coche la page BTR et le compte Instagram")
     pick = next((p for p in pages if "routine" in (p["instagram_business_account"].get("username") or "").lower()
-                 or "routine" in p.get("name", "").lower()), pages[0])
-    ig = pick["instagram_business_account"]
-    secrets.set(ig_token=pick["access_token"], ig_user=ig["id"], ig_username=ig.get("username", ""),
-                ig_page=pick["id"])
-    return ig.get("username", "")
+                 or "routine" in p.get("name", "").lower()), pages[0] if pages else None)
+    if pick and pick.get("access_token"):
+        ig = pick["instagram_business_account"]
+        secrets.set(ig_token=pick["access_token"], ig_user=ig["id"], ig_username=ig.get("username", ""),
+                    ig_page=pick["id"], ig_kind="page", ig_expires="")
+        return ig.get("username", "")
+    if pick:
+        ig_ids = [pick["instagram_business_account"]["id"]] + ig_ids
+    if not ig_ids:
+        raise RuntimeError("aucun compte Instagram pro dans ce que tu as autorisé : régénère le token et coche la page "
+                           "Facebook BTR et le compte Instagram BTR")
+    best = None
+    for iid in ig_ids:
+        try:
+            u = _check(requests.get(f"{GRAPH}/{iid}", timeout=30, params={"access_token": utok, "fields": "id,username"}))
+        except RuntimeError:
+            continue
+        if best is None or "routine" in (u.get("username") or "").lower():
+            best = u
+    if not best:
+        raise RuntimeError("je n'arrive pas à lire le compte Instagram avec ce token")
+    secs = int(long.get("expires_in") or 60 * 86400)
+    exp = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=secs)).isoformat()
+    secrets.set(ig_token=utok, ig_user=best["id"], ig_username=best.get("username", ""), ig_page="", ig_kind="user",
+                ig_expires=exp)
+    return best.get("username", "")
 
 
 class Instagram:
