@@ -1,19 +1,19 @@
 {
- "date": "2026-10-29",
- "subscribers": 232,
- "channelViews": 37951,
+ "date": "2026-10-30",
+ "subscribers": 236,
+ "channelViews": 38969,
  "episodes": [
   {
    "id": "8tsAnwQanY0",
    "title": "Break the Routine with Anthony Rutherford | From Ballroom to Broadcasting",
    "publishedAt": "2026-08-18T16:38:07Z",
-   "views": 209
+   "views": 210
   },
   {
    "id": "c8xICOkFwEI",
    "title": "Break the Routine with Ian Waite | From Strictly to Dance for Everyone",
    "publishedAt": "2026-09-01T16:45:26Z",
-   "views": 584
+   "views": 598
   },
   {
    "id": "bIJ-LJsgLbE",
@@ -31,7 +31,7 @@
    "id": "ktcEnjS1SF4",
    "title": "Break the Routine with Kiera Brunton | From Disney to American Smooth",
    "publishedAt": "2026-07-14T06:30:05Z",
-   "views": 382
+   "views": 388
   },
   {
    "id": "6SKeUQM4E1k",
@@ -43,13 +43,13 @@
    "id": "-wx7h1S8eQ8",
    "title": "Break the Routine with Nicole Cutler | From South Africa to DanceSport Voice",
    "publishedAt": "2026-08-04T15:00:05Z",
-   "views": 513
+   "views": 514
   },
   {
    "id": "-DigDTAnOfw",
    "title": "Break the Routine with Oskar Odiakosa | From Ballroom Outsider to Voice for Belonging (PART 1)",
    "publishedAt": "2026-09-08T18:30:37Z",
-   "views": 353
+   "views": 355
   },
   {
    "id": "o3Daq6WSuzs",
@@ -73,19 +73,25 @@
    "id": "aW03-xv1Iyc",
    "title": "Break the Routine with Phemelo Mabuse | From DanceSport to Endurance & Leadership",
    "publishedAt": "2026-08-25T16:30:39Z",
-   "views": 283
+   "views": 287
+  },
+  {
+   "id": "pi1IhRO8v4w",
+   "title": "She Left Everything Behind to Chase Her Dance Dream | Break the Routine with Oti Mabuse",
+   "publishedAt": "2026-10-22T10:22:29Z",
+   "views": 1865
   },
   {
    "id": "yO0vuX-Ygpc",
    "title": "The Safeguarding Questions DanceSport Can’t Ignore | Break the Routine with Leila Stewart",
    "publishedAt": "2026-10-14T16:00:30Z",
-   "views": 469
+   "views": 477
   },
   {
    "id": "SFl--dzjGvE",
    "title": "Why He Left at His Peak for New York | Break the Routine with Peter Maxwell",
    "publishedAt": "2026-10-06T21:54:00Z",
-   "views": 1077
+   "views": 1082
   }
  ]
 }
