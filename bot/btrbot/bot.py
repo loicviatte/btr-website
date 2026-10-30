@@ -2325,6 +2325,41 @@ async def reel_fast_path(ctx, text: str) -> bool:
     return True
 
 
+async def igtest_cmd(update: Update, ctx):
+    """Dry run for the next Instagram reel: upload + processing at Meta (container), never published. The container is
+    kept for the real post if it is still fresh then."""
+    if not allowed(update):
+        return
+    from . import shorts
+    items = sorted(ig_items(), key=lambda x: x[2]["yt_short"]["at"])
+    if not items:
+        await say(ctx, "📸 Aucun reel Instagram en attente.")
+        return
+    if IG_BUSY:
+        await say(ctx, "📸 Un envoi Instagram est déjà en cours, réessaie dans quelques minutes.")
+        return
+    ep, n, it = items[0]
+    name = short_name({"ep": ep, "n": n})
+    await say(ctx, f"📸 Test sur {name} (prévu {shorts.label(shorts.parse(it['yt_short']['at']))}) : j'envoie la vidéo à "
+                   "Instagram sans publier…")
+    IG_BUSY["on"] = True
+    try:
+        res = await run(pipe.ig_prepare, ep, n, dict(it))
+        ig = it.setdefault("ig_post", {})
+        ig.update(container=res["container"], made=res["made"], grid=res["grid"])
+        RS(ep).save()
+        collab = " et ".join("@" + h for h in (it.get("captions") or {}).get("collab") or [])
+        await say(ctx, f"✅ Test OK : vidéo acceptée et traitée par Instagram"
+                       + (f", {esc(res['note'])}" if res.get("note") else ", cover et invitations collab acceptées")
+                       + f" ({'grille + onglet Reels' if res['grid'] else 'onglet Reels seulement'}"
+                       + (f", collab {collab}" if collab else "") + "). Rien n'est publié : il sortira à son heure.")
+    except Exception as e:  # noqa: BLE001
+        log.exception("igtest")
+        await say(ctx, f"⚠️ Test Instagram : <code>{esc(str(e)[-300:])}</code>")
+    finally:
+        IG_BUSY.clear()
+
+
 async def shorts_cmd(update: Update, ctx):
     if not allowed(update):
         return
@@ -2636,6 +2671,7 @@ def main():
     app.add_handler(CommandHandler("reels", reels_cmd))
     app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CommandHandler("shorts", shorts_cmd))
+    app.add_handler(CommandHandler("igtest", igtest_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

@@ -69,7 +69,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   "" = no Instagram); unknown → `bot.ask_handle` (at « Ranger » with feed reels and at cover OK: Sonnet + web search
   `llm.guest_instagram`, buttons igh:ok / igh:none, or Loïc types the @ → `handle_reply`; tool guest_instagram);
   `share.apply_handle` puts « @handle on … » in the Instagram caption + collab [guest, mariusiepure], applied again at
-  posting time. Test: `tests/ig_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
+  posting time. /igtest = dry run on the next IG reel (container only, kept if still fresh). Test: `tests/ig_flow.py`. Three steps: 1) ✅ Valider / 🗑 Jeter on each preview (nothing filed);
   2) once every ticked reel is decided, `maybe_dispatch` asks which ones also go on the Instagram feed (buttons rfeed,
   tick order = publishing order; also at boot and after /connect); 3) « Ranger » (rfile / tool reels_file) = `file_reels`:
   for each reel (feed ones first), cover (`pipeline.reel_cover`: sharp 4K guest stills kept at render time in
