@@ -199,3 +199,32 @@ async def main():
     print("OK publishing")
 
 asyncio.run(main())
+
+# ---- one slide's photo changes, the others stay ---------------------------------------------------------
+assert posts.slide_sids("moment", 2, "bas") == ["m3"] and posts.slide_sids("moment", 1) == ["m0", "m1"]
+assert posts.slide_sids("topics", 1) == ["cover"] and posts.slide_sids("topics", 8) == ["end"] and posts.slide_sids("topics", 4) == ["t2"]
+assert posts.sid_slide("moment", "m3") == 2 and posts.sid_slide("topics", "t2") == 4 and posts.sid_slide("topics", "end") == 8
+M = postmaker.Maker(NS(cfg=NS(ytdlp_cookies=None), llm=NS(open_eyes=lambda sheet: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])),
+                    bot.cfg.data_dir)
+ep2 = bot.reg.episode("VIDPOSTS002")
+st2 = posts.PostState(ep2)
+st2.data = {"items": {"moment": {"kind": "moment"}}, "content": {"moment": {"sentences": [{"text": "x", "t": 10.0 * i} for i in range(8)]}},
+            "shots": {}}
+pool = [{"t": float(t), "kind": "guest", "sharp": 100, "fh": .3, "cy": .35, "cx": .5, "fw": .2, "top": .2, "file": str(jpg)}
+        for t in range(1, 120, 2)]
+M._scan = lambda ep: [(c["t"], Path(c["file"])) for c in pool]
+M._classify = lambda ep, fr, times: pool
+import btrbot.frames as frames  # noqa: E402
+frames.full_res_url = lambda vid, cookies: "url"
+frames.grab = lambda src, t, out: Image.new("RGB", (3840, 2160)).save(out) or out
+frames.face_sheet = lambda cands, out: out
+M.refine = lambda shot: shot
+from PIL import Image  # noqa: E402
+M.shots(ep2, st2, ["moment"])
+before = {k: v["t"] for k, v in st2.data["shots"].items()}
+assert len(before) == 8
+M.shots(ep2, st2, ["moment"], None, {"moment:m3"}, {"moment:m3": {"t": 100.0, "who": None}})
+after = {k: v["t"] for k, v in st2.data["shots"].items()}
+assert after["moment:m3"] != before["moment:m3"] and abs(after["moment:m3"] - 100) <= 20, after
+assert all(after[k] == before[k] for k in before if k != "moment:m3")
+print("OK one slide")

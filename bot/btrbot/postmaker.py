@@ -233,20 +233,29 @@ class Maker:
         cache_f.write_text(json.dumps(cache))
         return out
 
-    def shots(self, ep, st: posts.PostState, keys: list[str], again: set[str] | None = None) -> list[str]:
-        """Chooses and grabs in 4K every photo the items need. `again`: item keys whose photos must change."""
+    def shots(self, ep, st: posts.PostState, keys: list[str], again: set[str] | None = None,
+              redo: set[str] | None = None, want: dict | None = None) -> list[str]:
+        """Chooses and grabs in 4K every photo the items need. `again`: item keys whose photos all change; `redo`: only
+        these photos (« moment:m3 », « topics:t2 ») change, the others stay; `want`: sid → {"t": seconds, "who": …}
+        when Loïc says which moment or which kind of shot."""
         fr = self._scan(ep)
         if not fr:
             raise RuntimeError("pas d'images de l'épisode")
         c_all = st.data.get("content", {})
         shots = st.data.setdefault("shots", {})
+        again, redo, want = again or set(), redo or set(), want or {}
         reqs = []
         for k in keys:
             kind = st.items[k]["kind"]
             for nd in posts.needs(kind, c_all.get(k) or {}):
                 nd = dict(nd, key=k, sid=f"{k}:{nd['id']}")
-                if nd["sid"] in shots and k not in (again or set()):
+                if nd["sid"] in shots and k not in again and nd["sid"] not in redo:
                     continue
+                w = want.get(nd["sid"]) or {}
+                if w.get("t") is not None:
+                    nd.update(t=float(w["t"]), win=20, after=False)
+                if w.get("who") in ("guest", "marius", "both", "wide", "noface"):
+                    nd["who"] = w["who"]
                 reqs.append(nd)
         warn = []
         if not reqs:
@@ -258,11 +267,11 @@ class Maker:
                 lo, hi = t - 3 * win, t + 3 * win
                 times |= {x for x, _ in fr if lo <= x <= hi}
         cands = self._classify(ep, fr, times)
-        used = [s["t"] for sid, s in shots.items() if s.get("t") is not None and sid.split(":")[0] not in {r["key"] for r in reqs}]
-        for k in {r["key"] for r in reqs}:
-            for sid in [s for s in shots if s.startswith(k + ":")]:
-                if k in (again or set()):
-                    used.append(shots[sid].get("t", -99))     # « autres photos »: never the same again
+        changing = {r["sid"] for r in reqs}
+        used = [s["t"] for sid, s in shots.items() if s.get("t") is not None and sid not in changing]
+        for sid in changing:                                  # « autres photos »: never the same photo again
+            if sid in shots and shots[sid].get("t") is not None and (want.get(sid) or {}).get("t") is None:
+                used.append(shots[sid]["t"])
         chosen = {}
         eyes_q = []
         for nd in reqs:

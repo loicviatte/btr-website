@@ -177,9 +177,18 @@ TOOLS = [
     {"name": "post_feedback", "description": "Retour de Loïc sur UN carrousel ou UNE story déjà en aperçu (« dans le "
                                             "topics, change le titre 3 », « la story poll : question trop longue », "
                                             "« autre photo pour la citation »). key = moment, topics, poll, … ; "
-                                            "photos=true s'il veut d'autres photos ; feedback = sa demande telle quelle.",
+                                            "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "feedback": {"type": "string"},
                       "photos": {"type": "boolean"}}, "required": ["key"]}},
+    {"name": "post_photos", "description": "Changer la PHOTO de certaines slides d'un carrousel (ou d'une story) sans "
+                                          "toucher aux autres : « slide 3 autre photo », « topics slide 5 un plan large », "
+                                          "« key moment slide 2 en bas, prends vers 33:50 ». key = moment / topics / "
+                                          "poll…; slides = numéros (vide = toutes) ; part = haut | bas (Key moment : 2 "
+                                          "photos par slide) ; at = moment voulu « mm:ss » ; who = guest | marius | both "
+                                          "(les deux) | wide (plan large).",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
+                      "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
+                      "at": {"type": "string"}, "who": {"type": "string"}}, "required": ["key"]}},
     {"name": "posts_validate", "description": "Loïc VALIDE des carrousels / stories en aperçu (« ok pour le key moment », "
                                              "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
                                              "prévue. keys vides = tous les aperçus en attente.",

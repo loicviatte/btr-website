@@ -1030,6 +1030,14 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"{post_name(ep, key)} (retour)", posts_make(ctx, ep, [key], feedback=feedback or "",
                                                                    photos=bool(photos), reset=bool(feedback)))
 
+    async def post_photos(key, slides=None, part=None, at=None, who=None):
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        sl = [int(x) for x in slides or []]
+        if not sl:
+            return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
+        return bg(ctx, f"Photos slides {sl} · {post_name(ep, key)}", posts_photos(ctx, ep, key, sl, part, at, who))
+
     async def posts_validate(keys=None):
         ep = posts_ep_of()
         st = _posts.PostState(ep)
@@ -1070,7 +1078,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
-            "posts_make": posts_make_t, "post_feedback": post_feedback, "posts_validate": posts_validate,
+            "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "posts_validate": posts_validate,
             "posts_status": posts_status_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
@@ -3415,7 +3423,29 @@ async def on_post_button(ctx, q, d: str):
     if act == "ok":
         await say(ctx, bg(ctx, f"Rangement {post_name(ep, k)}", post_validate(ctx, ep, k)))
     elif act == "ph":
-        await say(ctx, bg(ctx, f"Photos {post_name(ep, k)}", posts_make(ctx, ep, [k], photos=True)))
+        if it["kind"] in _posts.CAROUSELS:                 # which slide(s): the others keep their photos
+            n = len(it.get("files") or [])
+            if it["kind"] == "moment":
+                btns = [B(f"{i} {'↑' if p == 'h' else '↓'}", callback_data=f"pst:ps:{vid}:{k}:{i}:{p}")
+                        for i in range(1, n + 1) for p in ("h", "b")]
+            else:
+                btns = [B(str(i), callback_data=f"pst:ps:{vid}:{k}:{i}") for i in range(1, n + 1)]
+            rows = [btns[j:j + 4] for j in range(0, len(btns), 4)] + [[B("Toutes", callback_data=f"pst:ps:{vid}:{k}:0")]]
+            await say(ctx, "Quelle photo changer ? (↑ = photo du haut, ↓ = du bas ; ou écris-moi « slide 3, plan large vers "
+                           "12:30 »)", reply_markup=K(rows))
+        else:
+            await say(ctx, bg(ctx, f"Photos {post_name(ep, k)}", posts_make(ctx, ep, [k], photos=True)))
+    elif act == "ps":
+        slide = int(parts[4]) if len(parts) > 4 else 0
+        part = parts[5] if len(parts) > 5 else None
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+        if not slide:
+            await say(ctx, bg(ctx, f"Photos {post_name(ep, k)}", posts_make(ctx, ep, [k], photos=True)))
+        else:
+            await say(ctx, bg(ctx, f"Photo slide {slide} · {post_name(ep, k)}", posts_photos(ctx, ep, k, [slide], part)))
     elif act == "tx":
         await say(ctx, bg(ctx, f"Textes {post_name(ep, k)}", posts_make(ctx, ep, [k], reset=True)))
     elif act == "b":
@@ -3708,6 +3738,45 @@ async def posts_rerender(ctx, ep, keys: list[str]):
         await send_post_safe(ctx, ep, k)
 
 
+async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = None, at: str | None = None,
+                       who: str | None = None):
+    """New photos on these slides only (the other slides keep theirs); only the changed slides are shown again."""
+    from telegram import InputMediaPhoto as P
+    M = maker()
+    st = _posts.PostState(ep)
+    it = st.items.get(k)
+    if not it or not it.get("files"):
+        await say(ctx, "Ce post n'est pas encore fait.")
+        return
+    kind = it["kind"]
+    nt = len((st.data.get("content", {}).get(k) or {}).get("items") or []) or 6
+    sids = [f"{k}:{x}" for sl in slides for x in _posts.slide_sids(kind, int(sl), part, nt)]
+    if not sids:                                          # a story: all its photos
+        sids = [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]
+    t = _posts.secs(at) if at else None
+    want = {sid: {"t": t, "who": who} for sid in sids}
+    warn = await run(M.shots, ep, st, [k], None, set(sids), want)
+    await run(M.render, ep, st, [k])
+    st = _posts.PostState(ep)
+    it = st.items[k]
+    changed = sorted({_posts.sid_slide(kind, sid.split(":", 1)[1], nt) for sid in sids})
+    files = it.get("files") or []
+    if kind in _posts.CAROUSELS:
+        pick = [files[i - 1] for i in changed if 0 < i <= len(files)]
+        if len(pick) == 1:
+            await tg(ctx.bot.send_photo, cfg.chat_id, Path(pick[0]).read_bytes())
+        elif pick:
+            await tg(ctx.bot.send_media_group, cfg.chat_id, [P(Path(f).read_bytes()) for f in pick])
+        note = ("\n⚠️ " + "\n⚠️ ".join(esc(w) for w in warn)) if warn else ""
+        await say(ctx, f"📷 {esc(post_name(ep, k))} : nouvelle photo slide{'s' if len(changed) > 1 else ''} "
+                       f"{', '.join(map(str, changed))}, les autres slides n'ont pas changé.{note}",
+                  reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
+        it["sent"] = True
+        st.save()
+    else:
+        await send_post_safe(ctx, ep, k, warn)
+
+
 async def posts_cmd(update: Update, ctx):
     """/posts [lien] [moment|topics|poll|…] — carousels & stories of an episode."""
     if not allowed(update):
@@ -3823,7 +3892,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
-    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender""")
+    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for

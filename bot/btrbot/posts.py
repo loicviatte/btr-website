@@ -424,6 +424,34 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     return [base]
 
 
+def slide_sids(kind: str, slide: int, part: str | None = None, n_topics: int = 6) -> list[str]:
+    """Photos (shot ids) on one slide: Key moment slide n = 2 photos (top / bottom), Topics 1 = cover, last = end."""
+    if kind == "moment":
+        ids = [f"m{2 * (slide - 1)}", f"m{2 * (slide - 1) + 1}"]
+        p = (part or "").lower()
+        if p in ("haut", "top", "h", "1", "up"):
+            return ids[:1]
+        if p in ("bas", "bottom", "b", "2", "down"):
+            return ids[1:]
+        return ids
+    if kind == "topics":
+        last = n_topics + 2
+        if slide <= 1:
+            return ["cover"]
+        if slide >= last:
+            return ["end"]
+        return [f"t{slide - 2}"]
+    return []
+
+
+def sid_slide(kind: str, sid: str, n_topics: int = 6) -> int:
+    if kind == "moment" and sid.startswith("m"):
+        return int(sid[1:]) // 2 + 1
+    if kind == "topics":
+        return 1 if sid == "cover" else n_topics + 2 if sid == "end" else int(sid[1:]) + 2
+    return 1
+
+
 # ---------------------------------------------------------------- shot choice
 def score(c: dict) -> float:
     return c.get("sharp", 0) * (0.6 + c.get("fh", 0)) - 40 * max(0.0, c.get("cy", 0.4) - 0.45)
