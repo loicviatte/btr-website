@@ -125,6 +125,15 @@ class DryRun(Exception):
     """Raised instead of writing to a video that is already public."""
 
 
+def _sig(path) -> str:
+    """A cover file and its version: a cover made again (same path) is attached to ClickUp again."""
+    try:
+        st = Path(path).stat()
+        return f"{path}:{st.st_size}:{int(st.st_mtime)}"
+    except OSError:
+        return str(path)
+
+
 class Pipeline:
     def __init__(self, cfg: Settings):
         self.cfg = cfg
@@ -969,11 +978,11 @@ class Pipeline:
                                        or "of " in str(share._field(task, share.F_EPISODE))):
                     cu.set_field(task["id"], share.F_EPISODE, label)
                 if item.get("cover") and Path(item["cover"]).exists() and (
-                        item.get("cover_sent") != item.get("cover") or out.get("clickup_new")
+                        item.get("cover_sent") != _sig(item["cover"]) or out.get("clickup_new")
                         or item.get("clickup_task") != task["id"]):
                     try:
                         cu.attach(task["id"], Path(item["cover"]))
-                        out["cover_sent"] = item["cover"]
+                        out["cover_sent"] = _sig(item["cover"])
                     except Exception:  # noqa: BLE001
                         log.exception("clickup attach")
                 out.update(clickup_task=task["id"], clickup_kind=kind, clickup_name=name,

@@ -1192,7 +1192,7 @@ REELS_RULES = ("2026-10-29-names", "chaque mot reste au moins 0,5 s à l'écran 
                                    "reels déjà validés le restent.")
 
 
-REELS_FILES = "captions-2"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
+REELS_FILES = "covers-3"   # bump when the Drive layout / file names change: validated reels are re-filed at boot
 
 
 def loic_wrote(words: str) -> bool:
@@ -3069,10 +3069,9 @@ async def on_boot(app):
                     reg.save()
                     done = sorted(int(k) for k, it in rs["items"].items() if it.get("status") == "ok" and it.get("links"))
                     if done:
-                        await say(app, f"📁 Je mets à jour les reels rangés ({', '.join(map(str, done))}) : légendes au "
-                                       "format validé (comme le premier reel d'Oti), Drive et ClickUp.")
+                        await say(app, f"📁 Je remets les covers refaites dans ClickUp (reels {', '.join(map(str, done))}).")
                         for k in done:
-                            bg(app, f"Reel {k} → Drive + ClickUp", share_reel(app, ep, k))
+                            bg(app, f"Reel {k} → Drive + ClickUp", share_reel(app, ep, k, quiet=True, cover=False))
                 if reg.data.get("reels_rules") != REELS_RULES[0] and rs.get("sel"):
                     reg.data["reels_rules"] = REELS_RULES[0]
                     reg.save()
