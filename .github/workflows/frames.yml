@@ -11,8 +11,8 @@ jobs:
     env:
       VID: yO0vuX-Ygpc
       # start-end windows (seconds), frames every second
-      WINDOWS: ""
-      SCAN: "1"
+      WINDOWS: "764-770 884-889 1139-1144"
+      SCAN: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -31,7 +31,7 @@ jobs:
               --download-sections "*${a}-${b}" --force-keyframes-at-cuts -o "clips/w${a}.%(ext)s" \
               "https://www.youtube.com/watch?v=$VID" >> frames/log.txt 2>&1 || echo "fail $w" >> frames/log.txt
             f=$(ls clips/w${a}.* 2>/dev/null | head -1)
-            [ -n "$f" ] && ffmpeg -loglevel error -i "$f" -vf fps=1 -q:v 2 "frames/t${a}_%03d.jpg"
+            [ -n "$f" ] && ffmpeg -loglevel error -i "$f" -vf fps=1 -q:v 2 "frames/${VID}_t${a}_%03d.jpg"
           done
           rm -f cookies.txt
           ls frames | wc -l
