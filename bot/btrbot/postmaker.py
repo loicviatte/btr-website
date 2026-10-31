@@ -324,20 +324,37 @@ class Maker:
         st.save()
         return warn
 
+    def uploads(self, n: int = 250) -> list[dict]:
+        """The channel's uploads, newest first, past the last 50 (lots of Shorts in between the episodes)."""
+        yt = self.pipe.yt
+        ids, tok = [], None
+        while len(ids) < n:
+            r = yt.svc.playlistItems().list(part="contentDetails", playlistId=yt.uploads_playlist(), maxResults=50,
+                                            pageToken=tok).execute()
+            ids += [i["contentDetails"]["videoId"] for i in r.get("items", [])]
+            tok = r.get("nextPageToken")
+            if not tok:
+                break
+        out = []
+        for j in range(0, len(ids), 50):
+            out += yt.svc.videos().list(part="snippet,status,contentDetails", id=",".join(ids[j:j + 50]),
+                                        maxResults=50).execute().get("items", [])
+        return out
+
     def prev_shot(self, ep, name: str, sdir: Path) -> dict:
         """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question)."""
         from . import reels
         import cv2
         vid = None
-        longs = [v for v in self.pipe.yt.recent(50) if v["status"].get("privacyStatus") == "public"
+        longs = [v for v in self.uploads(250) if v["status"].get("privacyStatus") == "public"
                  and ("H" in v["contentDetails"].get("duration", "") or re.search(r"(\d+)M", v["contentDetails"].get("duration", ""))
                       and int(re.search(r"(\d+)M", v["contentDetails"]["duration"]).group(1)) >= 15)]
         if name:
             last = name.split()[-1].lower()
             vid = next((v["id"] for v in longs if v["id"] != ep.video_id and last in v["snippet"]["title"].lower()), None)
         if not vid:                    # the Chain = the guest of the episode just before this guest's first one
-            me = (ep.get("guest_name") or "").split()[-1:] or [""]
-            mine = [v for v in longs if me[0] and me[0].lower() in v["snippet"]["title"].lower()] or \
+            me = (ep.get("guest_name") or "").lower()
+            mine = [v for v in longs if me and me in v["snippet"]["title"].lower()] or \
                    [v for v in longs if v["id"] == ep.video_id]
             olds = sorted(longs, key=lambda v: v["snippet"].get("publishedAt", ""))
             first = min((v["snippet"].get("publishedAt", "") for v in mine), default="9999")

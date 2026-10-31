@@ -3142,6 +3142,16 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("posts_test_1031b") and not reg.data.get("posts_chain_1031"):   # previous guest found
+                    reg.data["posts_chain_1031"] = True                                         # in the whole channel
+                    reg.save()
+                    pst = _posts.PostState(ep)
+                    if "chain" in pst.items and pst.items["chain"].get("status") == "draft":
+                        for sid in [x for x in pst.data.get("shots", {}) if x.startswith("chain:prev")]:
+                            pst.data["shots"].pop(sid)
+                        pst.items["chain"]["warn"] = []
+                        pst.save()
+                        bg(app, "Story The Chain (guest précédent)", posts_make(app, ep, ["chain"]))
                 if reg.data.get("posts_test_1031") and not reg.data.get("posts_test_1031b"):   # the trial stopped on a
                     reg.data["posts_test_1031b"] = True                                       # network error: finish it
                     reg.save()
