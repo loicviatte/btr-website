@@ -94,7 +94,27 @@ def allowed(update: Update) -> bool:
 
 async def say(ctx, text, **kw):
     MEMORY.add("assistant", text)
-    return await ctx.bot.send_message(cfg.chat_id, text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, **kw)
+    return await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, **kw)
+
+
+async def tg(fn, *a, **kw):
+    """A Telegram send that survives a slow upload or a network hiccup (3 tries, long timeouts for files)."""
+    from telegram.error import NetworkError, RetryAfter, TimedOut
+    kw.setdefault("write_timeout", 120)
+    kw.setdefault("read_timeout", 60)
+    for i in range(3):
+        try:
+            return await fn(*a, **kw)
+        except RetryAfter as e:
+            await asyncio.sleep(float(getattr(e, "retry_after", 5)) + 1)
+        except (TimedOut, NetworkError):
+            if i == 2:
+                raise
+            await asyncio.sleep(3 * (i + 1))
+            for x in a:                                  # files must be read again from the start
+                if hasattr(x, "seek"):
+                    x.seek(0)
+    return await fn(*a, **kw)
 
 
 async def run(fn, *a):
@@ -3122,6 +3142,18 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("posts_test_1031") and not reg.data.get("posts_test_1031b"):   # the trial stopped on a
+                    reg.data["posts_test_1031b"] = True                                       # network error: finish it
+                    reg.save()
+                    pst = _posts.PostState(ep)
+                    if "moment" in pst.items:
+                        pst.items["moment"]["sent"] = True
+                    for sid in [x for x in pst.data.get("shots", {}) if x.startswith("chain:")]:
+                        pst.data["shots"].pop(sid)
+                    if "chain" in pst.items:
+                        pst.items["chain"].pop("files", None)
+                    pst.save()
+                    bg(app, f"Essai carrousels & stories · {ep.get('guest_name')} (suite)", posts_finish(app, ep))
                 if not reg.data.get("posts_test_1031") and TOPICS.group:   # 31.10.2026: first run of carousels & stories
                     reg.data["posts_test_1031"] = True
                     reg.save()
@@ -3232,6 +3264,14 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
         await say(ctx, "Tout est déjà validé pour cet épisode (dis-moi lequel refaire si besoin).")
         return
     guest = ep.get("guest_name") or ep.video_id
+    unsent = [k for k in keys if not (only or feedback or photos or reset) and st.items[k].get("files")
+              and st.items[k].get("v") == _posts.V and st.items[k].get("status") == "draft" and not st.items[k].get("sent")]
+    if unsent:                                            # rendered but never shown (interrupted): just send them
+        for k in unsent:
+            await send_post_safe(ctx, ep, k)
+        keys = [k for k in keys if k not in unsent]
+        if not keys:
+            return
     if not only:
         src = "ClickUp" if st.data.get("from_clickup") else "rotation par défaut (aucune tâche ClickUp trouvée pour cet épisode)"
         await say(ctx, f"📚 Je prépare pour <b>{esc(guest)}</b> ({src}) : " + ", ".join(_posts.LABEL[st.items[k]['kind']] for k in keys)
@@ -3253,7 +3293,7 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
     warn += await run(M.shots, ep, st, keys, set(keys) if photos else None)
     await run(M.render, ep, st, keys)
     for k in keys:
-        await send_post(ctx, ep, k, [w for w in warn if w.startswith(k)])
+        await send_post_safe(ctx, ep, k, [w for w in warn if w.startswith(k)])
     try:
         cu = M.clickup()
         for k in keys:
@@ -3264,6 +3304,14 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
                     await run(lambda: cu.update(tid, status="generated"))
     except Exception:  # noqa: BLE001
         log.exception("posts clickup status")
+
+
+async def send_post_safe(ctx, ep, k: str, warn: list[str] | None = None):
+    try:
+        await send_post(ctx, ep, k, warn)
+    except Exception as e:  # noqa: BLE001
+        log.exception("send_post %s", k)
+        await say(ctx, f"⚠️ Aperçu {esc(post_name(ep, k))} pas envoyé (<code>{esc(str(e)[-120:])}</code>) : « /posts » le renvoie.")
 
 
 def post_buttons(vid: str, k: str, kind: str, b: bool) -> K:
@@ -3291,8 +3339,8 @@ async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
     if kind in _posts.CAROUSELS:
         files = it.get("files") or []
         for j in range(0, len(files), 10):
-            media = [P(open(f, "rb")) for f in files[j:j + 10]]
-            await ctx.bot.send_media_group(cfg.chat_id, media)
+            media = [P(Path(f).read_bytes()) for f in files[j:j + 10]]
+            await tg(ctx.bot.send_media_group, cfg.chat_id, media)
         caps = it.get("captions") or {}
         await say(ctx, f"<b>{esc(name)}</b>{esc(when)} · {len(files)} slides{note}\n\nLégende Instagram :\n<pre>"
                   f"{esc(caps.get('instagram', ''))}</pre>", reply_markup=post_buttons(ep.video_id, k, kind, False))
@@ -3306,11 +3354,12 @@ async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
             if s.get("options"):
                 stk += " · " + " / ".join(esc(o) for o in s["options"]) + (f" (bonne : {esc(s['right'])})" if s.get("right") else "")
         auto = " · publiée toute seule (pas de sticker)" if kind in _posts.AUTO_STORIES else " · je t'envoie tout à l'heure prévue"
-        with open(it["preview"], "rb") as f:
-            await ctx.bot.send_photo(cfg.chat_id, f, caption=f"{name}{when}{auto}"[:1000])
+        await tg(ctx.bot.send_photo, cfg.chat_id, Path(it["preview"]).read_bytes(), caption=f"{name}{when}{auto}"[:1000])
         await say(ctx, f"<b>{esc(name)}</b> (à gauche le fichier, à droite les zones Instagram){stk}{note}",
                   reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
     MEMORY.add("assistant", f"[aperçu envoyé : {name}]")
+    it["sent"] = True
+    st.save()
 
 
 async def post_validate(ctx, ep, k: str):
@@ -3385,8 +3434,8 @@ async def send_files(ctx, files: list, caption: str):
                 r = await run(lambda u=f: requests.get(u, timeout=60))
                 media.append(D(r.content, filename=str(f).rsplit("/", 1)[-1]))
             else:
-                media.append(D(open(f, "rb"), filename=Path(f).name))
-        await ctx.bot.send_media_group(cfg.chat_id, media)
+                media.append(D(Path(f).read_bytes(), filename=Path(f).name))
+        await tg(ctx.bot.send_media_group, cfg.chat_id, media)
     await say(ctx, caption)
 
 
@@ -3623,6 +3672,15 @@ async def posts_trial(ctx, ep):
         log.exception("posts trial drive")
 
 
+async def posts_finish(ctx, ep):
+    st = _posts.PostState(ep)
+    await say(ctx, "🧪 Suite de l'essai : l'envoi s'était arrêté sur une erreur réseau après les carrousels. Voici les stories.")
+    if "chain" in st.items:
+        await run(maker().shots, ep, st, ["chain"])
+        await run(maker().render, ep, st, ["chain"])
+    await posts_make(ctx, ep)
+
+
 async def posts_cmd(update: Update, ctx):
     """/posts [lien] [moment|topics|poll|…] — carousels & stories of an episode."""
     if not allowed(update):
@@ -3738,7 +3796,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
-    atlas_done posts_cmd posts_trial""")
+    atlas_done posts_cmd posts_trial posts_finish send_post_safe""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
@@ -3749,6 +3807,7 @@ def main():
     import socket
     socket.setdefaulttimeout(120)        # Google APIs (httplib2) have no timeout of their own: never hang a job forever
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)      # its INFO lines carry the bot token in the URL
     # concurrent updates: he can keep talking while a render or a frame search runs (heavy jobs share LOCK)
     app = Application.builder().token(cfg.telegram_token).post_init(on_boot).concurrent_updates(True).build()
     app.add_handler(TypeHandler(Update, set_origin), group=-1)

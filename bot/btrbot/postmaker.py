@@ -298,9 +298,12 @@ class Maker:
             if nd["who"] == "prev":
                 try:
                     shots[sid] = self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir)
+                    if shots[sid].get("name") and not (c_all.get(nd["key"]) or {}).get("prev_guest"):
+                        c_all.setdefault(nd["key"], {})["prev_guest"] = shots[sid]["name"]
                 except Exception as e:  # noqa: BLE001
                     log.exception("prev shot")
                     warn.append(f"{nd['key']}: photo du guest précédent introuvable ({str(e)[:80]})")
+                    st.items[nd["key"]].setdefault("warn", []).append(f"{nd['key']}: photo du guest précédent introuvable")
                 continue
             if sid not in chosen:
                 continue
@@ -325,19 +328,35 @@ class Maker:
         """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question)."""
         from . import reels
         import cv2
-        if not name:
-            raise RuntimeError("nom du guest précédent inconnu")
-        last = name.split()[-1].lower()
         vid = None
-        for v in self.pipe.yt.recent(50):
-            title = v["snippet"]["title"].lower()
-            if v["id"] != ep.video_id and last in title and v["status"].get("privacyStatus") == "public":
-                dur = v["contentDetails"].get("duration", "")
-                if "H" in dur or "M" in dur:
-                    vid = v["id"]
-                    break
-        if not vid:
-            raise RuntimeError(f"aucun épisode public de {name}")
+        longs = [v for v in self.pipe.yt.recent(50) if v["status"].get("privacyStatus") == "public"
+                 and ("H" in v["contentDetails"].get("duration", "") or re.search(r"(\d+)M", v["contentDetails"].get("duration", ""))
+                      and int(re.search(r"(\d+)M", v["contentDetails"]["duration"]).group(1)) >= 15)]
+        if name:
+            last = name.split()[-1].lower()
+            vid = next((v["id"] for v in longs if v["id"] != ep.video_id and last in v["snippet"]["title"].lower()), None)
+        if not vid:                    # the Chain = the guest of the episode just before this guest's first one
+            me = (ep.get("guest_name") or "").split()[-1:] or [""]
+            mine = [v for v in longs if me[0] and me[0].lower() in v["snippet"]["title"].lower()] or \
+                   [v for v in longs if v["id"] == ep.video_id]
+            olds = sorted(longs, key=lambda v: v["snippet"].get("publishedAt", ""))
+            first = min((v["snippet"].get("publishedAt", "") for v in mine), default="9999")
+            before = [v for v in olds if v["snippet"].get("publishedAt", "") < first and v not in mine]
+            if not before:
+                raise RuntimeError("épisode du guest précédent introuvable")
+            prev = before[-1]
+            vid = prev["id"]
+            from .state import Episode
+            name = Episode(self.data_dir, vid).get("guest_name") or ""
+            if not name:
+                try:
+                    name = str(self.pipe.llm._json(
+                        "Podcast episode title: " + prev["snippet"]["title"] + "\nWho is the guest (full name, not Marius "
+                        "Iepure, the host)? Return ONLY JSON: {\"guest\": \"...\"}", 200, tier="chat",
+                        task="guest précédent").get("guest") or "")
+                except Exception:  # noqa: BLE001
+                    name = ""
+        self._prev_name = name
         info = self.pipe.yt.video(vid)
         d = info["contentDetails"]["duration"]
         m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d)
@@ -366,7 +385,7 @@ class Maker:
             frames.grab(frames.full_res_url(vid, self.cfg.ytdlp_cookies), a + best["t"], out)
         except Exception:  # noqa: BLE001
             frames.grab(str(clip), best["t"], out)
-        return {"file": str(out), "t": None, "size": list(Image.open(out).size), "who": "prev", "video": vid,
+        return {"file": str(out), "t": None, "size": list(Image.open(out).size), "who": "prev", "video": vid, "name": name,
                 "face": {x: best[x] for x in ("cx", "cy", "fh", "fw", "top") if x in best}}
 
     # ------------------------------------------------------------ render
@@ -396,6 +415,7 @@ class Maker:
                 it["captions"] = posts.captions(kind, c, guest, handle, part_number(ep))
                 it["collab"] = [h for h in (handle, "mariusiepure") if h]
             it.update(status="draft", v=posts.V, made=posts.stamp())
+            it.pop("sent", None)
             out[k] = it
         st.save()
         return out
