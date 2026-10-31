@@ -9,9 +9,9 @@ jobs:
   frames:
     runs-on: ubuntu-latest
     env:
-      VID: yO0vuX-Ygpc
+      VID: PjDZ8X_JWY0
       # start-end windows (seconds), frames every second
-      WINDOWS: "764-770 884-889 1139-1144"
+      WINDOWS: "4912-4921"
       SCAN: "0"
     steps:
       - uses: actions/checkout@v4
