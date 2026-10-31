@@ -47,7 +47,7 @@ jobs:
           f=$(ls clips/full.* | head -1)
           ffmpeg -loglevel error -i "$f" -vf "fps=1/15,scale=384:216,drawtext=text='%{eif\:t\:d}':x=6:y=6:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.6,tile=6x8" -q:v 3 "frames/scan_${VID}/sheet_%02d.jpg"
           rm -f cookies.txt
-          ls frames/scan
+          ls frames/scan_${VID}
       - name: Save frames to the branch
         run: |
           mkdir -p tools/frames-out && mv frames/* tools/frames-out/
