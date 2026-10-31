@@ -9,10 +9,10 @@ jobs:
   frames:
     runs-on: ubuntu-latest
     env:
-      VID: PjDZ8X_JWY0
+      VID: yO0vuX-Ygpc
       # start-end windows (seconds), frames every second
-      WINDOWS: "28-36 40-48 2186-2196"
-      SCAN: "0"
+      WINDOWS: ""
+      SCAN: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -41,11 +41,11 @@ jobs:
           COOKIES: ${{ secrets.BOT_YT_COOKIES }}
         run: |
           printf '%s\n' "$COOKIES" > cookies.txt
-          mkdir -p frames/scan
+          mkdir -p frames/scan_${VID}
           yt-dlp -q --remote-components ejs:github --cookies cookies.txt -f "bv*[height<=360]" -o "clips/full.%(ext)s" \
             "https://www.youtube.com/watch?v=$VID" >> frames/log.txt 2>&1 || echo "fail scan" >> frames/log.txt
           f=$(ls clips/full.* | head -1)
-          ffmpeg -loglevel error -i "$f" -vf "fps=1/15,scale=384:216,drawtext=text='%{eif\:t\:d}':x=6:y=6:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.6,tile=6x8" -q:v 3 "frames/scan/sheet_%02d.jpg"
+          ffmpeg -loglevel error -i "$f" -vf "fps=1/15,scale=384:216,drawtext=text='%{eif\:t\:d}':x=6:y=6:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.6,tile=6x8" -q:v 3 "frames/scan_${VID}/sheet_%02d.jpg"
           rm -f cookies.txt
           ls frames/scan
       - name: Save frames to the branch
