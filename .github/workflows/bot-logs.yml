@@ -2,6 +2,8 @@
 # carousels / stories. Prints no secret (.env and data/secrets.json are never read).
 name: Bot logs
 on:
+  push:
+    branches: [bot-logs]          # push anything to this branch to get a fresh look
   workflow_dispatch:
     inputs:
       grep:
@@ -28,7 +30,7 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
       - name: Journal (last 6 h)
         env:
-          PAT: ${{ github.event.inputs.grep }}
+          PAT: ${{ github.event.inputs.grep || 'posts|carrousel|stories|Traceback|ERROR' }}
         run: |
           ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat | grep -v -i -E 'token|secret|key=' | grep -E -A12 '$PAT' | tail -300"
       - name: Posts state
