@@ -11,7 +11,7 @@ jobs:
     env:
       VID: PjDZ8X_JWY0
       # start-end windows (seconds), frames every second
-      WINDOWS: "4798-4804 2158-2163 4723-4729 1948-1953 3117-3123 4812-4817"
+      WINDOWS: "28-36 40-48 2186-2196"
       SCAN: "0"
     steps:
       - uses: actions/checkout@v4
