@@ -9,7 +9,7 @@ on:
       grep:
         description: "extra pattern to look for in the journal"
         required: false
-        default: "posts|carrousel|stories|Traceback|ERROR"
+        default: "ERROR|WARNING|Traceback"
 jobs:
   logs:
     runs-on: ubuntu-latest
@@ -30,9 +30,11 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
       - name: Journal (last 6 h)
         env:
-          PAT: ${{ github.event.inputs.grep || 'posts|carrousel|stories|Traceback|ERROR' }}
+          PAT: ${{ github.event.inputs.grep || 'ERROR|WARNING|Traceback' }}
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat | grep -v -i -E 'token|secret|key=' | grep -E -A12 '$PAT' | tail -300"
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat" \
+            | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
+            | grep -v 'getUpdates\|Running job\|executed successfully' | grep -E -A14 "$PAT" | tail -300
       - name: Posts state
         run: |
           ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in */posts.json; do echo "== $f"; python3 -c "
