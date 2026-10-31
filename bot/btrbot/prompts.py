@@ -247,3 +247,69 @@ Search the web. Only give an account you are confident is this exact person (the
 verified badge, link from their own website, competition profile, or the episode itself. Never guess a handle from the name.
 Answer with JSON only: {{"handle": "username without @, or empty if not found", "sure": true/false,
 "evidence": "one short line in French: where you found it"}}"""
+
+POSTS = """Write the content of this episode's Instagram carousels and stories (rules validated by Loïc on the Oti Mabuse
+Part 2 episode). Episode: "{title}". Guest: {guest}.{part_line}
+YouTube chapters (index: start time title):
+{chapters}
+Already used in the teaser and the reels of this episode (do NOT reuse these moments for the key moment):
+{avoid}
+{feedback}
+Hard rules:
+- Every field marked EXACT = consecutive words really said in the transcript above (you may cut at the start or the end
+  of a sentence, never add, change, reorder or fix a word). Guest's words unless said otherwise.
+- English. No emoji, no hashtags. Facts only from the transcript. Never a line said by Marius when the guest's is asked.
+- Times "mm:ss" (or "h:mm:ss") read from the nearest [mm:ss] marker before the words.
+Return ONLY JSON with:
+"guest_title": the guest's short title for a label, e.g. "Two-time Strictly champion" (max 30 chars, true to the episode),
+"pronoun": "she" | "he" | "they",
+{blocks}
+"""
+
+POSTS_BLOCKS = {
+    "moment": """"moment": {{"sentences": [8 objects {{"text": EXACT, one sentence (or part) said by the guest, 4 to 16 words,
+   "gold": [1 to 3 words of that text that carry the emotion, copied exactly], "t": "mm:ss"}}] — 8 sentences following
+   each other in ONE strong moment of the episode (emotion, confession, a stand taken), in order, ~1 to 3 minutes long,
+   not one of the moments already used; "hook": EXACT, the most striking of these 8 texts; "context": what the moment is
+   about, words that follow "<guest> on …" (no quotes, no full stop), "quote": EXACT, a second line of the moment that
+   backs the hook up ("" if none), "question": one short question to the audience, e.g. "Have you ever felt this?",
+   "tags": 1 to 3 extra CamelCase hashtags for TikTok}}""",
+    "topics": """"topics": {{"items": [6 objects in episode order {{"chapter": index of the chapter (list above) where this
+   subject is discussed, "title": short catchy title (max 45 chars, no quote marks), "context": 1 or 2 factual sentences
+   (max 170 chars) that set the quote up, "quote": EXACT guest's words on this subject (5 to 16 words), "t": "mm:ss" of the
+   quote}}], "hook": one line for the cover, max 70 chars, ending with "Swipe through." (e.g. "Strictly, two wins, and why
+   she walked away. Swipe through."), "summary": one sentence for the caption naming the subjects, with "{{guest}}" where
+   the guest's name goes (e.g. "From Kelvin to Bill Bailey to walking away, {{guest}} told us everything."), "tags": 1 to 3
+   CamelCase hashtags}} — no quote used in the key moment""",
+    "poll": """"poll": {{"line": 1 or 2 short lines that set the question up (max 34 chars each, separated by \\n), e.g.
+   "Two Strictly wins.\\nThen she walked away.", "question": the poll question (max 34 chars), "options": [2 answers, max
+   18 chars each], "footer": e.g. "Her answer is in Part 2, link in bio.", "tap": the end of « Tap the link … » for the
+   version without poll, e.g. "to hear why.", "t": "mm:ss" when this subject is discussed, "b": true if the subject is
+   too long, too loaded or too serious for a poll}}""",
+    "rapid": """"rapid": {{"question": EXACT, one rapid fire question as MARIUS asks it (max 10 words), "answer": EXACT, the guest's
+   answer (max 12 words), "options": [the true answer in max 22 chars, 2 believable decoys], "count": how many rapid fire
+   questions are asked (0 if unknown), "footer": e.g. "Her 20 answers are in Part 2, link in bio.", "t": "mm:ss" of the
+   question, "b": true if the answer can't make a fair quiz}}""",
+    "chain": """"chain": {{"prev_guest": full name of the previous guest who left the question for this guest (from the
+   episode), "question": EXACT, that question as it is read in the episode (MARIUS or the card; max 18 words), "answer":
+   the guest's real answer in max 22 chars for the quiz, "options": [the true answer, 2 believable decoys], "footer": a
+   teasing line true to the answer, e.g. "Her answer involves chickens. Part 2, link in bio.", "t": "mm:ss" when the
+   question is read, "b": true if the answer is too long or too serious for a quiz}} — if the episode has no question
+   from a previous guest, give "chain": null""",
+    "link": """"link": {{"headline": "We asked <her/him> …" what makes people tap, e.g. "We asked her why she walked away
+   from Strictly after two wins." (max 80 chars), "tap": end of « Tap the link … », e.g. "to hear what she told us.",
+   "t": "mm:ss" of that subject}}""",
+    "ask": """"ask": {{"t": "mm:ss" when Marius reads or holds the question card for the next guest (end of the
+   episode), or null}}""",
+    "qa": """"qa": {{"question": EXACT, a short question as MARIUS asks it (max 12 words), "answer": EXACT, the guest's answer
+   (max 16 words, a fun or striking one), "t_q": "mm:ss", "t_a": "mm:ss"}}""",
+    "quote": """"quote": {{"quote": EXACT, the guest's strongest short line (3 to 9 words), "label": "<GUEST NAME> ON
+   <SUBJECT>" in capitals (max 36 chars), "t": "mm:ss"}} — not the key moment's hook""",
+    "atlas": """"atlas": {{"country": the country the guest lands on in the World Atlas segment, "options": [that country,
+   2 decoys], "t": "mm:ss" when the atlas is opened, "b": false}} — null if there is no World Atlas segment""",
+    "teaser": "",
+}
+
+POSTS_FIX = """These fields are not exact words of the transcript (or were rejected). Give the same JSON again with
+these fields replaced by words really said (cut, never add), everything else unchanged:
+{errors}"""

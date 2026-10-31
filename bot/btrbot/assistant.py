@@ -167,6 +167,25 @@ TOOLS = [
                                         "tâche ClickUp → « ready », ce qui programme le Short YouTube. Sans nums = "
                                         "toutes les covers rangées pas encore validées.",
      "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
+    {"name": "posts_make", "description": "Préparer les CARROUSELS (Key moment, Topics) et STORIES d'un épisode (ce que "
+                                        "la tâche ClickUp de l'épisode prévoit) : textes, photos 4K, un aperçu par post "
+                                        "dans le fil Stories & carrousels. « fais les carrousels et stories », « refais "
+                                        "la story poll ». link = lien YouTube si un autre épisode ; only = seulement ces "
+                                        "posts (moment, topics, teaser, poll, rapid, chain, link, ask, qa, quote, atlas).",
+     "input_schema": {"type": "object", "properties": {"link": {"type": "string"},
+                      "only": {"type": "array", "items": {"type": "string"}}}}},
+    {"name": "post_feedback", "description": "Retour de Loïc sur UN carrousel ou UNE story déjà en aperçu (« dans le "
+                                            "topics, change le titre 3 », « la story poll : question trop longue », "
+                                            "« autre photo pour la citation »). key = moment, topics, poll, … ; "
+                                            "photos=true s'il veut d'autres photos ; feedback = sa demande telle quelle.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "feedback": {"type": "string"},
+                      "photos": {"type": "boolean"}}, "required": ["key"]}},
+    {"name": "posts_validate", "description": "Loïc VALIDE des carrousels / stories en aperçu (« ok pour le key moment », "
+                                             "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
+                                             "prévue. keys vides = tous les aperçus en attente.",
+     "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}}}}},
+    {"name": "posts_status", "description": "Où en sont les carrousels / stories (aperçus, validés, publiés, dates).",
+     "input_schema": {"type": "object", "properties": {}}},
     {"name": "shorts_plan", "description": "Montrer quand chaque reel rangé sortira en Short YouTube (plan + bouton "
                                           "« Programmer »). « on en est où des Shorts », « montre le planning YouTube ».",
      "input_schema": {"type": "object", "properties": {}}},

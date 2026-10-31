@@ -981,6 +981,51 @@ def tool_handlers(ctx, images: list) -> dict:
     async def shorts_plan_t():
         return await shorts_show(ctx)
 
+    def posts_ep_of(key=None):
+        """The episode whose posts Loïc is talking about: the latest one with drafts (or with this key)."""
+        best = None
+        for st in _posts.all_states(cfg.data_dir):
+            its = st.items
+            if key and key not in its:
+                continue
+            last = max([it.get("made", 0) for it in its.values()] or [0])
+            if best is None or last > best[0]:
+                best = (last, st.ep)
+        if not best:
+            raise RuntimeError("aucun carrousel / story préparé : utilise posts_make")
+        return best[1]
+
+    async def posts_make_t(link=None, only=None):
+        vid = None
+        if link:
+            m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link)
+            vid = m.group(1) if m else None
+        ep = await posts_episode(vid)
+        keys = [k for k in (only or []) if k in _posts.LABEL] or None
+        return bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}", posts_make(ctx, ep, keys))
+
+    async def post_feedback(key, feedback="", photos=False):
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        return bg(ctx, f"{post_name(ep, key)} (retour)", posts_make(ctx, ep, [key], feedback=feedback or "",
+                                                                   photos=bool(photos), reset=bool(feedback)))
+
+    async def posts_validate(keys=None):
+        ep = posts_ep_of()
+        st = _posts.PostState(ep)
+        todo = [k for k in (keys or [k for k, it in st.items.items() if it.get("status") == "draft"])
+                if (st.items.get(k) or {}).get("status") == "draft"]
+        if not todo:
+            return "rien en attente de validation"
+
+        async def go():
+            for k in todo:
+                await post_validate(ctx, ep, k)
+        return bg(ctx, "Rangement des posts", go())
+
+    async def posts_status_t():
+        return await posts_status(ctx)
+
     async def shorts_schedule(dates=None):
         from datetime import datetime, timezone
         from . import shorts
@@ -1005,6 +1050,8 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
+            "posts_make": posts_make_t, "post_feedback": post_feedback, "posts_validate": posts_validate,
+            "posts_status": posts_status_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
@@ -2635,6 +2682,9 @@ async def on_button(update: Update, ctx):
     if q.data == "ysch":
         await shorts_watch(ctx)
         return
+    if q.data.startswith("pst:"):
+        await on_post_button(ctx, q, q.data)
+        return
     if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:", "rcov:")):
         await on_reel_button(ctx, q, q.data)
         return
@@ -2694,6 +2744,10 @@ async def on_button(update: Update, ctx):
             ep.stage = "done"
             ep.save()
             await say(ctx, "✅ Chapitres ajoutés à la description. Si tu m'envoies ton SRT DaVinci plus tard, je refais un chapitrage plus précis.")
+            if not ep.get("posts_auto"):
+                ep["posts_auto"] = True
+                ep.save()
+                bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}", posts_make(ctx, ep))
             await say(ctx, "Quand tu veux, je te propose les moments de cet épisode pour les reels.",
                       reply_markup=K([[B("🎞️ Proposer les reels", callback_data="reels:propose")]]))
         await guarded(ctx, "Chapitrage", go())
@@ -3036,6 +3090,9 @@ def start_polling(app):
         app.job_queue.run_repeating(ig_tick, interval=60, first=30, name="ig")
     if not app.job_queue.get_jobs_by_name("tt"):
         app.job_queue.run_repeating(tt_tick, interval=60, first=40, name="tt")
+    if not app.job_queue.get_jobs_by_name("posts"):
+        app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
+        app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")
 
 
 async def on_boot(app):
@@ -3065,6 +3122,10 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("posts_test_1031") and TOPICS.group:   # 31.10.2026: first run of carousels & stories
+                    reg.data["posts_test_1031"] = True
+                    reg.save()
+                    bg(app, f"Essai carrousels & stories · {ep.get('guest_name')}", posts_trial(app, ep))
                 if not reg.data.get("covers_zoom2_shorts_1030"):  # same new framing for the TikTok + Shorts covers
                     reg.data["covers_zoom2_shorts_1030"] = True
                     reg.save()
@@ -3127,11 +3188,493 @@ async def on_boot(app):
             log.exception("boot message")
 
 
+
+# ---------------------------------------------------------------- carousels & stories (posts.py, postmaker.py)
+from datetime import datetime  # noqa: E402
+from pathlib import Path  # noqa: E402
+from . import postmaker as _pm, posts as _posts  # noqa: E402
+POSTS_LOCK = asyncio.Lock()
+_MAKER = None
+
+
+def maker():
+    global _MAKER
+    if _MAKER is None:
+        _MAKER = _pm.Maker(pipe, cfg.data_dir)
+    return _MAKER
+
+
+async def posts_episode(vid: str | None = None):
+    """The episode the posts are for: the one asked for, else the episode in progress (reels / thumbnails), else the
+    latest public one."""
+    if vid:
+        return await run(pipe.reel_episode, vid, None)
+    for ep in (reel_ep(), reg.episode(reg.active) if reg.active else None):
+        if ep and pipe.cues(ep):
+            return ep
+    return await run(pipe.reel_episode, None, None)
+
+
+def post_name(ep, k: str) -> str:
+    it = _posts.PostState(ep).items.get(k) or {}
+    return f"{_posts.LABEL.get(it.get('kind', k), k)} · {ep.get('guest_name') or ep.video_id}"
+
+
+async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "", photos: bool = False,
+                     reset: bool = False):
+    """Content → shots → render → previews (one item at a time to Loïc, in the Stories & carrousels topic)."""
+    M = maker()
+    st = _posts.PostState(ep)
+    items = await run(M.plan, ep, st, only)
+    keys = [k for k in items if (st.items.get(k) or {}).get("status") not in ("ok", "posted")]
+    skipped = []
+    if not keys:
+        await say(ctx, "Tout est déjà validé pour cet épisode (dis-moi lequel refaire si besoin).")
+        return
+    guest = ep.get("guest_name") or ep.video_id
+    if not only:
+        src = "ClickUp" if st.data.get("from_clickup") else "rotation par défaut (aucune tâche ClickUp trouvée pour cet épisode)"
+        await say(ctx, f"📚 Je prépare pour <b>{esc(guest)}</b> ({src}) : " + ", ".join(_posts.LABEL[st.items[k]['kind']] for k in keys)
+                  + ". Textes, photos 4K, puis un aperçu par post (~10 min).")
+    need_text = [k for k in keys if reset or feedback or not st.data.get("content", {}).get(k)]
+    warn = []
+    if need_text:
+        warn += await run(M.content, ep, st, need_text, feedback)
+        for k in need_text:                                     # new texts = new moments: photos chosen again
+            for sid in [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]:
+                st.data["shots"].pop(sid)
+        st.save()
+    skipped = [k for k in keys if st.items[k].get("skip")]
+    keys = [k for k in keys if k not in skipped]
+    for k in skipped:
+        await say(ctx, f"ℹ️ {esc(post_name(ep, k))} : {esc(st.items[k]['skip'])} (pas fait). Dis-moi par quoi le remplacer.")
+    if not keys:
+        return
+    warn += await run(M.shots, ep, st, keys, set(keys) if photos else None)
+    await run(M.render, ep, st, keys)
+    for k in keys:
+        await send_post(ctx, ep, k, [w for w in warn if w.startswith(k)])
+    try:
+        cu = M.clickup()
+        for k in keys:
+            tid = st.items[k].get("task")
+            if tid:
+                t = await run(cu.task, tid)
+                if (t.get("status") or {}).get("status", "").lower() in ("to generate", "generated"):
+                    await run(lambda: cu.update(tid, status="generated"))
+    except Exception:  # noqa: BLE001
+        log.exception("posts clickup status")
+
+
+def post_buttons(vid: str, k: str, kind: str, b: bool) -> K:
+    rows = [[B("✅ Valider", callback_data=f"pst:ok:{vid}:{k}"), B("📷 Autres photos", callback_data=f"pst:ph:{vid}:{k}")],
+            [B("✍️ Autres textes", callback_data=f"pst:tx:{vid}:{k}")]]
+    if kind in _posts.B_OK:
+        rows[1].append(B("🔀 Avec sticker" if b else "🔀 Version b (lien)", callback_data=f"pst:b:{vid}:{k}"))
+    return K(rows)
+
+
+async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
+    from telegram import InputMediaPhoto as P
+    st = _posts.PostState(ep)
+    it = st.items[k]
+    kind = it["kind"]
+    name = post_name(ep, k)
+    when = ""
+    try:
+        t = await run(maker()._task, it)
+        when = f" · prévu {_posts.label_time(_posts.due(t))}" if t else " · pas de tâche ClickUp"
+    except Exception:  # noqa: BLE001
+        pass
+    notes = list(warn or []) + [f"texte réduit : « {o} »" for o in it.get("overflow") or []] + (it.get("warn") or [])
+    note = ("\n⚠️ " + "\n⚠️ ".join(esc(n) for n in dict.fromkeys(notes))) if notes else ""
+    if kind in _posts.CAROUSELS:
+        files = it.get("files") or []
+        for j in range(0, len(files), 10):
+            media = [P(open(f, "rb")) for f in files[j:j + 10]]
+            await ctx.bot.send_media_group(cfg.chat_id, media)
+        caps = it.get("captions") or {}
+        await say(ctx, f"<b>{esc(name)}</b>{esc(when)} · {len(files)} slides{note}\n\nLégende Instagram :\n<pre>"
+                  f"{esc(caps.get('instagram', ''))}</pre>", reply_markup=post_buttons(ep.video_id, k, kind, False))
+    else:
+        s = it.get("sticker") or {}
+        stk = ""
+        if s:
+            stk = f"\nSticker à poser : <b>{esc(s.get('type'))}</b>"
+            if s.get("question"):
+                stk += f" · « {esc(s['question'])} »"
+            if s.get("options"):
+                stk += " · " + " / ".join(esc(o) for o in s["options"]) + (f" (bonne : {esc(s['right'])})" if s.get("right") else "")
+        auto = " · publiée toute seule (pas de sticker)" if kind in _posts.AUTO_STORIES else " · je t'envoie tout à l'heure prévue"
+        with open(it["preview"], "rb") as f:
+            await ctx.bot.send_photo(cfg.chat_id, f, caption=f"{name}{when}{auto}"[:1000])
+        await say(ctx, f"<b>{esc(name)}</b> (à gauche le fichier, à droite les zones Instagram){stk}{note}",
+                  reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
+    MEMORY.add("assistant", f"[aperçu envoyé : {name}]")
+
+
+async def post_validate(ctx, ep, k: str):
+    st = _posts.PostState(ep)
+    it = st.items.get(k)
+    if not it or not it.get("files"):
+        await say(ctx, "Rien à valider pour ce post.")
+        return
+    try:
+        it = await run(maker().file, ep, st, k)
+    except _pm.share.NotConnected as e:
+        await say(ctx, f"⚠️ {esc(e)} : /connect d'abord.")
+        return
+    at = _posts.due(await run(maker()._task, it)) if it.get("task") else None
+    how = ("Instagram : je le publie moi-même" if it["kind"] in _posts.CAROUSELS + _posts.AUTO_STORIES
+           else "je t'envoie l'image + le sticker à poser")
+    tt = " · TikTok : je t'envoie les images + la légende" if it["kind"] in _posts.CAROUSELS else ""
+    await say(ctx, f"✅ {esc(post_name(ep, k))} rangé (Drive + ClickUp « ready »). {_posts.label_time(at)} (Londres) : "
+                   f"{how}{tt}." + ("" if it.get("task") else " ⚠️ Pas de tâche ClickUp : pas de date, je ne publie rien."))
+
+
+async def on_post_button(ctx, q, d: str):
+    parts = d.split(":")
+    act, vid, k = parts[1], parts[2], parts[3] if len(parts) > 3 else ""
+    if act in ("igd", "ttd", "done"):
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+    if vid == "atlas":
+        await atlas_done(ctx, k, act)
+        return
+    ep = reg.episode(vid)
+    st = _posts.PostState(ep)
+    it = st.items.get(k)
+    if not it:
+        await say(ctx, "Ce post n'existe plus.")
+        return
+    if act == "ok":
+        await say(ctx, bg(ctx, f"Rangement {post_name(ep, k)}", post_validate(ctx, ep, k)))
+    elif act == "ph":
+        await say(ctx, bg(ctx, f"Photos {post_name(ep, k)}", posts_make(ctx, ep, [k], photos=True)))
+    elif act == "tx":
+        await say(ctx, bg(ctx, f"Textes {post_name(ep, k)}", posts_make(ctx, ep, [k], reset=True)))
+    elif act == "b":
+        it["b"] = not it.get("b")
+        st.save()
+        await say(ctx, bg(ctx, f"Version {'b' if it['b'] else 'sticker'} {post_name(ep, k)}", posts_make(ctx, ep, [k])))
+    elif act in ("done", "igd"):
+        it.setdefault("ig", {})["done"] = True
+        it["status"] = "posted" if it["kind"] not in _posts.CAROUSELS or it.get("tt", {}).get("done") else it["status"]
+        st.save()
+        await run(maker().mark, it, True)
+        await say(ctx, f"✅ {esc(post_name(ep, k))} : Instagram noté « Posted » dans ClickUp.")
+    elif act == "ttd":
+        it.setdefault("tt", {})["done"] = True
+        if it.get("ig", {}).get("done"):
+            it["status"] = "posted"
+        st.save()
+        await run(maker().mark, it, False, True)
+        await say(ctx, f"✅ {esc(post_name(ep, k))} : TikTok noté « Posted » dans ClickUp.")
+
+
+async def send_files(ctx, files: list, caption: str):
+    """Images as files (full quality, to post from the phone), by 10."""
+    from telegram import InputMediaDocument as D
+    import requests
+    for j in range(0, len(files), 10):
+        media = []
+        for f in files[j:j + 10]:
+            if str(f).startswith("http"):
+                r = await run(lambda u=f: requests.get(u, timeout=60))
+                media.append(D(r.content, filename=str(f).rsplit("/", 1)[-1]))
+            else:
+                media.append(D(open(f, "rb"), filename=Path(f).name))
+        await ctx.bot.send_media_group(cfg.chat_id, media)
+    await say(ctx, caption)
+
+
+async def posts_tick(ctx):
+    """Every minute: what is due is published (Instagram API) or sent to Loïc (sticker stories, TikTok, no API)."""
+    if POSTS_LOCK.locked():
+        return
+    async with POSTS_LOCK:
+        from datetime import timedelta
+        from . import share
+        sec = share.Secrets(cfg.data_dir)
+        connected = bool(sec.get("ig_token") and sec.get("ig_user"))
+        now = _posts.now()
+        for st in _posts.all_states(cfg.data_dir):
+            ep = st.ep
+            for k, it in st.items.items():
+                if it.get("status") != "ok" or not it.get("at"):
+                    continue
+                kind = it["kind"]
+                at = datetime.fromisoformat(it["at"])
+                ig = it.setdefault("ig", {})
+                name = post_name(ep, k)
+                if now - at > timedelta(hours=12):
+                    if not it.get("late_warned"):
+                        it["late_warned"] = True
+                        st.save()
+                        await say(ctx, f"⚠️ {esc(name)} devait sortir {_posts.label_time(at)} : plus de 12 h de retard, "
+                                       "je ne le publie pas. Dis-moi s'il faut le programmer à une autre date (dans ClickUp).")
+                    continue
+                api = connected and (kind in _posts.CAROUSELS or kind in _posts.AUTO_STORIES) and not ig.get("api_failed")
+                if api and not ig.get("done"):
+                    try:
+                        if not ig.get("cid") and at - now <= timedelta(minutes=20):
+                            from . import instagram
+                            I = instagram.Instagram(sec)
+                            urls = [_posts.drive_direct(d["id"]) for d in it.get("drive") or []]
+                            if kind in _posts.CAROUSELS:
+                                cap = (it.get("captions") or {}).get("instagram", "")
+                                try:
+                                    ig["cid"] = await run(I.carousel, urls, cap, it.get("collab") or [])
+                                except Exception:  # noqa: BLE001
+                                    ig["cid"] = await run(I.carousel, urls, cap, [])       # without the collab invite
+                            else:
+                                ig["cid"] = await run(I.story, urls[0])
+                            st.save()
+                        if ig.get("cid") and now >= at:
+                            from . import instagram
+                            r = await run(instagram.Instagram(sec).publish, ig["cid"])
+                            ig.update(done=True, id=r.get("id"), link=r.get("permalink"))
+                            it["status"] = "posted" if kind not in _posts.CAROUSELS else "ok"
+                            st.save()
+                            await run(maker().mark, it, True, False, r.get("permalink", ""))
+                            await say(ctx, f"📸 {esc(name)} publié sur Instagram : {esc(r.get('permalink') or '')}")
+                    except Exception as e:  # noqa: BLE001
+                        ig["fails"] = ig.get("fails", 0) + 1
+                        ig.pop("cid", None)
+                        if ig["fails"] >= 3:
+                            ig["api_failed"] = True
+                            await say(ctx, f"⚠️ Instagram refuse {esc(name)} : <code>{esc(str(e)[-200:])}</code>. "
+                                           "Je te l'envoie pour que tu le postes toi-même.")
+                        st.save()
+                elif not ig.get("done") and not ig.get("sent") and now >= at:
+                    ig["sent"] = True
+                    st.save()
+                    files = it.get("files") or []
+                    if kind in _posts.CAROUSELS:
+                        cap = (it.get("captions") or {}).get("instagram", "")
+                        collab = " et ".join("@" + h for h in it.get("collab") or [])
+                        await send_files(ctx, files, f"📸 <b>À poster maintenant sur Instagram</b> : {esc(name)} (grille)"
+                                         + (f", invite en collaboration {esc(collab)}" if collab else "")
+                                         + f"\n<pre>{esc(cap)}</pre>")
+                    else:
+                        s = it.get("sticker") or {}
+                        lines = [f"📲 <b>Story à poster maintenant</b> : {esc(name)}"]
+                        if s.get("note"):
+                            lines.append(esc(s["note"]))
+                        if s.get("type"):
+                            lines.append(f"Sticker <b>{esc(s['type'])}</b> dans la zone libre :")
+                        if s.get("question"):
+                            lines.append(f"<pre>{esc(s['question'])}</pre>")
+                        for o in s.get("options") or []:
+                            lines.append(f"<pre>{esc(o)}</pre>")
+                        if s.get("right"):
+                            lines.append(f"Bonne réponse : {esc(s['right'])}")
+                        if s.get("url"):
+                            lines.append(f"<pre>{esc(s['url'])}</pre>")
+                        await send_files(ctx, files[:1], "\n".join(lines))
+                    await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur Instagram",
+                                                                          callback_data=f"pst:igd:{ep.video_id}:{k}")]]))
+                tt_at = it.get("tt_at")
+                if kind in _posts.CAROUSELS and tt_at and now >= datetime.fromisoformat(tt_at) and not it.setdefault("tt", {}).get("sent"):
+                    it["tt"]["sent"] = True
+                    st.save()
+                    await send_files(ctx, it.get("files") or [], f"🎵 <b>À poster maintenant sur TikTok</b> (photos) : {esc(name)}"
+                                     f"\n<pre>{esc((it.get('captions') or {}).get('tiktok', ''))}</pre>")
+                    await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur TikTok",
+                                                                          callback_data=f"pst:ttd:{ep.video_id}:{k}")]]))
+        await atlas_tick(ctx, connected, sec)
+
+
+ATLAS = {"at": 0.0, "tasks": []}
+
+
+async def atlas_tick(ctx, connected: bool, sec):
+    """World Atlas catch-up carousels (images and captions ready in btr-media): « ready » in ClickUp = the bot posts
+    them on Instagram at their time (no music: the API can't add any); « approved » = sent to Loïc at the time with
+    the music to add. TikTok: always sent to Loïc."""
+    import time as _t
+    from datetime import timedelta
+    from . import share
+    if _t.time() - ATLAS["at"] > 600:
+        try:
+            ATLAS["tasks"] = [t for t in await run(maker().clickup().tasks) if _pm.atlas_task(t)]
+            ATLAS["at"] = _t.time()
+        except Exception:  # noqa: BLE001
+            ATLAS["at"] = _t.time() - 300
+            return
+    now = _posts.now()
+    state = reg.data.setdefault("atlas_posts", {})
+    for t in ATLAS["tasks"]:
+        status = (t.get("status") or {}).get("status", "").lower()
+        if status not in ("approved", "ready", "scheduled"):
+            continue
+        at = _posts.due(t)
+        if not at:
+            continue
+        tt = _posts.tiktok_time(t, at)
+        ig_due = at - now <= timedelta(minutes=20) and now - at <= timedelta(hours=12)
+        tt_due = tt is not None and now >= tt and now - tt <= timedelta(hours=12)
+        if not ig_due and not tt_due:
+            continue
+        a = _pm.atlas_task(t)
+        s = state.setdefault(t["id"], {})
+        name = t.get("name", "World Atlas")
+        try:
+            caps = await run(_pm.atlas_caption, a["key"])
+        except Exception:  # noqa: BLE001
+            caps = {}
+        if ig_due and not s.get("ig_done") and not s.get("ig_sent"):
+            if status in ("ready", "scheduled") and connected and not s.get("api_failed"):
+                try:
+                    from . import instagram
+                    I = instagram.Instagram(sec)
+                    if not s.get("cid"):
+                        s["cid"] = await run(I.carousel, a["images"], caps.get("instagram", ""), [])
+                        reg.save()
+                    if now >= at:
+                        r = await run(I.publish, s["cid"])
+                        s.update(ig_done=True, link=r.get("permalink"))
+                        reg.save()
+                        await run(maker().mark, {"task": t["id"], "kind": "atlas"}, True, False, r.get("permalink", ""))
+                        await say(ctx, f"📸 {esc(name)} publié sur Instagram (sans musique) : {esc(r.get('permalink') or '')}")
+                except Exception as e:  # noqa: BLE001
+                    s["fails"] = s.get("fails", 0) + 1
+                    s.pop("cid", None)
+                    if s["fails"] >= 3:
+                        s["api_failed"] = True
+                        await say(ctx, f"⚠️ Instagram refuse {esc(name)} : <code>{esc(str(e)[-200:])}</code>. Je te l'envoie.")
+                    reg.save()
+            elif now >= at:
+                s["ig_sent"] = True
+                reg.save()
+                music = f"\n🎵 Musique : {esc(a['music'])}" if a.get("music") else ""
+                await send_files(ctx, a["images"], f"📸 <b>À poster maintenant sur Instagram</b> : {esc(name)}{music}"
+                                 f"\n<pre>{esc(caps.get('instagram', ''))}</pre>")
+                await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur Instagram",
+                                                                      callback_data=f"pst:igd:atlas:{t['id']}")]]))
+        if tt_due and not s.get("tt_sent"):
+            s["tt_sent"] = True
+            reg.save()
+            await send_files(ctx, a["images"], f"🎵 <b>À poster maintenant sur TikTok</b> (photos) : {esc(name)}"
+                             + (f"\n🎵 Musique : {esc(a['music'])}" if a.get("music") else "")
+                             + f"\n<pre>{esc(caps.get('tiktok', ''))}</pre>")
+            await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur TikTok",
+                                                                  callback_data=f"pst:ttd:atlas:{t['id']}")]]))
+
+
+async def atlas_done(ctx, tid: str, act: str):
+    s = reg.data.setdefault("atlas_posts", {}).setdefault(tid, {})
+    if act in ("igd", "done"):
+        s["ig_done"] = True
+        await run(maker().mark, {"task": tid, "kind": "atlas"}, True)
+        await say(ctx, "✅ World Atlas : Instagram noté « Posted » dans ClickUp.")
+    else:
+        s["tt_done"] = True
+        await run(maker().mark, {"task": tid, "kind": "atlas"}, False, True)
+        await say(ctx, "✅ World Atlas : TikTok noté « Posted » dans ClickUp.")
+    reg.save()
+
+
+async def posts_refresh(ctx):
+    """Every 10 min: a date moved in ClickUp moves the post (not yet published)."""
+    M = maker()
+    try:
+        cu = M.clickup()
+    except Exception:  # noqa: BLE001
+        return
+    for st in _posts.all_states(cfg.data_dir):
+        changed = False
+        for k, it in st.items.items():
+            if it.get("status") != "ok" or not it.get("task") or (it.get("ig") or {}).get("done"):
+                continue
+            try:
+                t = await run(cu.task, it["task"])
+            except Exception:  # noqa: BLE001
+                continue
+            at = _posts.due(t)
+            if at and at.isoformat() != it.get("at"):
+                it["at"] = at.isoformat()
+                tt = _posts.tiktok_time(t, at) if it["kind"] in _posts.CAROUSELS else None
+                it["tt_at"] = tt.isoformat() if tt else None
+                changed = True
+        if changed:
+            st.save()
+
+
+async def posts_trial(ctx, ep):
+    """First run on an episode already published (Oti P2): previews to compare with the validated canvas pages,
+    nothing filed in ClickUp (no task → never published); copies in Drive « BTR Posts / _essai » to check them."""
+    await say(ctx, f"🧪 Essai des carrousels & stories sur <b>{esc(ep.get('guest_name') or ep.video_id)}</b> (déjà publiés à la "
+                   "main) pour comparer avec les versions validées du canvas. Rien n'est rangé ni publié.")
+    await posts_make(ctx, ep)
+    from . import share
+    try:
+        d = await run(share.Drive, share.Secrets(cfg.data_dir), cfg.youtube_client[:2])
+        root = await run(d.folder, "BTR Posts")
+        folder = await run(d.folder, f"_essai {ep.get('guest_name') or ep.video_id}", root)
+        st = _posts.PostState(ep)
+        for k, it in st.items.items():
+            for f in (it.get("files") or []) + ([it["preview"]] if it.get("preview") else []):
+                await run(d.upload, Path(f), folder, "image/jpeg")
+        log.info("posts trial in Drive: %s", d.folder_link(folder))
+    except Exception:  # noqa: BLE001
+        log.exception("posts trial drive")
+
+
+async def posts_cmd(update: Update, ctx):
+    """/posts [lien] [moment|topics|poll|…] — carousels & stories of an episode."""
+    if not allowed(update):
+        return
+    vid, only = None, []
+    for a in ctx.args or []:
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})$", a) or re.search(r"(?:v=|youtu\.be/)([\w-]{11})", a)
+        if m and len(a) >= 11:
+            vid = m.group(1)
+        elif a.lower() in _posts.LABEL:
+            only.append(a.lower())
+    ep = await posts_episode(vid)
+    await update.message.reply_text(bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}",
+                                       posts_make(ctx, ep, only or None)))
+
+
+async def posts_status(ctx) -> str:
+    out = []
+    for st in _posts.all_states(cfg.data_dir):
+        ep = st.ep
+        for k, it in st.items.items():
+            ig = it.get("ig") or {}
+            state = {"draft": "aperçu envoyé, à valider", "ok": "validé, programmé", "posted": "publié"}.get(it.get("status"), "pas fait")
+            if ig.get("done"):
+                state = "publié sur Instagram"
+            when = _posts.label_time(datetime.fromisoformat(it["at"])) if it.get("at") else ""
+            out.append(f"- {post_name(ep, k)} : {state} {when}")
+    return "\n".join(out[-40:]) or "aucun carrousel / story préparé par le bot"
+
+
 # ---------------------------------------------------------------- BTR Studio group (one topic per kind of work)
+def posts_lines() -> str:
+    out = []
+    for st in _posts.all_states(cfg.data_dir):
+        for k, it in st.items.items():
+            state = {"draft": "aperçu envoyé, à valider", "ok": "validé, programmé", "posted": "publié"}.get(it.get("status"), "pas fait")
+            out.append(f"{k} ({post_name(st.ep, k)}) : {state}")
+    return "; ".join(out[-20:])
+
+
 def topic_context() -> str:
     if not TOPICS.group:
         return ""
     here = topics.TOPIC.get() or "system"
+    if here == "stories":
+        extra = posts_lines()
+        if extra:
+            return topic_context_base(here) + "\nCarrousels / stories (clé : état) : " + extra
+    return topic_context_base(here)
+
+
+def topic_context_base(here: str) -> str:
     return (f"\nTelegram : Loïc t'écrit dans le fil « {topics.LABELS.get(here, here)} » du groupe BTR Studio. Les autres "
             "fils : " + " · ".join(v for k, v in topics.LABELS.items() if k not in (here, "private")) + ". Les résultats "
             "d'un travail arrivent dans le fil de ce travail (une cover dans Reels même si on te le demande ailleurs) : "
@@ -3194,6 +3737,8 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
+topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
+    atlas_done posts_cmd posts_trial""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
@@ -3222,6 +3767,7 @@ def main():
     app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CommandHandler("igtest", igtest_cmd))
     app.add_handler(CommandHandler("tiktok", tiktok_cmd))
+    app.add_handler(CommandHandler("posts", posts_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

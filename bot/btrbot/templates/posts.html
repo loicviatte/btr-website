@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Carousels (1080×1350) and stories (1080×1920) validated by Loïc for Oti Part 2 (canvas « BTR Designs », page
+     Posts épisodes: Oti2-Moment-01…04, Oti2-Topics-01…08, Oti2-Stories-01…09 + 02b/03b/04b/09b), 30–31.10.2026.
+     Same positions, sizes and colours; the texts shrink (window.fit) when an episode's words are longer. -->
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Heavy.woff2") format("woff2");font-weight:800 900}
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Regular.woff2") format("woff2");font-weight:400}
+html,body{margin:0;background:#080403}
+.f{position:relative;width:1080px;height:{{ H }}px;overflow:hidden;background:#080403;font-family:"PP Monument Extended","Arial Black",sans-serif;color:#fff}
+.f p{margin:0}
+.ph{position:absolute;overflow:hidden}
+.ph img{position:absolute;display:block}
+.abs{position:absolute}
+.v{position:absolute;left:0;top:0;width:1080px;height:{{ H }}px}
+.h{font-weight:800}
+.r{font-weight:400}
+.gold{color:#fcdf9a}
+.lg{color:#fecb7a}
+.lab{font-size:26px;line-height:1;font-weight:800;letter-spacing:.14em;color:#fecb7a}
+.foot{position:absolute;left:80px;top:1600px;width:920px;text-align:center;font-size:24px;line-height:1.3;font-weight:400;color:rgba(255,255,255,.82)}
+.pill{padding:10px 14px 8px;background:#fecb7a;color:#000;font-size:20px;line-height:1;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.num{font-size:30px;line-height:1;font-weight:800;color:#fecb7a}
+.ctr{position:absolute;right:64px;font-size:22px;line-height:1;font-weight:400;letter-spacing:.18em;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.col{position:absolute;display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:20px}
+.ctx{width:900px;font-size:27px;line-height:1.38;font-weight:400;color:rgba(255,255,255,.86)}
+.q{width:920px;line-height:1.22;font-weight:800;color:#fcdf9a}
+.sub{position:absolute;left:60px;width:960px;text-align:center;font-size:34px;line-height:1.2;font-weight:800;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.7)}
+.c{text-align:center}
+.nw{white-space:nowrap}
+</style>
+</head>
+<body>
+{% macro photo(p) -%}
+<div class="ph" style="left:{{ p.box[0] }}px;top:{{ p.box[1] }}px;width:{{ p.box[2] }}px;height:{{ p.box[3] }}px">
+  <img src="{{ p.src }}" style="left:{{ p.left }}px;top:{{ p.top }}px;width:{{ p.w }}px;height:{{ p.h }}px;{{ p.css or '' }}">
+</div>
+{%- endmacro %}
+{% macro logo(x, y, w=150, h=95) -%}
+<img class="abs" src="{{ assets }}/btr-secondary-white.png" style="left:{{ x }}px;top:{{ y }}px;width:{{ w }}px;height:{{ h }}px">
+{%- endmacro %}
+{% macro q(text) %}<span class="lg">“</span>{{ text }}<span class="lg">”</span>{% endmacro %}
+<div class="f" id="frame">
+
+{# ===================================================================== KEY MOMENT (4 slides) #}
+{% if kind == "moment" %}
+  {{ photo(p1) }}{{ photo(p2) }}
+  <div class="abs" style="left:0;top:375px;width:1080px;height:300px;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.55) 100%)"></div>
+  <div class="abs" style="left:0;top:1050px;width:1080px;height:300px;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.55) 100%)"></div>
+  <div class="abs" style="left:0;top:673px;width:1080px;height:4px;background:#080403"></div>
+  {% if first %}
+  {{ logo(48, 40, 132, 84) }}
+  <div class="abs" style="right:48px;top:48px;display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+    <p class="pill" style="font-size:22px">{{ name_upper }}</p>
+    <p class="h" style="font-size:20px;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.8)">{{ guest_title }}</p>
+  </div>
+  {% endif %}
+  <p class="sub" data-fit="sub" data-min-top="{{ 150 if first else 40 }}" style="bottom:717px">{{ s1|safe }}</p>
+  <p class="sub" data-fit="sub" data-min-top="760" style="bottom:42px">{{ s2|safe }}</p>
+
+{# ===================================================================== TOPICS (8 slides) #}
+{% elif kind == "topics_cover" %}
+  {{ photo(p1) }}
+  <div class="v" style="height:1350px;background:linear-gradient(180deg,rgba(8,4,3,0) 34%,rgba(8,4,3,.6) 56%,rgba(8,4,3,.93) 78%,#080403 100%)"></div>
+  <div class="v" style="height:1350px;background:linear-gradient(180deg,rgba(0,0,0,0) 70%,rgba(199,171,88,.12) 86%,rgba(223,191,100,.26) 100%)"></div>
+  {{ logo(64, 56) }}
+  {% if part %}<p class="abs" style="right:64px;top:72px;font-size:22px;line-height:1;letter-spacing:.18em"><span class="h">PART</span> <span class="h lg">{{ part }}</span></p>{% endif %}
+  <div class="col" data-fit="block" data-min-top="560" style="left:80px;bottom:88px;width:920px;gap:18px">
+    <p class="h lg" style="font-size:26px;line-height:1;letter-spacing:.14em">{{ count }} THINGS WE TALKED ABOUT WITH</p>
+    <p class="h gold" data-fitw="1" style="font-size:132px;line-height:1.02;mix-blend-mode:hard-light">{% for w in name_lines %}<span class="nw">{{ w }}</span>{% if not loop.last %}<br>{% endif %}{% endfor %}</p>
+    <p class="r" style="margin-top:6px;width:860px;font-size:30px;line-height:1.32">{{ hook }}</p>
+  </div>
+
+{% elif kind == "topics_item" %}
+  {% set head %}
+    <div class="row"><p class="num">{{ num }}</p><p class="pill">WATCH AT {{ watch }}</p></div>
+  {% endset %}
+  {% if layout == "A" %}
+    <div class="v" style="height:1350px;background:repeating-linear-gradient(90deg,#080403 0px,#080403 30px,#120a06 30px,#120a06 38px)"></div>
+    <div class="v" style="height:1350px;background:linear-gradient(180deg,rgba(0,0,0,0) 60%,rgba(159,137,69,.12) 75%,rgba(199,171,88,.26) 88%,rgba(223,191,100,.4) 100%)"></div>
+    {{ logo(64, 56) }}<p class="ctr" style="top:72px">{{ counter }}</p>
+    <div class="col" data-fit="block" data-max-bottom="625" style="left:80px;top:186px;width:920px;gap:20px">
+      {{ head }}
+      <p class="h" style="font-size:54px;line-height:1.04">{{ title }}</p>
+      <p class="ctx">{{ context }}</p>
+    </div>
+    {{ photo(p1) }}
+    <div class="col" data-fit="block" data-max-bottom="1320" style="left:80px;top:1206px;width:920px">
+      <p class="q" style="font-size:30px">{{ q(quote) }}</p>
+    </div>
+  {% elif layout == "B" %}
+    <div class="v" style="height:1350px;background:repeating-linear-gradient(90deg,#080403 0px,#080403 30px,#120a06 30px,#120a06 38px)"></div>
+    {{ photo(p1) }}
+    <div class="abs" style="left:0;top:500px;width:1080px;height:850px;background:linear-gradient(180deg,#080403 0%,rgba(8,4,3,0) 22%,rgba(8,4,3,0) 62%,rgba(8,4,3,.85) 88%,#080403 100%)"></div>
+    <div class="col" data-fit="block" data-max-bottom="700" style="left:80px;top:80px;width:920px;gap:22px">
+      {{ head }}
+      <p class="h" style="font-size:60px;line-height:1.04">{{ title }}</p>
+      <p class="ctx">{{ context }}</p>
+    </div>
+    <div class="col" data-fit="block" data-min-top="900" style="left:80px;bottom:170px;width:920px">
+      <p class="q" style="font-size:38px">{{ q(quote) }}</p>
+    </div>
+    <img class="abs" src="{{ assets }}/btr-secondary-white.png" style="left:64px;bottom:48px;width:150px;height:95px">
+    <p class="ctr" style="bottom:82px">{{ counter }}</p>
+  {% elif layout == "C" %}
+    <div class="v" style="height:1350px;background:repeating-linear-gradient(90deg,#080403 0px,#080403 30px,#120a06 30px,#120a06 38px)"></div>
+    {{ photo(p1) }}
+    <div class="abs" style="left:0;top:520px;width:1080px;height:200px;background:linear-gradient(180deg,rgba(8,4,3,0) 0%,#080403 100%)"></div>
+    {{ logo(64, 56) }}<p class="ctr" style="top:72px">{{ counter }}</p>
+    <div class="col" data-fit="block" data-max-bottom="1300" style="left:80px;top:690px;width:920px;gap:20px">
+      {{ head }}
+      <p class="h" style="font-size:54px;line-height:1.04">{{ title }}</p>
+      <p class="ctx">{{ context }}</p>
+      <p class="q" style="font-size:32px">{{ q(quote) }}</p>
+    </div>
+  {% else %}{# D: full photo #}
+    {{ photo(p1) }}
+    <div class="v" style="height:1350px;background:linear-gradient(180deg,rgba(8,4,3,0) 28%,rgba(8,4,3,.62) 48%,rgba(8,4,3,.94) 68%,#080403 100%)"></div>
+    {{ logo(64, 56) }}<p class="ctr" style="top:72px">{{ counter }}</p>
+    <div class="col" data-fit="block" data-min-top="560" style="left:80px;bottom:84px;width:920px;gap:22px">
+      {{ head }}
+      <p class="h" style="font-size:60px;line-height:1.04">{{ title }}</p>
+      <p class="ctx">{{ context }}</p>
+      <p class="q" style="font-size:34px">{{ q(quote) }}</p>
+    </div>
+  {% endif %}
+
+{% elif kind == "topics_end" %}
+  <div class="v" style="height:1350px;background:repeating-linear-gradient(90deg,#080403 0px,#080403 30px,#120a06 30px,#120a06 38px)"></div>
+  {{ photo(p1) }}
+  <div class="abs" style="left:0;top:408px;width:1080px;height:200px;background:linear-gradient(180deg,rgba(8,4,3,0) 0%,#080403 100%)"></div>
+  {{ logo(64, 56) }}<p class="ctr" style="top:72px">{{ counter }}</p>
+  <div class="col" data-fit="block" data-max-bottom="1320" style="left:80px;top:560px;width:920px">
+    <p class="h" style="font-size:46px;line-height:1.05">Watch the full conversation</p>
+    <p class="h lg nw" style="margin-top:14px;font-size:96px;line-height:1">LINK IN BIO</p>
+    <div style="margin-top:30px;display:flex;flex-direction:column;border-top:1px solid rgba(254,203,122,.3)">
+      {% for t in toc %}
+      <div style="display:flex;align-items:baseline;gap:24px;padding:13px 0 11px;border-bottom:1px solid rgba(254,203,122,.3)">
+        <p class="h lg" style="width:140px;flex:none;font-size:22px;line-height:1">{{ t.watch }}</p>
+        <p class="h" style="font-size:25px;line-height:1.15">{{ t.title }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="r" style="margin-top:26px;font-size:26px;line-height:1.32">Which moment would you watch first? Tell us in the comments.</p>
+  </div>
+
+{# ===================================================================== STORIES (1080×1920) #}
+{% elif kind == "teaser" %}
+  {{ photo(p1) }}
+  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.55) 0%,rgba(8,4,3,.25) 30%,rgba(8,4,3,.25) 70%,rgba(8,4,3,.7) 100%)"></div>
+  <p class="abs lab c" data-fit="w" style="left:80px;top:272px;width:920px">{{ line }}</p>
+  <p class="abs r c" style="left:80px;top:1418px;width:920px;font-size:30px;line-height:1.12;color:rgba(255,255,255,.9)">Watch the full episode</p>
+
+{% elif kind in ("poll", "rapid", "quote", "ask") %}
+  {{ photo(p1) }}
+  {% set g0 = {"poll": "40%,rgba(8,4,3,.6) 52%,rgba(8,4,3,.72) 72%,rgba(8,4,3,.82)", "rapid": "40%,rgba(8,4,3,.6) 50%,rgba(8,4,3,.72) 70%,rgba(8,4,3,.82)",
+               "quote": "42%,rgba(8,4,3,.6) 54%,rgba(8,4,3,.72) 72%,rgba(8,4,3,.8)", "ask": "40%,rgba(8,4,3,.62) 50%,rgba(8,4,3,.74) 70%,rgba(8,4,3,.84)"}[kind] %}
+  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.35) 0%,rgba(8,4,3,0) 13%,rgba(8,4,3,0) {{ g0 }} 100%)"></div>
+  {{ logo(logo_x, 250, 140, 89) }}
+  {% if kind == "poll" %}
+    <div class="col" data-fit="block" data-max-bottom="{{ 1180 if not b else 1440 }}" style="left:80px;top:960px;width:920px;gap:{{ 30 if not b else 40 }}px">
+      <p class="h c" style="font-size:50px;line-height:1.12">{{ line|safe }}</p>
+      {% if not b %}<p class="h c lg" style="font-size:40px;line-height:1.12">{{ question }}</p>
+      {% else %}<p class="h c" style="font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> {{ tap }}</p>{% endif %}
+    </div>
+    {% if not b %}<p class="foot">{{ footer }}</p>{% endif %}
+  {% elif kind == "rapid" %}
+    <div class="col" data-fit="block" data-max-bottom="{{ 1210 if not b else 1440 }}" style="left:80px;top:965px;width:920px;gap:24px">
+      <p class="lab c">RAPID FIRE{% if rapid_count %} · {{ rapid_count }} QUESTIONS{% endif %}</p>
+      <p class="h c" style="font-size:46px;line-height:1.12">{{ q(question) }}</p>
+      {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:38px;line-height:1.12">Guess {{ first }}’s answer.</p>
+      {% else %}<p class="h c" style="margin-top:20px;font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
+    </div>
+    {% if not b %}<p class="foot">{{ footer }}</p>{% endif %}
+  {% elif kind == "quote" %}
+    <div class="col" data-fit="block" data-min-top="1000" style="left:64px;bottom:370px;width:960px">
+      <p class="h" style="font-size:92px;line-height:1.04">{{ q(quote) }}</p>
+      <p class="lab" style="margin-top:56px;width:900px;line-height:1.15">{{ label }}</p>
+      <p class="r" style="margin-top:24px;font-size:26px;line-height:1.12;color:rgba(255,255,255,.8)">{{ sub }}</p>
+    </div>
+  {% else %}{# ask #}
+    <div class="col" data-fit="block" data-max-bottom="1260" style="left:80px;top:920px;width:920px;gap:22px">
+      <p class="lab c">ASK THE NEXT GUEST</p>
+      <p class="h c" style="font-size:52px;line-height:1.12">The next guest is a mystery.</p>
+      <p class="r c" style="margin-top:6px;font-size:28px;line-height:1.32">Ask them anything. Marius picks one question from the audience for every episode and reads your name on air.</p>
+    </div>
+    <p class="foot">Your question could be on air.</p>
+  {% endif %}
+
+{% elif kind == "chain" %}
+  {{ photo(p1) }}{{ photo(p2) }}
+  <div class="abs" style="left:538px;top:0;width:4px;height:1920px;background:#fecb7a"></div>
+  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.35) 0%,rgba(8,4,3,0) 13%,rgba(8,4,3,0) 38%,rgba(8,4,3,.62) 48%,rgba(8,4,3,.74) 70%,rgba(8,4,3,.82) 100%)"></div>
+  <p class="abs h lg" data-fit="w" style="left:40px;top:870px;width:480px;font-size:22px;line-height:1">{{ prev_upper }} ASKED</p>
+  <p class="abs h lg" data-fit="w" style="left:570px;top:870px;width:450px;text-align:right;font-size:22px;line-height:1">{{ first_upper }} ANSWERED</p>
+  <div class="col" data-fit="block" data-max-bottom="{{ 1230 if not b else 1440 }}" style="left:80px;top:960px;width:920px;gap:22px">
+    <p class="lab c">THE CHAIN</p>
+    <p class="h c" style="font-size:40px;line-height:1.12">{{ q(question) }}</p>
+    {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:36px;line-height:1.12">Guess {{ first }}’s answer.</p>
+    {% else %}<p class="h c" style="margin-top:26px;font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
+  </div>
+  {% if not b %}<p class="foot">{{ footer }}</p>{% endif %}
+
+{% elif kind == "link" %}
+  {{ photo(p1) }}
+  <div class="v" style="background:rgba(8,4,3,.35)"></div>
+  <div class="col" data-fit="block" data-max-bottom="610" style="left:80px;top:330px;width:920px;gap:24px">
+    <p class="lab">{{ line }}</p>
+    <p class="h" style="font-size:48px;line-height:1.12">{{ headline }}</p>
+  </div>
+  <div class="abs" style="left:0;top:640px;width:1080px;height:608px;border-top:2px solid #fecb7a;border-bottom:2px solid #fecb7a;box-sizing:border-box;overflow:hidden">{{ photo(p2) }}</div>
+  <p class="abs h" data-fit="block" data-max-bottom="1480" style="left:80px;top:1300px;width:920px;font-size:46px;line-height:1.12"><span class="lg">Tap the link</span> {{ tap }}</p>
+
+{% elif kind == "qa" %}
+  {{ photo(p1) }}{{ photo(p2) }}
+  <div class="abs" style="left:0;top:0;width:1080px;height:958px;background:linear-gradient(180deg,rgba(8,4,3,.4) 0%,rgba(8,4,3,0) 25%,rgba(8,4,3,0) 60%,rgba(8,4,3,.78) 100%)"></div>
+  <div class="abs" style="left:0;top:962px;width:1080px;height:958px;background:linear-gradient(180deg,rgba(8,4,3,0) 0%,rgba(8,4,3,0) 50%,rgba(8,4,3,.7) 72%,rgba(8,4,3,.8) 100%)"></div>
+  <div class="abs" style="left:0;top:958px;width:1080px;height:4px;background:#fecb7a"></div>
+  {{ logo(64, 250, 140, 89) }}
+  <div class="col" data-fit="block" data-min-top="560" style="left:64px;bottom:1020px;width:950px;gap:20px">
+    <p class="lab">MARIUS ASKED</p>
+    <p class="h" style="font-size:44px;line-height:1.12">{{ q(question) }}</p>
+  </div>
+  <div class="col" data-fit="block" data-max-bottom="1690" style="left:64px;top:1520px;width:950px;gap:20px">
+    <p class="lab">{{ first_upper }} ANSWERED</p>
+    <p class="h" style="font-size:44px;line-height:1.12">{{ q(answer) }}</p>
+  </div>
+
+{% elif kind == "atlas" %}
+  {{ photo(p1) }}
+  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.8) 0%,rgba(8,4,3,.75) 32%,rgba(8,4,3,.55) 45%,rgba(8,4,3,.35) 75%,rgba(8,4,3,.6) 100%)"></div>
+  {{ logo(64, 250, 140, 89) }}
+  <div class="col" data-fit="block" data-max-bottom="790" style="left:80px;top:470px;width:920px;gap:24px">
+    <p class="lab c">WORLD ATLAS</p>
+    <p class="h c" style="font-size:52px;line-height:1.12">{{ first }} opened the atlas.<br>Where did {{ pronoun }} land?</p>
+    {% if not b %}<p class="h c lg" style="font-size:38px;line-height:1.12">Take a guess.</p>
+    {% else %}<p class="h c" style="font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to find out.</p>{% endif %}
+  </div>
+  {% if not b %}<p class="foot">The answer is on our grid today.</p>{% endif %}
+{% endif %}
+</div>
+<script>
+// Shrink the texts that do not fit their zone (never below 62 % of the validated size); returns what still overflows.
+window.fit = function () {
+  const F = document.getElementById("frame").getBoundingClientRect();
+  const out = [];
+  const sizes = el => Array.from(el.querySelectorAll("*")).concat([el]).filter(x => x.childNodes.length && getComputedStyle(x).fontSize);
+  function shrink(el, ok) {
+    const items = sizes(el).map(x => [x, parseFloat(getComputedStyle(x).fontSize)]);
+    for (let k = 0; k < 40 && !ok(); k++) {
+      const f = Math.pow(0.97, k + 1);
+      if (f < 0.62) break;
+      items.forEach(([x, s]) => { x.style.fontSize = (s * f).toFixed(1) + "px"; });
+    }
+    if (!ok()) out.push((el.textContent || "").trim().slice(0, 60));
+  }
+  document.querySelectorAll("[data-fitw], [data-fit='w']").forEach(el => {
+    el.style.whiteSpace = "nowrap";
+    shrink(el, () => el.scrollWidth <= el.clientWidth + 1 && Array.from(el.querySelectorAll(".nw")).every(s => s.getBoundingClientRect().right <= F.left + 1000));
+  });
+  document.querySelectorAll("[data-fit='block'], [data-fit='sub']").forEach(el => {
+    const minTop = parseFloat(el.dataset.minTop || "-1e9"), maxBottom = parseFloat(el.dataset.maxBottom || "1e9");
+    shrink(el, () => { const r = el.getBoundingClientRect(); return r.top - F.top >= minTop - 0.5 && r.bottom - F.top <= maxBottom + 0.5
+      && Array.from(el.querySelectorAll(".nw")).every(s => s.getBoundingClientRect().right <= F.left + 1000); });
+  });
+  return {overflow: out};
+};
+</script>
+</body>
+</html>

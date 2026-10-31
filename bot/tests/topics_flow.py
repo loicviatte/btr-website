@@ -60,7 +60,7 @@ print("OK route")
 # every name given to assign() exists and is wrapped
 import re  # noqa: E402
 src = Path(bot.__file__).read_text()
-for topic in ("reels", "thumbs"):
+for topic in ("reels", "thumbs", "stories"):
     names = re.search(r'topics\.assign\(globals\(\), "%s", """(.*?)"""' % topic, src, re.S).group(1).split()
     for n in names:
         assert getattr(getattr(bot, n), "_btr_topic", None) == topic, n

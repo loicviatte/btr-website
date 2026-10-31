@@ -113,6 +113,24 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Instagram handles in `share.HANDLES` (collab invite guest + @mariusiepure). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
   sent to the chat model). Tool reel_cover (other photo / other words / zoom 0.6-1.5 (below 1 = wider): face["zoom"] in `render.cover_box`, kept in item["cover_zoom"] for that photo; fast path « reel 5 photo 11 zoom 1.25 »). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
+- Carousels & stories (Loïc 31.10; rules: claude/btr-carousels-workflow.md + btr-stories-workflow.md in the Claude
+  project; templates = the validated Oti2-Moment / Oti2-Topics / Oti2-Stories canvas pages ported to `templates/posts.html`,
+  same positions, texts shrink with window.fit): `btrbot/posts.py` (pure: ClickUp task names → kinds, shot needs,
+  pages, captions, placement, zone previews, render) + `btrbot/postmaker.py` (Maker: plan from the episode's ClickUp
+  tasks « Carousel · Key moment / Topics · Ep … », « Story · Poll / Rapid fire / The Chain / Link / Ask the next guest /
+  Question / answer / Quote / Atlas quiz / Teaser share · … » in « to generate » (or the bot's own, MARK), else the
+  3-episode CYCLE; content = one Opus call (prompts.POSTS, every EXACT field checked with said_exactly, one fix retry,
+  times pinned by posts.find_time); shots = 720p scan copy sampled every 2 s, classified guest / marius / both / wide /
+  noface (cache posts_scan.json), eyes checked (Haiku), 4K grab; The Chain = previous guest's close-up from the end of
+  their episode; render; file = Drive « BTR Posts / <guest> » (public links) + ClickUp block below MARK, status ready).
+  State: data/episodes/<id>/posts.json. Bot (topic « stories »): /posts [lien] [kind…], auto after « chapters_ok »,
+  tools posts_make / post_feedback / posts_validate / posts_status; previews (carousel album + IG caption; story = file
+  + Instagram zones) with ✅ Valider / 📷 Autres photos / ✍️ Autres textes / 🔀 Version b. `posts_tick` (60 s): at the
+  task's time, carousels + Question/answer + Quote stories by the Instagram API (container 20 min before, Drive direct
+  links), sticker stories / TikTok / no API = files + ready-to-copy text sent to Loïc with « ✅ Posté » buttons; >12 h
+  late = never posted, Loïc told once; `posts_refresh` (10 min) follows ClickUp dates. World Atlas catch-ups
+  (`atlas_tick`, images + captions from btr-media): ClickUp « ready » = posted by the API (no music), « approved » = sent
+  to Loïc with the music. Test: `tests/posts_flow.py [--render]`.
 - Telegram group « BTR Studio » (`btrbot/topics.py`, Loïc 31.10): Loïc writes in a forum group where the bot is admin →
   `bot.register_group` keeps it (data/topics.json) and creates the topics 🎬 Reels & covers / 🖼️ Miniatures épisode /
   📚 Stories & carrousels (General = system). `ExtBot._do_post` is patched: every send* to Loïc's private chat goes to

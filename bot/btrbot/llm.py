@@ -200,3 +200,6 @@ class LLM:
     def reel_captions(self, guest_name: str, video_title: str, text: str) -> dict:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
                                                        text=text[:4000]), 1500, task="reels (légendes)")
+
+    def posts_content(self, transcript: str, text: str) -> dict:
+        return self._json(self._with_transcript(transcript, text), 8000, task="carrousels & stories")

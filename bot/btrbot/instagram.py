@@ -158,3 +158,24 @@ class Instagram:
         except Exception:  # noqa: BLE001
             link = ""
         return {"id": mid, "permalink": link}
+
+    # ---- carousels and stories (images from public URLs: Drive direct links, btr-media on GitHub) ----
+    def carousel(self, image_urls: list[str], caption: str, collaborators: list[str]) -> str:
+        """Carousel container (2 to 10 JPEG images, 4:5). Returns the container id (publish it at the time)."""
+        kids = []
+        for u in image_urls[:10]:
+            kids.append(self._post(f"{self.uid}/media", image_url=u, is_carousel_item="true")["id"])
+        for k in kids:
+            self.wait(k, 300)
+        data = {"media_type": "CAROUSEL", "children": ",".join(kids), "caption": caption[:2200]}
+        if collaborators:
+            data["collaborators"] = json.dumps(collaborators[:3])
+        cid = self._post(f"{self.uid}/media", **data)["id"]
+        self.wait(cid, 300)
+        return cid
+
+    def story(self, image_url: str) -> str:
+        """Story container from one 9:16 JPEG (no sticker: the API can't add them)."""
+        cid = self._post(f"{self.uid}/media", image_url=image_url, media_type="STORIES")["id"]
+        self.wait(cid, 300)
+        return cid
