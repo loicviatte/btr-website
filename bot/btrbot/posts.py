@@ -223,13 +223,27 @@ def place(src: str, size: tuple[int, int], box: tuple[int, int, int, int], face:
 
 
 def pair_zoom(faces: list[dict], sizes: list[tuple[int, int]], box: tuple[int, int, int, int]) -> list[float]:
-    """Zooms so two faces side by side (or stacked) have the same height on screen (the bigger one wins)."""
+    """Zooms so two faces side by side (or stacked) have the same height on screen (the bigger one wins, then both
+    a little closer so each can slide up or down and have the eyes at the same height)."""
     hs = []
     for f, (W, H) in zip(faces, sizes):
         s = max(box[2] / W, box[3] / H)
         hs.append((f or {}).get("fh", 0.2) * H * s)
     top = max(hs)
-    return [min(1.8, top / h) if h else 1.0 for h in hs]
+    return [min(2.2, 1.12 * top / h) if h else 1.12 for h in hs]
+
+
+def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], boxes: list[tuple], eye_y: float,
+               css: str = "") -> list[dict]:
+    """Two photos with the faces at the same size and the eyes on the same line (eye_y, fraction of the box)."""
+    zs = pair_zoom(faces, sizes, boxes[0])
+    out = []
+    for s_, f, size, box, z in zip(src, faces, sizes, boxes, zs):
+        f = dict(f or {})
+        if "eyes" in f:                                  # place the eyes (not the face centre) on the line
+            f["cy"] = f["eyes"]
+        out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css))
+    return out
 
 
 # ---------------------------------------------------------------- previews
@@ -383,9 +397,10 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
         base.update(p1=ph("face", full), logo_x=logo_x("face"), question=c.get("question", ""),
                     rapid_count=c.get("count") or 0)
     elif kind == "chain":
-        z = pair_zoom([(shots.get("prev") or {}).get("face"), (shots.get("face") or {}).get("face")],
-                      [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("prev", "face")], (0, 0, 538, 1920))
-        base.update(p1=ph("prev", (0, 0, 538, 1920), 0.5, 0.3, z[0]), p2=ph("face", (542, 0, 538, 1920), 0.5, 0.3, z[1]),
+        p1, p2 = pair_place([uri("prev"), uri("face")], [(shots.get(k) or {}).get("face") for k in ("prev", "face")],
+                            [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("prev", "face")],
+                            [(0, 0, 538, 1920), (542, 0, 538, 1920)], 0.33)
+        base.update(p1=p1, p2=p2,
                     prev_upper=str(c.get("prev_guest") or "THE LAST GUEST").upper(), question=c.get("question", ""))
     elif kind == "link":
         base.update(p1=ph("bg", full, css="filter:blur(16px) brightness(.55);transform:scale(1.06)"),
@@ -395,9 +410,10 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     elif kind == "ask":
         base.update(p1=ph("face", full, 0.5, None), logo_x=logo_x("face"))
     elif kind == "qa":
-        z = pair_zoom([(shots.get("q") or {}).get("face"), (shots.get("a") or {}).get("face")],
-                      [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("q", "a")], (0, 0, 1080, 958))
-        base.update(p1=ph("q", (0, 0, 1080, 958), 0.5, 0.38, z[0]), p2=ph("a", (0, 962, 1080, 958), 0.5, 0.36, z[1]),
+        p1, p2 = pair_place([uri("q"), uri("a")], [(shots.get(k) or {}).get("face") for k in ("q", "a")],
+                            [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("q", "a")],
+                            [(0, 0, 1080, 958), (0, 962, 1080, 958)], 0.34)
+        base.update(p1=p1, p2=p2,
                     question=c.get("question", ""), answer=c.get("answer", ""))
     elif kind == "quote":
         base.update(p1=ph("face", full), logo_x=logo_x("face"), quote=c.get("quote", ""),

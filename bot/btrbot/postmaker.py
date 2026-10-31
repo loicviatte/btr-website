@@ -298,6 +298,10 @@ class Maker:
             if nd["who"] == "prev":
                 try:
                     shots[sid] = self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir)
+                    try:
+                        self.refine(shots[sid])
+                    except Exception:  # noqa: BLE001
+                        log.exception("refine face")
                     if shots[sid].get("name") and not (c_all.get(nd["key"]) or {}).get("prev_guest"):
                         c_all.setdefault(nd["key"], {})["prev_guest"] = shots[sid]["name"]
                 except Exception as e:  # noqa: BLE001
@@ -321,6 +325,10 @@ class Maker:
             size = Image.open(out).size
             shots[sid] = {"file": str(out), "t": c["t"], "size": list(size), "who": nd["who"],
                           "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+            try:
+                self.refine(shots[sid])
+            except Exception:  # noqa: BLE001
+                log.exception("refine face")
         st.save()
         return warn
 
@@ -340,6 +348,28 @@ class Maker:
             out += yt.svc.videos().list(part="snippet,status,contentDetails", id=",".join(ids[j:j + 50]),
                                         maxResults=50).execute().get("items", [])
         return out
+
+    def refine(self, shot: dict) -> dict:
+        """The face measured again on the 4K photo itself (the 720p scan is only a guide): size and eye height exact,
+        so two faces side by side can be matched (The Chain, Question / answer)."""
+        import cv2
+        img = cv2.imread(shot["file"])
+        if img is None or shot.get("who") not in ("guest", "marius", "prev"):
+            return shot
+        H, W = img.shape[:2]
+        k = 1280 / W
+        small = cv2.resize(img, (1280, int(H * k)))
+        fs = [f for f in self.pipe.faces.detect(small) if f[14] > 0.8]
+        if not fs:
+            return shot
+        want = (shot.get("face") or {}).get("cx", 0.5)
+        h0 = small.shape[0]
+        f = min(fs, key=lambda f: abs((f[0] + f[2] / 2) / 1280 - want) - 0.5 * f[3] / h0)
+        x, y, w, h = (float(v) for v in f[:4])
+        eyes = (float(f[5]) + float(f[7])) / 2 / h0                     # YuNet landmarks: right eye y, left eye y
+        shot["face"] = {"cx": (x + w / 2) / 1280, "cy": (y + h / 2) / h0, "fw": w / 1280, "fh": h / h0, "top": y / h0,
+                        "eyes": eyes}
+        return shot
 
     def prev_shot(self, ep, name: str, sdir: Path) -> dict:
         """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question)."""

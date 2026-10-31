@@ -3142,6 +3142,10 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("posts_chain_1031") and not reg.data.get("posts_chain_1031b"):   # same face size (Loïc)
+                    reg.data["posts_chain_1031b"] = True
+                    reg.save()
+                    bg(app, "Story The Chain (mêmes tailles de visage)", posts_rerender(app, ep, ["chain"]))
                 if reg.data.get("posts_test_1031b") and not reg.data.get("posts_chain_1031"):   # previous guest found
                     reg.data["posts_chain_1031"] = True                                         # in the whole channel
                     reg.save()
@@ -3691,6 +3695,19 @@ async def posts_finish(ctx, ep):
     await posts_make(ctx, ep)
 
 
+async def posts_rerender(ctx, ep, keys: list[str]):
+    """Same photos and texts, faces measured again on the 4K photos, pages made again and sent."""
+    M = maker()
+    st = _posts.PostState(ep)
+    for sid, sh in st.data.get("shots", {}).items():
+        if sid.split(":")[0] in keys:
+            await run(M.refine, sh)
+    st.save()
+    await run(M.render, ep, st, keys)
+    for k in keys:
+        await send_post_safe(ctx, ep, k)
+
+
 async def posts_cmd(update: Update, ctx):
     """/posts [lien] [moment|topics|poll|…] — carousels & stories of an episode."""
     if not allowed(update):
@@ -3806,7 +3823,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
-    atlas_done posts_cmd posts_trial posts_finish send_post_safe""")
+    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
