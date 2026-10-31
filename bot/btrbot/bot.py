@@ -10,10 +10,10 @@ from telegram import InlineKeyboardButton as B
 from telegram import InlineKeyboardMarkup as K
 from telegram import InputMediaPhoto, Update
 from telegram.constants import ParseMode
-from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler,
-                          MessageReactionHandler, filters)
+from telegram.ext import (Application, ApplicationHandlerStop, CallbackQueryHandler, CommandHandler, ContextTypes,
+                          ExtBot, MessageHandler, MessageReactionHandler, TypeHandler, filters)
 
-from . import assistant, design, drive
+from . import assistant, design, drive, topics
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -28,7 +28,38 @@ _share.load_handles(cfg.data_dir)                 # guests' Instagram @ confirme
 LOCK = asyncio.Lock()
 RUNNING: dict = {}          # the heavy job running now (label, since), for « c'est fait ? »
 LAST: dict = {}             # the last heavy job finished (label, at, ok)
-MEMORY = assistant.Memory(reg)   # the conversation as the chat model sees it
+TOPICS = topics.Topics(cfg.data_dir)   # the BTR Studio group and its topics (Reels, Miniatures, Stories)
+
+
+class TopicMemory:
+    """The conversation as the chat model sees it, one per topic of the group (private chat + General = « convo»)."""
+
+    def __init__(self):
+        self.mems: dict = {}
+
+    def of(self, topic) -> "assistant.Memory":
+        key = "convo" if topic in (None, "system", "private") else f"convo_{topic}"
+        return self.mems.setdefault(key, assistant.Memory(reg, key))
+
+    def everything(self) -> list[dict]:
+        """Every message of every topic (to scrub a pasted secret everywhere)."""
+        return [m for t in (None, *topics.NAMES) for m in self.of(t)._list()]
+
+    def __getattr__(self, name):
+        return getattr(self.of(topics.TOPIC.get()), name)
+
+
+MEMORY = TopicMemory()
+
+_do_post = ExtBot._do_post
+
+
+async def _routed_post(self, endpoint, data, *a, **k):
+    """Everything sent to Loïc's private chat goes to the group's topic of the current work (topics.py)."""
+    return await _do_post(self, endpoint, TOPICS.route(cfg.chat_id, endpoint, data), *a, **k)
+
+
+ExtBot._do_post = _routed_post
 AGENT = Agent(cfg.agent_src, cfg.github_token, cfg.anthropic_key, cfg.data_dir)
 AGENT_LOCK = asyncio.Lock()
 PENDING = cfg.data_dir / "pending_srt"   # SRTs (Drive folder or chat) waiting for their video
@@ -54,7 +85,11 @@ def esc(s) -> str:
 
 
 def allowed(update: Update) -> bool:
-    return cfg.chat_id and update.effective_chat and update.effective_chat.id == cfg.chat_id
+    """Loïc only: his private chat, or him in the BTR Studio group (other members can read, not drive the bot)."""
+    c, u = update.effective_chat, getattr(update, "effective_user", None)
+    if not cfg.chat_id or not c:
+        return False
+    return c.id == cfg.chat_id or bool(TOPICS.group and c.id == TOPICS.group and u and u.id == cfg.chat_id)
 
 
 async def say(ctx, text, **kw):
@@ -403,7 +438,7 @@ OK_EMOJIS = {"✅", "✔️", "✔", "👍", "👌", "💯", "🔥", "❤", "❤
 async def on_reaction(update: Update, ctx):
     """✅ (or 👍…) as a reaction on a thumbnail = validated; removing it re-opens the design."""
     r = update.message_reaction
-    if not r or not cfg.chat_id or r.chat.id != cfg.chat_id or not reg.active:
+    if not r or not cfg.chat_id or r.chat.id not in (cfg.chat_id, TOPICS.group) or not reg.active:
         return
     ep = reg.episode(reg.active)
     design = next((d for d, mid in (ep.get("thumb_msgs") or {}).items() if mid == r.message_id), None)
@@ -998,7 +1033,7 @@ async def ask_assistant(ctx, text: str, images: list | None = None):
                                                 "data": base64.standard_b64encode(open(p, "rb").read()).decode()}}
                    for p in images[:4]] + [{"type": "text", "text": text or "(capture sans texte)"}]
         try:
-            ctx_text = await run(assistant_context, ep) + "\n" + reels_context()
+            ctx_text = await run(assistant_context, ep) + "\n" + reels_context() + topic_context()
             hist = MEMORY.history()
             reply, actions = await assistant.converse(pipe.llm, CHAT_MODEL, ctx_text, hist, content, tool_handlers(ctx, images))
         except Exception as e:  # noqa: BLE001
@@ -2792,12 +2827,12 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
     m_tt = re.match(r"^\s*tiktok\s+(\S{16,})(?:\s+([A-Za-z0-9_-]{16,}))?\s*$", text, re.I)
     if m_tt:
-        for m in MEMORY._list():
+        for m in MEMORY.everything():
             if re.match(r"^\s*tiktok\s+\S", m.get("content", ""), re.I):
                 m["content"] = "tiktok [effacé]"
         reg.save()
         try:
-            await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+            await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
         except Exception:  # noqa: BLE001
             pass
         from . import tiktok
@@ -2818,12 +2853,12 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
         return True
     meta = re.search(r"\bEAA[A-Za-z0-9]{40,}\b", text)
     if meta:
-        for m in MEMORY._list():
+        for m in MEMORY.everything():
             c = re.sub(r"\bEAA[A-Za-z0-9]{40,}", "EAA[effacé]", m.get("content", ""))
             m["content"] = re.sub(r"\b[0-9a-f]{32}\b", "[effacé]", c)
         reg.save()
         try:
-            await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+            await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
         except Exception:  # noqa: BLE001
             pass
         app_id = re.search(r"\b\d{12,20}\b", text)
@@ -2845,12 +2880,12 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
         return True
     if not code and not token:
         return False
-    for m in MEMORY._list():                       # never keep a code / token in the chat history (old pastes too)
+    for m in MEMORY.everything():                  # never keep a code / token in the chat history (old pastes too)
         c = re.sub(r"(code=)[^&\s]+", r"\1[effacé]", m.get("content", ""))
         m["content"] = re.sub(r"\bpk_[A-Za-z0-9_]{20,}", "pk_[effacé]", c)
     reg.save()
     try:
-        await ctx.bot.delete_message(cfg.chat_id, update.message.message_id)
+        await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -3092,12 +3127,86 @@ async def on_boot(app):
             log.exception("boot message")
 
 
+# ---------------------------------------------------------------- BTR Studio group (one topic per kind of work)
+def topic_context() -> str:
+    if not TOPICS.group:
+        return ""
+    here = topics.TOPIC.get() or "system"
+    return (f"\nTelegram : Loïc t'écrit dans le fil « {topics.LABELS.get(here, here)} » du groupe BTR Studio. Les autres "
+            "fils : " + " · ".join(v for k, v in topics.LABELS.items() if k not in (here, "private")) + ". Les résultats "
+            "d'un travail arrivent dans le fil de ce travail (une cover dans Reels même si on te le demande ailleurs) : "
+            "si tu lances quelque chose qui répondra ailleurs, dis-le en une phrase.")
+
+
+async def register_group(ctx, chat) -> bool:
+    """Loïc wrote in a group the bot is in: it becomes BTR Studio, with its topics. False if not ready."""
+    if not getattr(chat, "is_forum", False):
+        await ctx.bot.send_message(chat.id, "Pour que je range tout par sujet : réglages du groupe → active « Sujets », "
+                                            "puis réécris-moi ici.")
+        return False
+    threads = {}
+    try:
+        for key, name in topics.NAMES.items():
+            t = await ctx.bot.create_forum_topic(chat.id, name, icon_color=topics.COLORS[key])
+            threads[key] = t.message_thread_id
+    except Exception as e:  # noqa: BLE001
+        log.warning("create_forum_topic: %s", e)
+        await ctx.bot.send_message(chat.id, "Il me faut le droit admin « Gérer les sujets » pour créer les fils, puis "
+                                            f"réécris-moi ici. ({esc(str(e)[-120:])})")
+        return False
+    TOPICS.group, TOPICS.threads = chat.id, threads
+    TOPICS.save()
+    for key, th in threads.items():
+        await ctx.bot.send_message(chat.id, topics.WELCOME[key], message_thread_id=th)
+    await ctx.bot.send_message(chat.id, "✅ Groupe BTR Studio prêt. Ici (Général) : système, alertes, /check, /couts. "
+                                        "Chaque fil a sa propre conversation avec moi.")
+    tok = topics.TOPIC.set("private")
+    try:
+        await ctx.bot.send_message(cfg.chat_id, "✅ Tout passe maintenant dans le groupe BTR Studio. Ce chat privé reste "
+                                                "pour les connexions (/connect, codes, tokens).")
+    finally:
+        topics.TOPIC.reset(tok)
+    return True
+
+
+async def set_origin(update: Update, ctx):
+    """Runs before every handler: the topic of the incoming message is where the answer goes."""
+    c = update.effective_chat
+    if not c or not cfg.chat_id:
+        return
+    if c.type == "private":
+        topics.TOPIC.set("private")
+        return
+    u = update.effective_user
+    if c.id != TOPICS.group:
+        if (not TOPICS.group and u and u.id == cfg.chat_id and c.type in ("group", "supergroup")
+                and update.effective_message and not update.callback_query):
+            await register_group(ctx, c)
+            raise ApplicationHandlerStop
+        return
+    m = update.effective_message
+    th = m.message_thread_id if m is not None and m.is_topic_message else None
+    topics.TOPIC.set(TOPICS.key_of(th))
+
+
+topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
+    file_reels redo_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
+    on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
+    set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
+    reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
+topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
+    propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
+    show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
+    episode_cmd scan_cmd""")
+
+
 def main():
     import socket
     socket.setdefaulttimeout(120)        # Google APIs (httplib2) have no timeout of their own: never hang a job forever
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     # concurrent updates: he can keep talking while a render or a frame search runs (heavy jobs share LOCK)
     app = Application.builder().token(cfg.telegram_token).post_init(on_boot).concurrent_updates(True).build()
+    app.add_handler(TypeHandler(Update, set_origin), group=-1)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("check", check_cmd))

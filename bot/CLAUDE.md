@@ -113,6 +113,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Instagram handles in `share.HANDLES` (collab invite guest + @mariusiepure). Both are connected from
   Telegram with /connect (Google address pasted back, ClickUp pk_ token pasted; secrets in data/secrets.json, never
   sent to the chat model). Tool reel_cover (other photo / other words / zoom 0.6-1.5 (below 1 = wider): face["zoom"] in `render.cover_box`, kept in item["cover_zoom"] for that photo; fast path « reel 5 photo 11 zoom 1.25 »). Tests: `tests/reel_offline.py` (render), `tests/reel_flow.py` (Telegram), `tests/reel_pages.py` (pages), `tests/reel_layout.py` (placement replayed on the real reels), `tests/reel_framing.py` (zoom), `tests/reel_cover.py` (cover), `tests/reel_share.py` (ClickUp slot, description), `tests/reel_names_timing.py` (word visibility, sentence seams, name fixes).
+- Telegram group « BTR Studio » (`btrbot/topics.py`, Loïc 31.10): Loïc writes in a forum group where the bot is admin →
+  `bot.register_group` keeps it (data/topics.json) and creates the topics 🎬 Reels & covers / 🖼️ Miniatures épisode /
+  📚 Stories & carrousels (General = system). `ExtBot._do_post` is patched: every send* to Loïc's private chat goes to
+  the group, in the topic of `topics.TOPIC` (context variable). `bot.set_origin` (handler group -1) sets it from the
+  incoming message's topic (private chat = stays private: secrets, /connect); the reel / Shorts / IG / TikTok functions
+  are wrapped « reels », the episode thumbnail / chapter ones « thumbs » (`topics.assign` at the end of bot.py — a new
+  function that sends reel or thumbnail messages goes in that list). One chat memory per topic (`TopicMemory`,
+  `MEMORY.everything()` to scrub secrets). In the group only Loïc drives the bot (`allowed`). Test: `tests/topics_flow.py`.
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules
