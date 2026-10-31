@@ -1,0 +1,43 @@
+# Read-only look at the bot on its server (Actions → Bot logs → Run workflow): recent errors and the state of the
+# carousels / stories. Prints no secret (.env and data/secrets.json are never read).
+name: Bot logs
+on:
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: "extra pattern to look for in the journal"
+        required: false
+        default: "posts|carrousel|stories|Traceback|ERROR"
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HOST: ${{ secrets.BOT_SERVER_HOST }}
+    steps:
+      - name: SSH access
+        env:
+          KEY: ${{ secrets.BOT_SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          k=$(printf '%s' "$KEY" | tr -d '\r')
+          case "$k" in *BEGIN*) ;; *) k=$(printf '%s' "$k" | tr -d ' \n\t' | base64 -d) ;; esac
+          body=$(printf '%s' "$k" | sed -e 's/-----BEGIN OPENSSH PRIVATE KEY-----//' -e 's/-----END OPENSSH PRIVATE KEY-----//' | tr -d ' \n\t')
+          { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Journal (last 6 h)
+        env:
+          PAT: ${{ github.event.inputs.grep }}
+        run: |
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat | grep -v -i -E 'token|secret|key=' | grep -E -A12 '$PAT' | tail -300"
+      - name: Posts state
+        run: |
+          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in */posts.json; do echo "== $f"; python3 -c "
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          print(\"content keys:\", list(d.get(\"content\",{})))
+          for k,it in d.get(\"items\",{}).items():
+              print(k, it.get(\"status\"), \"files\", len(it.get(\"files\") or []), \"skip\", it.get(\"skip\"), \"warn\", it.get(\"warn\"), \"overflow\", it.get(\"overflow\"))
+          print(\"shots:\", sorted(d.get(\"shots\",{})))
+          " "$f"; done'
