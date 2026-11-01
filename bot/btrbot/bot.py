@@ -1060,21 +1060,27 @@ def tool_handlers(ctx, images: list) -> dict:
             return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
-    async def reel_cover(n, photo=None, small=None, big=None, gold=None, zoom=None):
+    async def reel_cover(n, photo=None, small=None, big=None, gold=None, zoom=None, exact=False, files=False):
         ep = reels_or_fail()
-        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
-            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         n = int(n)
         item = RS(ep).data["items"].get(str(n)) or {}
+        text = {"small": small or "", "big": big or "", "gold": gold or ""} if (big or gold or small) else None
+        if _dash.reel_locked(item):                        # published: a new image only, the post stays as it is
+            if files:
+                return bg(ctx, f"Cover du reel {n} sur Drive + ClickUp", push_alt_cover(ctx, ep, n), limit=5 * 60)
+            if photo == "next":
+                photo = (int(item.get("cover_pick") or 1) % max(1, int(item.get("cover_count") or 1))) + 1
+            return bg(ctx, f"Nouvelle image de cover du reel {n}",
+                      alt_cover(ctx, ep, n, text, int(photo) if photo else None, float(zoom) if zoom else None,
+                                bool(exact)), limit=5 * 60)
         if not item.get("file"):
             return f"le reel {n} n'est pas encore monté"
-        text = {"small": small or "", "big": big or "", "gold": gold or ""} if (big or gold or small) else None
         if photo == "next":
             photo = (int(item.get("cover_pick") or 1) % max(1, int(item.get("cover_count") or 1))) + 1
         if zoom and not photo:                             # zoom alone = closer on the photo already chosen
             photo = item.get("cover_pick")
         return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None,
-                                                          float(zoom) if zoom else None), limit=5 * 60)
+                                                          float(zoom) if zoom else None, bool(exact)), limit=5 * 60)
 
     async def reels_resend(nums=None):
         ep = reels_or_fail()
@@ -1802,12 +1808,66 @@ async def file_reels(ctx, ep, feed: list[int] | None = None):
                    "ClickUp passe en « ready » et je programme le Short YouTube tout seul.")
 
 
-async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None = None):
+async def alt_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None, exact: bool):
+    """A published reel: the cover image made again (same photo and framing unless Loïc says otherwise) in a separate
+    file, sent here for Loïc to swap by hand on YouTube / Instagram. The reel, Drive, ClickUp and its status stay."""
+    from pathlib import Path
+    item = reel_item(ep, n)
+    photo = photo or item.get("cover_pick")
+    if zoom is None and photo == item.get("cover_pick"):
+        zoom = item.get("cover_zoom")
+    await say(ctx, f"🖼 Reel {n} (déjà en ligne) : je refais juste l'image de la cover, rien d'autre ne bouge…")
+    try:
+        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo, zoom, exact, "_new")
+    except Exception as e:  # noqa: BLE001
+        await say(ctx, f"⚠️ Cover du reel {n} : <code>{esc(str(e)[-200:])}</code>")
+        return
+    if text and res.get("cover_text") != pipe_cover_text(text):
+        await say(ctx, "Ces mots ne sont pas dits tels quels dans le reel : je garde l'accroche d'avant. "
+                       "Si tu les imposes, redis-le (« mets exactement … »).")
+    item["cover_alt"] = {k: res.get(k) for k in ("cover", "cover_text", "cover_pick", "cover_zoom", "cover_grid")}
+    RS(ep).save()
+    t = res.get("cover_text") or {}
+    words = " / ".join(x for x in (t.get("small"), t.get("big"), t.get("gold")) if x)
+    with open(res["cover"], "rb") as f:
+        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(res["cover"]).name,
+                                    caption=f"🖼 Nouvelle cover du reel {n} : « {words} », photo {res.get('cover_pick')}. "
+                                            "Le reel est déjà en ligne : remplace-la à la main sur YouTube (Short) et "
+                                            "Instagram. Drive et ClickUp gardent l'ancienne ; dis « mets-la sur Drive "
+                                            "et ClickUp » si tu veux."[:1000])
+    grid = res.get("cover_grid")
+    if grid and Path(grid).exists():
+        with open(grid, "rb") as f:
+            await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Reel {n} · aperçu grille de la nouvelle cover")
+    MEMORY.add("assistant", f"[nouvelle image de cover du reel {n} (déjà publié) envoyée : « {words} » ; "
+                            "Drive / ClickUp non touchés, reel_cover files=true pour les mettre à jour]")
+
+
+async def push_alt_cover(ctx, ep, n: int):
+    """Loïc's go after alt_cover: the new image goes to Drive (same link) and ClickUp, nothing else."""
+    from pathlib import Path
+    item = reel_item(ep, n)
+    alt = item.get("cover_alt") or {}
+    if not alt.get("cover") or not Path(alt["cover"]).exists():
+        await say(ctx, f"Reel {n} : pas de nouvelle cover à envoyer (demande-la d'abord).")
+        return
+    try:
+        done = await run(pipe.cover_replace_files, ep, n, dict(item), Path(alt["cover"]))
+    except Exception as e:  # noqa: BLE001
+        log.exception("alt cover files")
+        await say(ctx, f"⚠️ Cover du reel {n} : <code>{esc(str(e)[-200:])}</code>")
+        return
+    await say(ctx, f"✅ Reel {n} : nouvelle cover mise sur {' + '.join(done) or 'rien (pas de Drive ni de tâche)'}. "
+                   "Statut, publication et légendes inchangés.")
+
+
+async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom: float | None = None,
+                     exact: bool = False):
     item = reel_item(ep, n)
     await say(ctx, f"🖼 Reel {n} : je refais la cover" + (f" avec la photo {photo}" if photo else "")
               + (f", zoom x{zoom:g} sur la tête" if zoom and zoom > 1 else "") + "…")
     try:
-        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo, zoom)
+        res = await run(pipe.reel_cover, ep, n, dict(item), text, photo, zoom, exact)
     except Exception as e:  # noqa: BLE001
         await say(ctx, f"⚠️ Cover du reel {n} : <code>{esc(str(e)[-200:])}</code>")
         return
@@ -5042,7 +5102,7 @@ async def on_teaser_button(ctx, q, data: str):
 
 
 topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
-    file_reels redo_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
+    file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")

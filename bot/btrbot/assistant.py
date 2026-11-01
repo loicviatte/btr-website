@@ -285,10 +285,17 @@ TOOLS = [
                                           "mot(s) en très gros, gold = dernier(s) mot(s) en or italique ; uniquement des "
                                           "mots dits dans le reel, dans l'ordre) et/ou zoom sur la tête (zoom = facteur, "
                                           "0.6 à 1.5 : au-dessus de 1 = plus serré (« zoom x1.25 »), en dessous = plus large (« trop zoomé » → 0.8) ; 1 = cadrage normal ; gardé pour cette photo). "
-                                          "Si le reel est validé, Drive et ClickUp sont mis à jour.",
+                                          "Si le reel est validé, Drive et ClickUp sont mis à jour. Reel DÉJÀ PUBLIÉ : "
+                                          "marche aussi, mais seule l'IMAGE est refaite (même photo, même cadrage par "
+                                          "défaut) et envoyée à Loïc pour qu'il la remplace à la main ; publication, "
+                                          "Drive, ClickUp et statut ne bougent pas. Ensuite seulement, si Loïc le "
+                                          "demande (« mets-la sur Drive et ClickUp ») : files=true. exact=true quand "
+                                          "Loïc IMPOSE des mots non dits tels quels (ex. « dry ice » au lieu de « dry "
+                                          "eyes ») : ses mots sont pris tels quels.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "photo": {"type": ["integer", "string"]},
                                                        "small": {"type": "string"}, "big": {"type": "string"},
-                                                       "gold": {"type": "string"}, "zoom": {"type": "number"}},
+                                                       "gold": {"type": "string"}, "zoom": {"type": "number"},
+                                                       "exact": {"type": "boolean"}, "files": {"type": "boolean"}},
                      "required": ["n"]}},
     {"name": "reels_show", "description": "RENVOYER / REMONTRER / RÉAFFICHER des reels tels quels, sans rien refaire "
                                          "(« renvoie-moi les reels », « remontre-moi le 1, 2, 3 », « je veux les revoir »). "

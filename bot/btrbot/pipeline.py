@@ -793,10 +793,12 @@ class Pipeline:
         return out
 
     def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None,
-                   zoom: float | None = None) -> dict:
+                   zoom: float | None = None, exact: bool = False, suffix: str = "") -> dict:
         """The cover of reel n: the best 4K still of the guest (eyes open, lively; the model looks at the faces),
         the hook in the validated template. `text` / `pick` = Loïc's choice (other words, other photo number);
-        `zoom` = closer on the head (1.05-1.5), kept for this photo when the cover is made again."""
+        `zoom` = closer on the head (1.05-1.5), kept for this photo when the cover is made again. `exact` = Loïc
+        imposes the words (not checked against what was said); `suffix` = another file name (a published reel's
+        cover made again without touching the one in place)."""
         work = ep.dir / "reels" / f"r{n:02d}"
         cdir = work / "cover"
         cands = json.loads((cdir / "cands.json").read_text()) if (cdir / "cands.json").exists() else []
@@ -832,18 +834,39 @@ class Pipeline:
         still = cdir / c["file"]
         still, c = self._cover_air(cdir, still, c)      # head too close to the top: a little set generated above
         hook = cover_hook(text, item.get("said", "")) if text else None
-        hook = hook or (item.get("captions") or {}).get("cover")
+        if text and exact and not hook:                # Loïc's own words (e.g. « dry ice » where the reel heard « eyes »)
+            hook = {k: re.sub(r"\s+", " ", str(text.get(k) or "")).strip() for k in ("small", "big", "gold")}
+            hook["big"], hook["gold"] = hook["big"].upper(), hook["gold"].upper()
+        hook = hook or (item.get("cover_text") if suffix else None) or (item.get("captions") or {}).get("cover")
         if not hook:                                   # captions written before the cover existed: ask for the hook
             hook = self.reel_captions(ep, item.get("said", "")).get("cover")
         hook = hook or cover_hook(None, item.get("said", ""), fallback=True)
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
         out = render.reel_cover(cdir, still, c, hook, ep.get("guest_name") or "",
-                                work / f"BTR_reel_{n:02d}_{slug}_cover.jpg")
+                                work / f"BTR_reel_{n:02d}_{slug}_cover{suffix}.jpg")
         chk_p = out.parent / (out.stem + ".check.json")
         chk = json.loads(chk_p.read_text()) if chk_p.exists() else {}
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands),
                 "cover_zoom": zoom,
                 "cover_issues": chk.get("issues", []), "cover_grid": str(out.parent / (out.stem + "_grille.jpg"))}
+
+    def cover_replace_files(self, ep: Episode, n: int, item: dict, path: Path) -> list[str]:
+        """Only when Loïc asks: a published reel's new cover replaces the Drive cover (same file, same link) and is
+        attached to its ClickUp task. Nothing else changes (no status, name, description, Instagram, YouTube)."""
+        from . import share
+        sec = share.Secrets(self.cfg.data_dir)
+        done = []
+        fid = (item.get("drive_ids") or {}).get("cover") or share.file_id((item.get("links") or {}).get("cover") or "")
+        if fid:
+            d = share.Drive(sec, self.cfg.youtube_client[:2])
+            parent = (d.svc.files().get(fileId=fid, fields="parents").execute().get("parents") or [None])[0]
+            name = f"{item['file_base']}_COVER.jpg" if item.get("file_base") else Path(path).name
+            d.put(Path(path), parent, name, "image/jpeg", fid)
+            done.append("Drive")
+        if item.get("clickup_task"):
+            share.ClickUp(sec.get("clickup_token")).attach(item["clickup_task"], Path(path))
+            done.append("ClickUp")
+        return done
 
     def _cover_air(self, cdir: Path, still: Path, face: dict) -> tuple[Path, dict]:
         """When the photo has no room above the head (full-height window), the window is cut out and LaMa generates
