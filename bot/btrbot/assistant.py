@@ -213,8 +213,17 @@ TOOLS = [
                                              "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
                                              "prévue. keys vides = tous les aperçus en attente.",
      "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}}}}},
-    {"name": "posts_status", "description": "Où en sont les carrousels / stories (aperçus, validés, publiés, dates).",
+    {"name": "posts_status", "description": "Où en sont les carrousels / stories (aperçus, validés, publiés, date de "
+                                           "publication prévue, dossier Drive des validés).",
      "input_schema": {"type": "object", "properties": {}}},
+    {"name": "posts_show", "description": "RENVOYER tel quel, sans rien refaire, un ou plusieurs carrousels / stories "
+                                         "(« renvoie-moi topics », « remontre la story poll »), en attente ou déjà "
+                                         "validés / programmés : images finales (celles du Drive si validé) + textes, "
+                                         "statut et programmation inchangés. keys = moment, topics, teaser, poll, rapid, "
+                                         "chain, link, ask, qa, quote, atlas (vide = tous) ; link = l'épisode si ce "
+                                         "n'est pas le dernier travaillé (lien ou id YouTube).",
+     "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
+                                                       "link": {"type": "string"}}}},
     {"name": "shorts_plan", "description": "Montrer quand chaque reel rangé sortira en Short YouTube (plan + bouton "
                                           "« Programmer »). « on en est où des Shorts », « montre le planning YouTube ».",
      "input_schema": {"type": "object", "properties": {}}},

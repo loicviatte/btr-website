@@ -182,6 +182,9 @@ class Drive:
         self.svc.permissions().create(fileId=f["id"], body={"type": "anyone", "role": "reader"}).execute()
         return f
 
+    def download(self, fid: str) -> bytes:
+        return self.svc.files().get_media(fileId=fid).execute()
+
     def folder_link(self, fid: str) -> str:
         return f"https://drive.google.com/drive/folders/{fid}"
 

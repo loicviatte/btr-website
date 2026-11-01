@@ -1062,6 +1062,24 @@ def tool_handlers(ctx, images: list) -> dict:
     async def posts_status_t():
         return await posts_status(ctx)
 
+    async def posts_show_t(keys=None, link=None):
+        keys = [str(k).lower().strip() for k in keys or []]
+        vid = None
+        if link:
+            m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link)
+            vid = m.group(1) if m else None
+        if vid:
+            ep = reg.episode(vid)
+        else:
+            ep = posts_ep_of(keys[0] if keys else None)
+        st = _posts.PostState(ep)
+        keys = [k for k in keys if k in st.items] or ([] if keys else list(st.items))
+        if not keys:
+            return f"pas de ce post pour {ep.get('guest_name') or ep.video_id} (il y a : {', '.join(st.items) or 'rien'})"
+        asyncio.create_task(posts_show(ctx, ep, keys))     # just sending files: no need to wait for the heavy queue
+        return (f"j'envoie tels quels (sans rien refaire) : {', '.join(post_name(ep, k) for k in keys)}, "
+                "dans le fil Stories & carrousels")
+
     async def shorts_schedule(dates=None):
         from datetime import datetime, timezone
         from . import shorts
@@ -1087,7 +1105,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom, "posts_validate": posts_validate,
-            "posts_status": posts_status_t,
+            "posts_status": posts_status_t, "posts_show": posts_show_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
@@ -3938,17 +3956,90 @@ async def posts_cmd(update: Update, ctx):
                                        posts_make(ctx, ep, only or None)))
 
 
+async def post_when(it: dict) -> datetime | None:
+    """Planned publishing time: the one the bot follows, else the ClickUp task's due date."""
+    if it.get("at"):
+        return datetime.fromisoformat(it["at"])
+    if not it.get("task"):
+        return None
+    try:
+        return _posts.due(await run(maker()._task, it))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+async def posts_show(ctx, ep, keys: list[str]):
+    """Posts sent again exactly as they are (nothing made again, no ClickUp / schedule change): validated ones with
+    the images really filed on Drive, drafts with their preview and buttons."""
+    from telegram import InputMediaPhoto as P
+    from . import share
+    st = _posts.PostState(ep)
+    drive = None
+    for k in keys:
+        it = st.items.get(k)
+        name = post_name(ep, k)
+        if not it or not it.get("files"):
+            await say(ctx, f"{esc(name)} : pas encore fait.")
+            continue
+        try:
+            imgs = None
+            if it.get("drive") and it.get("status") in ("ok", "posted"):
+                try:
+                    drive = drive or await run(share.Drive, share.Secrets(cfg.data_dir), cfg.youtube_client[:2])
+                    imgs = [await run(drive.download, d["id"]) for d in it["drive"]]
+                except Exception:  # noqa: BLE001
+                    log.exception("posts_show drive %s", k)
+            src = "images du Drive" if imgs else "fichiers enregistrés"
+            imgs = imgs or [Path(f).read_bytes() for f in it["files"]]
+            for j in range(0, len(imgs), 10):
+                if len(imgs[j:j + 10]) == 1:
+                    await tg(ctx.bot.send_photo, cfg.chat_id, imgs[j])
+                else:
+                    await tg(ctx.bot.send_media_group, cfg.chat_id, [P(b) for b in imgs[j:j + 10]])
+            state = {"draft": "aperçu à valider", "ok": "validé", "posted": "publié"}.get(it.get("status"), "pas validé")
+            at = await post_when(it)
+            when = _posts.label_time(at) + " (Londres)" if at else ("pas de date (pas de tâche ClickUp)" if not it.get("task") else "pas de date")
+            lines = [f"<b>{esc(name)}</b> · {state} · {esc(when)} · {len(imgs)} image{'s' if len(imgs) > 1 else ''} ({src})"]
+            if it.get("folder"):
+                lines.append(f"Drive : {esc(it['folder'])}")
+            s = it.get("sticker") or {}
+            if s:
+                stk = f"Sticker : <b>{esc(s.get('type'))}</b>" + (f" · « {esc(s['question'])} »" if s.get("question") else "")
+                if s.get("options"):
+                    stk += " · " + " / ".join(esc(o) for o in s["options"]) + (f" (bonne : {esc(s['right'])})" if s.get("right") else "")
+                if s.get("url"):
+                    stk += f" · {esc(s['url'])}"
+                lines.append(stk)
+            caps = it.get("captions") or {}
+            for p, lab in (("instagram", "Légende Instagram"), ("tiktok", "Légende TikTok")):
+                if caps.get(p):
+                    lines.append(f"\n{lab} :\n<pre>{esc(caps[p])}</pre>")
+            kb = post_buttons(ep.video_id, k, it["kind"], bool(it.get("b"))) if it.get("status") == "draft" else None
+            await say(ctx, "\n".join(lines), reply_markup=kb)
+        except Exception as e:  # noqa: BLE001
+            log.exception("posts_show %s", k)
+            await say(ctx, f"⚠️ {esc(name)} pas renvoyé (<code>{esc(str(e)[-120:])}</code>).")
+
+
 async def posts_status(ctx) -> str:
     out = []
     for st in _posts.all_states(cfg.data_dir):
         ep = st.ep
         for k, it in st.items.items():
             ig = it.get("ig") or {}
-            state = {"draft": "aperçu envoyé, à valider", "ok": "validé, programmé", "posted": "publié"}.get(it.get("status"), "pas fait")
+            state = {"draft": "aperçu envoyé, à valider", "ok": "validé", "posted": "publié"}.get(it.get("status"), "pas fait")
             if ig.get("done"):
                 state = "publié sur Instagram"
-            when = _posts.label_time(datetime.fromisoformat(it["at"])) if it.get("at") else ""
-            out.append(f"- {post_name(ep, k)} : {state} {when}")
+            line = f"- {post_name(ep, k)} [{k}] : {state}"
+            if it.get("status") in ("ok", "posted"):
+                at = await post_when(it)
+                line += (f", prévu {_posts.label_time(at)} (Londres)" if at else
+                         ", pas de date (pas de tâche ClickUp : rien ne sera publié)" if not it.get("task") else ", pas de date dans ClickUp")
+                if it.get("folder"):
+                    line += f", Drive : {it['folder']}"
+            elif it.get("at"):
+                line += f" {_posts.label_time(datetime.fromisoformat(it['at']))}"
+            out.append(line)
     return "\n".join(out[-40:]) or "aucun carrousel / story préparé par le bot"
 
 
@@ -4038,7 +4129,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
     atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
-    show_changed posts_ig_test""")
+    show_changed posts_ig_test posts_show""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
