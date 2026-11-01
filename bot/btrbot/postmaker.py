@@ -581,6 +581,14 @@ class Maker:
                     cu.set_field(tid, share.F_TT, share.TT_SCHEDULED)
             except Exception:  # noqa: BLE001
                 pass
+            sig = "|".join(f"{Path(f).name}:{Path(f).stat().st_mtime:.0f}" for f in it.get("files") or [])
+            if it.get("attached") != sig:                  # the images in the task too (like the reel covers)
+                try:
+                    for f in it.get("files") or []:
+                        cu.attach(tid, Path(f))
+                    it["attached"] = sig
+                except Exception:  # noqa: BLE001
+                    log.exception("posts attach")
             it["at"] = (posts.due(t) or datetime.now(posts.TZ)).isoformat()
             tt = posts.tiktok_time(t, posts.due(t)) if it["kind"] in posts.CAROUSELS else None
             it["tt_at"] = tt.isoformat() if tt else None
