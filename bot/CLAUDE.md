@@ -143,6 +143,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   are wrapped « reels », the episode thumbnail / chapter ones « thumbs » (`topics.assign` at the end of bot.py — a new
   function that sends reel or thumbnail messages goes in that list). One chat memory per topic (`TopicMemory`,
   `MEMORY.everything()` to scrub secrets). In the group only Loïc drives the bot (`allowed`). Test: `tests/topics_flow.py`.
+- « ✅ À valider » topic (`btrbot/dashboard.py`, Loïc 01.11): ONE message per episode (reels.json / posts.json touched in
+  the last 21 days + the active episode), edited in place by `bot.dash_tick` (30 s, only when its text / buttons
+  change; reg.data["dash"][vid] = message id + signature): miniatures (ep.stage), reels (preview ⏳, cover to validate ⏳,
+  Short planned 📅, published 🟢), carousels / stories (draft ⏳, validated 📅 with the time, published 🟢). Taps = link
+  to the preview message (item["msg"], reel item["msg"] / ["cover_msg"], ep["thumb_msgs"] + thumb_chat) or `dash:r` /
+  `dash:p` callbacks that send it again in its topic. Published = locked: no button, `on_post_button` and the reel /
+  post tools refuse edits (`dashboard.reel_locked` / `post_locked`). Topic created at boot for an existing group
+  (`ensure_dash_topic`). Test: `tests/dash_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

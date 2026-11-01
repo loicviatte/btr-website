@@ -449,6 +449,7 @@ async def send_thumb(ctx, ep, design: str):
             msg = await ctx.bot.send_document(cfg.chat_id, f, filename=f"{ep.video_id}_carre.jpg", caption="Miniature carrée 1080×1080 (fichier HD)")
     MEMORY.add("assistant", f"[image envoyée : miniature {THUMB_NAMES[design]}]")
     ep["thumb_msgs"] = {**(ep.get("thumb_msgs") or {}), design: msg.message_id}   # to read his reactions on them
+    ep["thumb_chat"] = msg.chat_id                                                     # links from « À valider »
     ep.save()
 
 
@@ -862,6 +863,8 @@ def tool_handlers(ctx, images: list) -> dict:
 
     async def reel_adjust(n, start_shift=0, end_shift=0, cut=None, uncut=False):
         ep = reels_or_fail()
+        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
+            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         n = int(n)
         if not reel_cand(ep, n) or not RS(ep).data["items"].get(str(n), {}).get("file"):
             return f"le reel {n} n'est pas encore monté"
@@ -879,6 +882,8 @@ def tool_handlers(ctx, images: list) -> dict:
 
     async def reel_subtitles(n, feedback):
         ep = reels_or_fail()
+        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
+            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         n = int(n)
         item = RS(ep).data["items"].get(str(n)) or {}
         if not item.get("file"):
@@ -903,6 +908,8 @@ def tool_handlers(ctx, images: list) -> dict:
 
     async def reel_validate(n, instagram=None):
         ep = reels_or_fail()
+        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
+            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         n = int(n)
         item = RS(ep).data["items"].get(str(n)) or {}
         if not item.get("file"):
@@ -964,10 +971,14 @@ def tool_handlers(ctx, images: list) -> dict:
 
     async def reel_drop(n):
         ep = reels_or_fail()
+        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
+            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         return bg(ctx, f"Reel {n} jeté", drop_reel(ctx, ep, int(n)))
 
     async def reel_cover(n, photo=None, small=None, big=None, gold=None, zoom=None):
         ep = reels_or_fail()
+        if _dash.reel_locked((RS(ep).data.get("items") or {}).get(str(int(n))) or {}):
+            return f"le reel {n} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         n = int(n)
         item = RS(ep).data["items"].get(str(n)) or {}
         if not item.get("file"):
@@ -1027,12 +1038,16 @@ def tool_handlers(ctx, images: list) -> dict:
     async def post_feedback(key, feedback="", photos=False):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
+        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
+            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         return bg(ctx, f"{post_name(ep, key)} (retour)", posts_make(ctx, ep, [key], feedback=feedback or "",
                                                                    photos=bool(photos), reset=bool(feedback)))
 
     async def post_photos(key, slides=None, part=None, at=None, who=None, size=None):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
+        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
+            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         sl = [int(x) for x in slides or []]
         if not sl and not part and not size and not at and not who:
             return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
@@ -1041,6 +1056,8 @@ def tool_handlers(ctx, images: list) -> dict:
     async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
+        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
+            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
         f = float(factor) if factor else None
         move = (float(shift_x or 0), float(shift_y or 0)) if (shift_x or shift_y) else None
         return bg(ctx, f"Cadrage {post_name(ep, key)}", posts_zoom(ctx, ep, key, [int(x) for x in slides or []] or None,
@@ -1315,9 +1332,11 @@ async def send_reel(ctx, ep, n: int):
     kb = K([[B("✅ Valider", callback_data=f"rok:{d.get('id')}:{n}"), B("🗑 Jeter", callback_data=f"rno:{d.get('id')}:{n}")]])
     slots = ""
     with open(item["file"], "rb") as f:
-        await ctx.bot.send_video(cfg.chat_id, f, caption=(reel_caption(ep, n)[:960 - len(slots)] + slots), supports_streaming=True,
-                                 width=1080, height=1920, duration=int(item["duration"]), reply_markup=kb,
-                                 read_timeout=300, write_timeout=300)
+        m = await ctx.bot.send_video(cfg.chat_id, f, caption=(reel_caption(ep, n)[:960 - len(slots)] + slots), supports_streaming=True,
+                                     width=1080, height=1920, duration=int(item["duration"]), reply_markup=kb,
+                                     read_timeout=300, write_timeout=300)
+    item["msg"] = [m.chat_id, m.message_id]
+    RS(ep).save()
     MEMORY.add("assistant", f"[vidéo envoyée : reel {n} ({item['duration']} s), {(reel_cand(ep, n) or {}).get('title')}]")
 
 
@@ -1711,10 +1730,12 @@ async def send_cover(ctx, ep, n: int):
     kb = K([[B("✅ Cover OK", callback_data=f"rcov:{RS(ep).data.get('id')}:{n}")]]) \
         if item.get("status") == "ok" and not item.get("cover_ok") else None
     with open(item["cover"], "rb") as f:
-        await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["cover"]).name, reply_markup=kb,
+        m = await ctx.bot.send_document(cfg.chat_id, f, filename=Path(item["cover"]).name, reply_markup=kb,
                                     caption=f"🖼 Cover du reel {n} : « {words} », photo {item.get('cover_pick', 1)}/"
                                             f"{item.get('cover_count', 1)}. Pour changer : « cover reel {n} : autre photo » "
                                             "ou « cover reel {n} : texte … ».".replace("{n}", str(n))[:1000])
+    item["cover_msg"] = [m.chat_id, m.message_id]
+    RS(ep).save()
     grid = item.get("cover_grid")
     if grid and Path(grid).exists():
         issues = item.get("cover_issues") or []
@@ -2739,6 +2760,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("pst:"):
         await on_post_button(ctx, q, q.data)
         return
+    if q.data.startswith("dash:"):
+        await on_dash_button(ctx, q.data)
+        return
     if q.data.startswith(("rsel:", "rok:", "rsh:", "rno:", "rund:", "rgo", "reels:", "rfeed:", "rfile:", "rcov:")):
         await on_reel_button(ctx, q, q.data)
         return
@@ -3144,6 +3168,8 @@ def start_polling(app):
         app.job_queue.run_repeating(ig_tick, interval=60, first=30, name="ig")
     if not app.job_queue.get_jobs_by_name("tt"):
         app.job_queue.run_repeating(tt_tick, interval=60, first=40, name="tt")
+    if not app.job_queue.get_jobs_by_name("dash"):
+        app.job_queue.run_repeating(dash_tick, interval=30, first=20, name="dash")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
         app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")
@@ -3151,6 +3177,7 @@ def start_polling(app):
 
 async def on_boot(app):
     if cfg.chat_id:
+        await ensure_dash_topic(app)
         start_polling(app)
         try:
             await app.bot.send_message(cfg.chat_id, "🔄 BTR bot (re)démarré, je surveille YouTube.")
@@ -3428,7 +3455,7 @@ async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
             media = [P(Path(f).read_bytes()) for f in files[j:j + 10]]
             await tg(ctx.bot.send_media_group, cfg.chat_id, media)
         caps = it.get("captions") or {}
-        await say(ctx, f"<b>{esc(name)}</b>{esc(when)} · {len(files)} slides{note}\n\nLégende Instagram :\n<pre>"
+        m = await say(ctx, f"<b>{esc(name)}</b>{esc(when)} · {len(files)} slides{note}\n\nLégende Instagram :\n<pre>"
                   f"{esc(caps.get('instagram', ''))}</pre>", reply_markup=post_buttons(ep.video_id, k, kind, False))
     else:
         s = it.get("sticker") or {}
@@ -3441,10 +3468,14 @@ async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
                 stk += " · " + " / ".join(esc(o) for o in s["options"]) + (f" (bonne : {esc(s['right'])})" if s.get("right") else "")
         auto = " · publiée toute seule (pas de sticker)" if kind in _posts.AUTO_STORIES else " · je t'envoie tout à l'heure prévue"
         await tg(ctx.bot.send_photo, cfg.chat_id, Path(it["preview"]).read_bytes(), caption=f"{name}{when}{auto}"[:1000])
-        await say(ctx, f"<b>{esc(name)}</b> (à gauche le fichier, à droite les zones Instagram){stk}{note}",
+        m = await say(ctx, f"<b>{esc(name)}</b> (à gauche le fichier, à droite les zones Instagram){stk}{note}",
                   reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
     MEMORY.add("assistant", f"[aperçu envoyé : {name}]")
     it["sent"] = True
+    try:
+        it["msg"] = [m.chat_id, m.message_id]               # the « À valider » message links to it
+    except Exception:  # noqa: BLE001
+        pass
     st.save()
 
 
@@ -3483,6 +3514,9 @@ async def on_post_button(ctx, q, d: str):
     it = st.items.get(k)
     if not it:
         await say(ctx, "Ce post n'existe plus.")
+        return
+    if act in ("ok", "ph", "tx", "b", "ps") and _dash.post_locked(it):
+        await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié : plus de modification possible.")
         return
     if act == "ok":
         await say(ctx, bg(ctx, f"Rangement {post_name(ep, k)}", post_validate(ctx, ep, k)))
@@ -4043,6 +4077,105 @@ async def posts_status(ctx) -> str:
     return "\n".join(out[-40:]) or "aucun carrousel / story préparé par le bot"
 
 
+# ---------------------------------------------------------------- « À valider » (one live message per episode)
+from . import dashboard as _dash  # noqa: E402
+DASH_LOCK = asyncio.Lock()
+
+
+def dash_episodes() -> list:
+    """Episodes worth a message: reels or posts touched in the last 3 weeks, and the episode in progress."""
+    import time as _t
+    out = {}
+    for f in list((cfg.data_dir / "episodes").glob("*/reels.json")) + list((cfg.data_dir / "episodes").glob("*/posts.json")):
+        if _t.time() - f.stat().st_mtime < 21 * 86400:
+            out[f.parent.name] = max(out.get(f.parent.name, 0), f.stat().st_mtime)
+    if reg.active:
+        out.setdefault(reg.active, _t.time())
+    return [reg.episode(v) for v, _ in sorted(out.items(), key=lambda kv: kv[1])]
+
+
+def dash_content(ep):
+    from .pipeline import part_number
+    rs = Reels.of(ep).data if ep.file("reels.json").exists() else None
+    titles = {c["n"]: c.get("title", "") for c in (rs or {}).get("cands", [])}
+    pst = _posts.PostState(ep).items if ep.file("posts.json").exists() else {}
+    guest = ep.get("guest_name") or ep.get("public_title") or ep.get("title") or ep.video_id
+    part = part_number(ep)
+    title = f"{guest} · Part {part}" if part else guest
+    text, rows, waiting = _dash.render(ep, title, rs, titles, pst)
+    kb = K([[B(b["text"], url=b["url"]) if b.get("url") else B(b["text"], callback_data=b["callback_data"]) for b in row]
+            for row in rows]) if rows else None
+    return text, kb
+
+
+async def dash_tick(ctx):
+    """Every 30 s: each episode's « À valider » message is edited when something changed (sent the first time)."""
+    if not TOPICS.group or "dash" not in TOPICS.threads or DASH_LOCK.locked():
+        return
+    async with DASH_LOCK:
+        import hashlib
+        store = reg.data.setdefault("dash", {})
+        for ep in dash_episodes():
+            try:
+                text, kb = dash_content(ep)
+            except Exception:  # noqa: BLE001
+                log.exception("dash %s", ep.video_id)
+                continue
+            sig = hashlib.md5((text + str(kb.to_dict() if kb else "")).encode()).hexdigest()
+            cur = store.get(ep.video_id) or {}
+            if cur.get("sig") == sig:
+                continue
+            try:
+                if cur.get("mid"):
+                    await ctx.bot.edit_message_text(text, chat_id=TOPICS.group, message_id=cur["mid"], parse_mode=ParseMode.HTML,
+                                                    reply_markup=kb, disable_web_page_preview=True)
+                else:
+                    raise LookupError
+            except Exception as e:  # noqa: BLE001
+                if "not modified" in str(e).lower():
+                    store[ep.video_id] = {**cur, "sig": sig}
+                    continue
+                m = await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML, reply_markup=kb,
+                             disable_web_page_preview=True)
+                cur = {"mid": m.message_id}
+            store[ep.video_id] = {**cur, "sig": sig}
+            reg.save()
+
+
+async def on_dash_button(ctx, d: str):
+    """A tap in « À valider »: the item is sent again in its own topic (reel / cover / carousel / story)."""
+    _, kind, vid, key = d.split(":", 3)
+    ep = reg.episode(vid)
+    if kind == "r":
+        n = int(key)
+        it = (Reels.of(ep).data.get("items") or {}).get(str(n)) or {}
+        if _dash.reel_locked(it):
+            await say(ctx, f"🔒 Reel {n} déjà publié.")
+            return
+        if it.get("filed") and it.get("cover"):
+            await send_cover(ctx, ep, n)
+        elif it.get("file"):
+            await send_reel(ctx, ep, n)
+    elif kind == "p":
+        it = _posts.PostState(ep).items.get(key) or {}
+        if it.get("status") == "draft":
+            await send_post_safe(ctx, ep, key)
+        else:
+            await posts_show(ctx, ep, [key])
+
+
+async def ensure_dash_topic(app) -> None:
+    if not TOPICS.group or "dash" in TOPICS.threads:
+        return
+    try:
+        t = await app.bot.create_forum_topic(TOPICS.group, topics.NAMES["dash"], icon_color=topics.COLORS["dash"])
+        TOPICS.threads["dash"] = t.message_thread_id
+        TOPICS.save()
+        await app.bot.send_message(TOPICS.group, topics.WELCOME["dash"], message_thread_id=t.message_thread_id)
+    except Exception:  # noqa: BLE001
+        log.exception("dash topic")
+
+
 # ---------------------------------------------------------------- BTR Studio group (one topic per kind of work)
 def posts_lines() -> str:
     out = []
@@ -4127,6 +4260,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
+topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
     atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
     show_changed posts_ig_test posts_show""")

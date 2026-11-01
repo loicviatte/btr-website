@@ -15,15 +15,19 @@ from pathlib import Path
 
 TOPIC: contextvars.ContextVar = contextvars.ContextVar("btr_topic", default=None)
 # key → topic name (General = "system", no thread id); order = creation order
-NAMES = {"reels": "🎬 Reels & covers", "thumbs": "🖼️ Miniatures épisode", "stories": "📚 Stories & carrousels"}
-COLORS = {"reels": 0xFF93B2, "thumbs": 0xFFD67E, "stories": 0x6FB9F0}
+NAMES = {"reels": "🎬 Reels & covers", "thumbs": "🖼️ Miniatures épisode", "stories": "📚 Stories & carrousels",
+         "dash": "✅ À valider"}
+COLORS = {"reels": 0xFF93B2, "thumbs": 0xFFD67E, "stories": 0x6FB9F0, "dash": 0x8EEE98}
 LABELS = {"reels": "Reels & covers (reels, covers, Shorts YouTube, Instagram, TikTok)",
           "thumbs": "Miniatures épisode (miniatures YouTube / podcast / reel teaser, titres, chapitres)",
-          "stories": "Stories & carrousels", "system": "Général (système, alertes, /check, /couts)",
+          "stories": "Stories & carrousels", "dash": "À valider (un message par épisode, mis à jour tout seul)",
+          "system": "Général (système, alertes, /check, /couts)",
           "private": "chat privé (connexions, secrets)"}
 WELCOME = {"reels": "Ici : les reels, leurs covers, les Shorts YouTube, Instagram et TikTok.",
            "thumbs": "Ici : les miniatures de la vidéo principale (YouTube, podcast, reel teaser), titres et chapitres.",
-           "stories": "Ici : les stories et les carrousels."}
+           "stories": "Ici : les stories et les carrousels.",
+           "dash": "Ici : un seul message par épisode, mis à jour tout seul : ce qui reste à valider (⏳), ce qui est "
+                   "programmé (📅) et publié (🟢). Un tap ouvre l'élément dans son fil ; ce qui est publié est verrouillé."}
 
 
 class Topics:
