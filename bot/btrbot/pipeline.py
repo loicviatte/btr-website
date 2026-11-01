@@ -1149,19 +1149,25 @@ class Pipeline:
         from . import share
         token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
         if token and tid:
-            share.ClickUp(token).set_field(tid, share.F_TT, value)
+            cu = share.ClickUp(token)
+            cu.set_field(tid, share.F_TT, value)
+            share.close_if_posted(cu, tid)
 
     def ig_mark(self, item: dict, value: str) -> None:
         from . import share
         token, tid = share.Secrets(self.cfg.data_dir).get("clickup_token"), item.get("clickup_task")
         if token and tid:
-            share.ClickUp(token).set_field(tid, share.F_IG, value)
+            cu = share.ClickUp(token)
+            cu.set_field(tid, share.F_IG, value)
+            share.close_if_posted(cu, tid)
 
     def short_posted(self, item: dict) -> None:
         from . import share
         token = share.Secrets(self.cfg.data_dir).get("clickup_token")
         if token and item.get("clickup_task"):
-            share.ClickUp(token).set_field(item["clickup_task"], share.F_YT, share.YT_POSTED)
+            cu = share.ClickUp(token)
+            cu.set_field(item["clickup_task"], share.F_YT, share.YT_POSTED)
+            share.close_if_posted(cu, item["clickup_task"])
 
     def ep_number(self, ep: Episode) -> int | None:
         """BTR episode number of the guest (Kiera Brunton = 1 … Oti Mabuse = 13; both parts share it). A new guest

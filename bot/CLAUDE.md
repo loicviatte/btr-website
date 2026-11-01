@@ -47,7 +47,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `pipeline.short_upload`, `YouTube.upload_short/reschedule/statuses`): every filed reel is sent private with a
   publishAt, YouTube makes it public by itself; time = Loïc's choice (item["short_at"], tool shorts_schedule « short 2 le
   4.11 à 19h ») > ClickUp due date (18:00 London if no time) > already scheduled > next day without a Short; plan shown
-  ClickUp is the trigger: statuses to generate → generated → approved (filed) → ready → scheduled → posted; Loïc
+  ClickUp is the trigger: statuses to generate → generated → approved (filed) → ready → scheduled → posted (`share.close_if_posted` after every platform mark, and the 10-min sweep in `bot.posts_refresh`: all planned platform fields Posted = status posted; carousels / stories validated with a date = scheduled; Atlas catch-ups the bot will post = scheduled); Loïc
   validates a cover (« ✅ Cover OK » on the cover, tool covers_ok) → task « ready » (`bot.covers_ok`); `bot.shorts_watch`
   (every poll + right after) schedules ready reels, then the task goes « scheduled » (YouTube only for now); a date changed
   in ClickUp moves a waiting Short; a new cover puts the task back to approved; re-filing never moves a task back from

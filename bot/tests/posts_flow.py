@@ -249,3 +249,14 @@ sh["face"]["zoom_adj"] = 0.8                                  # « moins zoomé 
 pg = posts.pages("chain", {"question": "Q?"}, sh, {"guest": "Oti Mabuse", "part": "2"})
 assert pg[0]["p2"].get("gap_key")                             # a new framing: generated again
 print("OK pull back")
+
+# ---- a task goes « posted » once every planned platform is posted --------------------------------------
+opts = lambda *names: {"options": [{"id": f"o{i}", "name": n, "orderindex": i} for i, n in enumerate(names)]}  # noqa: E731
+T = lambda ig, tt, yt: {"custom_fields": [  # noqa: E731
+    {"id": share.F_IG, "value": ig, "type_config": opts("Not planned", "To schedule", "Scheduled", "Posted")},
+    {"id": share.F_TT, "value": tt, "type_config": opts("Not planned", "To schedule", "Scheduled", "Posted")},
+    {"id": share.F_YT, "value": yt, "type_config": opts("Not planned", "To schedule", "Scheduled", "Posted")}]}
+assert share.all_posted(T(3, 3, 3)) and share.all_posted(T(0, 3, "o3"))           # orderindex or option id
+assert not share.all_posted(T(3, 2, 3)) and not share.all_posted(T(0, 0, 0))
+assert share.all_posted({"custom_fields": [{"id": share.F_IG, "value": {"name": "Posted"}}]})
+print("OK posted status")

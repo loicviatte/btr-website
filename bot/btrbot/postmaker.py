@@ -573,7 +573,8 @@ class Maker:
         if tid:
             cu = self.clickup()
             t = cu.task(tid)
-            cu.update(tid, markdown_content=self.description(t, it, ep), status="ready")
+            cu.update(tid, markdown_content=self.description(t, it, ep),          # the bot takes it from here
+                      status="scheduled" if posts.due(t) else "ready")
             try:
                 cu.set_field(tid, share.F_IG, share.IG_SCHEDULED)
                 if it["kind"] in posts.CAROUSELS:
@@ -631,9 +632,10 @@ class Maker:
             cu = self.clickup()
             if ig:
                 cu.set_field(tid, share.F_IG, share.IG_POSTED)
-                cu.update(tid, status="posted")
             if tt:
                 cu.set_field(tid, share.F_TT, share.TT_POSTED)
+            if ig or tt:
+                share.close_if_posted(cu, tid)
             if link:
                 t = cu.task(tid)
                 desc = (t.get("markdown_description") or "")

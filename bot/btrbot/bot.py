@@ -3728,12 +3728,23 @@ async def atlas_done(ctx, tid: str, act: str):
 
 
 async def posts_refresh(ctx):
-    """Every 10 min: a date moved in ClickUp moves the post (not yet published)."""
+    """Every 10 min: a date moved in ClickUp moves the post (not yet published); a task whose platforms are all
+    « Posted » goes to « posted »; World Atlas catch-ups the bot will post go to « scheduled »."""
+    from . import share
     M = maker()
     try:
         cu = M.clickup()
     except Exception:  # noqa: BLE001
         return
+    try:
+        for t in await run(cu.tasks):
+            status = (t.get("status") or {}).get("status", "").lower()
+            if status in ("scheduled", "ready", "approved") and share.all_posted(t):
+                await run(lambda tid=t["id"]: cu.update(tid, status="posted"))
+            elif status == "approved" and _pm.atlas_task(t) and _posts.due(t) and _posts.due(t) > _posts.now():
+                await run(lambda tid=t["id"]: cu.update(tid, status="scheduled"))
+    except Exception:  # noqa: BLE001
+        log.exception("posts refresh: statuses")
     for st in _posts.all_states(cfg.data_dir):
         changed = False
         for k, it in st.items.items():

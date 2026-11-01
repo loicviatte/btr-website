@@ -302,6 +302,36 @@ def _field(task: dict, fid: str):
     return None
 
 
+def option_name(task: dict, fid: str) -> str:
+    """The chosen option's name of a dropdown field (the API gives its id or its orderindex)."""
+    for f in task.get("custom_fields") or []:
+        if f.get("id") != fid:
+            continue
+        v = f.get("value")
+        if isinstance(v, dict):
+            return str(v.get("name") or "")
+        for o in (f.get("type_config") or {}).get("options") or []:
+            if v is not None and (o.get("id") == v or str(o.get("orderindex")) == str(v)):
+                return str(o.get("name") or "")
+    return ""
+
+
+def all_posted(task: dict) -> bool:
+    """Every platform planned for this post (Instagram / TikTok / YouTube not « Not planned ») is « Posted »."""
+    names = [option_name(task, f).lower() for f in (F_IG, F_TT, F_YT)]
+    planned = [n for n in names if n and n != "not planned"]
+    return bool(planned) and all(n == "posted" for n in planned)
+
+
+def close_if_posted(cu: "ClickUp", tid: str) -> bool:
+    """Status « posted » once everything planned is out (Loïc 01.11: the Saturday reels stayed « scheduled »)."""
+    t = cu.task(tid)
+    if (t.get("status") or {}).get("status", "").lower() != "posted" and all_posted(t):
+        cu.update(tid, status="posted")
+        return True
+    return False
+
+
 def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
 
