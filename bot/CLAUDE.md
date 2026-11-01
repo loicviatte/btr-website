@@ -165,11 +165,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   « 11h » (`bot.plan_when`). « À valider » follows on its next tick. Topics added later are created at boot
   (`ensure_dash_topic` loops over topics.NAMES). Test: `tests/planning_flow.py`.
 - Its overview (Loïc 01.11): ONE message on top, edited by dash_tick (`plan_overview_tick`, reg.data["planning_msg"]):
-  every post still to go out (ALL platforms: Instagram, TikTok, Shorts, Community…) for the episode in progress (`plan_current_ep` = last released) — reels,
-  carousels, stories matched by `share.matches_episode`, not posted — plus the World Atlas catch-ups up to the same
-  horizon (≥ 7 days), grouped by day (`dashboard.planning_overview`, `ig_kind`, 📸 / ▶️ per platform; topic renamed « 🗓️ Posts planning »). Every
-  other message there (Loïc's and the bot's) is noted (`plan_forget`, reg.data["plan_msgs"]) and the whole exchange
-  is deleted PLAN_TTL (90 s) after its last message; kept while Loïc's request waits for its answer (≤ 15 min).
+  every post still to go out THIS WEEK, Tuesday (episode day) → Monday (`plan_week`), ALL platforms (reels, carousels,
+  stories, Shorts, YouTube Community, World Atlas…), grouped by day, 📸 / ▶️ per platform, late ones flagged
+  (`dashboard.planning_overview`, `ig_kind`); the header names the episode in progress (`plan_current_ep`). Topic
+  renamed « 🗓️ Posts planning ». Every other message there (Loïc's and the bot's) is noted (`plan_forget`,
+  reg.data["plan_msgs"]) and the whole exchange is deleted PLAN_TTL (90 s) after its last message; kept while Loïc's
+  request waits for its answer (≤ 15 min).
   Test: `tests/planning_overview.py`.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and

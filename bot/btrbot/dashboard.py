@@ -4,7 +4,7 @@ the preview message, or the bot sends it again). What is published is locked (�
 Pure: builds the text and the buttons from the episode state; bot.dash_tick sends / edits the messages."""
 import html
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import posts
 
@@ -194,16 +194,24 @@ def short_name(name: str, kind: str) -> str:
     return name
 
 
-def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], now: datetime) -> str:
-    """mine / atlas: [{"name", "status", "at" (datetime|None)}], not posted. → the HTML message, grouped by day."""
+def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], now: datetime,
+                      week: tuple | None = None) -> str:
+    """mine / atlas: [{"name", "status", "at" (datetime|None)}], not posted. → the HTML message, grouped by day.
+    week = (Tuesday, next Tuesday): the header says which week."""
     days = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
     rows = [(r, ig_kind(r["name"]) or "carousel") for r in mine + atlas]
     rows.sort(key=lambda x: (x[0].get("at") is None, x[0].get("at") or now))
-    n_mine, n_atlas = len(mine), len(atlas)
-    head = f"<b>🗓️ {esc(title or 'Épisode en cours')}</b>\n"
-    head += (f"{n_mine} post{'s' if n_mine > 1 else ''} restant{'s' if n_mine > 1 else ''}" if n_mine else f"{OK} Tout est publié")
-    if n_atlas:
-        head += f" · {n_atlas} Atlas en rattrapage"
+    n = len(rows)
+    if week:
+        a, b = week[0].astimezone(posts.TZ), (week[1] - timedelta(days=1)).astimezone(posts.TZ)
+        head = f"<b>🗓️ Semaine du {days[a.weekday()]} {a.strftime('%d.%m')} au {days[b.weekday()]} {b.strftime('%d.%m')}</b>\n"
+        if title:
+            head += f"Épisode : {esc(title)}\n"
+    else:
+        head = f"<b>🗓️ {esc(title or 'Épisode en cours')}</b>\n"
+    head += (f"{n} post{'s' if n > 1 else ''} restant{'s' if n > 1 else ''}" if n else f"{OK} Tout est publié")
+    if atlas:
+        head += f" (dont {len(atlas)} Atlas)"
     lines, day = [], None
     for r, kind in rows:
         at = r.get("at")

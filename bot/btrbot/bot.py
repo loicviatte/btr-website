@@ -4386,36 +4386,33 @@ def plan_current_ep():
     return reg.episode(reg.active) if reg.active else None
 
 
+def plan_week(now=None):
+    """The posting week, Tuesday (episode day) 00:00 → next Tuesday 00:00, London time, that holds `now`."""
+    from datetime import timedelta
+    now = (now or _posts.now()).astimezone(_posts.TZ)
+    start = (now - timedelta(days=(now.weekday() - 1) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, start + timedelta(days=7)
+
+
 def plan_overview_text() -> str:
-    """Every post still to go out for the episode in progress, all platforms (reels, carousels, stories, Shorts,
-    YouTube Community…) + the World Atlas catch-ups up to the same horizon (at least a week), from the ClickUp calendar."""
-    from datetime import datetime as _dt, timedelta
-    from . import share
+    """Every post still to go out this week (Tuesday → Monday), all platforms (reels, carousels, stories, Shorts,
+    YouTube Community, World Atlas…), from the ClickUp calendar."""
     from .pipeline import part_number
     now, ep = _posts.now(), plan_current_ep()
-    mine, atlas = [], []
+    start, end = plan_week(now)
     title = None
     if ep is not None:
-        guest, part = ep.get("guest_name") or "", part_number(ep)
-        title = f"{guest or ep.get('public_title') or ep.video_id}" + (f" · Part {part}" if part else "")
-        try:
-            ep_date = _dt.fromisoformat(ep.get("release_at") or "")
-        except ValueError:
-            ep_date = None
-        label = share.episode_label(guest, part)
+        part = part_number(ep)
+        title = f"{ep.get('guest_name') or ep.get('public_title') or ep.video_id}" + (f" · Part {part}" if part else "")
+    posts_, atlas = [], []
     for t in CU_CACHE["tasks"]:
         kind = _dash.ig_kind(t.get("name", ""))
         status = ((t.get("status") or {}).get("status") or "").lower()
-        if not kind or status in _dash.DONE:
+        at = _posts.due(t)
+        if not kind or status in _dash.DONE or not at or not (start <= at < end):
             continue
-        row = {"name": t.get("name", ""), "status": status, "at": _posts.due(t)}
-        if kind == "atlas":
-            atlas.append(row)
-        elif ep is not None and guest and share.matches_episode(t, label, guest, part, ep_date):
-            mine.append(row)
-    horizon = max([now + timedelta(days=7)] + [r["at"] for r in mine if r["at"]])
-    atlas = [r for r in atlas if r["at"] and r["at"] <= horizon]
-    return _dash.planning_overview(title, mine, atlas, now)
+        (atlas if kind == "atlas" else posts_).append({"name": t.get("name", ""), "status": status, "at": at})
+    return _dash.planning_overview(title, posts_, atlas, now, week=(start, end))
 
 
 async def plan_overview_tick(ctx):

@@ -41,11 +41,15 @@ bot.CU_CACHE.update(at=9e18, tasks=[
     T("l", "Carousel · World Atlas 05 Chad · catch-up", "scheduled", 1793872800000)])
 text = bot.plan_overview_text()
 print(text)
-assert "Oti Mabuse · Part 2" in text and "5 posts restants" in text and "2 Atlas en rattrapage" in text, text
+assert "Semaine du mar. 27.10 au lun. 02.11" in text and "Épisode : Oti Mabuse · Part 2" in text, text
+assert "5 posts restants" in text, text
 assert "Reel 3/3 · Her One Question" in text and "Carrousel Topics" in text and "⬜" in text and "Story The Chain" in text
 assert "▶️ Short · Studios Lack Gratitude" in text and "📸 Carrousel Topics" in text
-assert "Key moment" not in text and "Community" not in text and "Teaser share" not in text     # posted / next episode
-assert "🌍 Atlas 04 Namibia" in text and "Atlas 05 Chad" in text and "Japan" not in text and "Papua" not in text
+assert "Key moment" not in text and "Community" not in text and "Teaser share" not in text     # posted / next week
+assert "Namibia" not in text and "Papua" not in text                                           # next week / posted
+s, e = bot.plan_week(datetime(2026, 11, 3, 9, 0, tzinfo=timezone.utc))
+assert s.strftime("%a %d.%m %H:%M") == "Tue 03.11 00:00" and e.strftime("%d.%m") == "10.11"
+assert bot.plan_week(NOW)[0].strftime("%d.%m") == "27.10"
 assert "en retard" not in text
 assert dashboard.ig_kind("Carrousel · World Atlas 03 Mexico") == "atlas" and dashboard.ig_kind("Short · x") == "short"
 assert dashboard.short_name("YouTube Community · Poll · Ep Nov 3", "community") == "Community · Poll"
