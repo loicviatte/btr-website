@@ -83,6 +83,28 @@ def find_quote(cues: list[Cue], quote: str) -> float | None:
     return best_t if best >= 80 else None
 
 
+
+def find_quote_start(cues: list[Cue], quote: str, near: float, within: float = 30.0) -> float | None:
+    """Start of the cue where `quote` (first words of a short moment) BEGINS, near `near`: among the windows that
+    hold it, the latest one (an earlier window only holds it because it also holds the cues before)."""
+    from rapidfuzz import fuzz
+
+    q = re.sub(r"[^\w\s']", "", (quote or "").lower())
+    if not q.strip():
+        return None
+    scores = []
+    for i, c in enumerate(cues):
+        if abs(c.start - near) > within:
+            continue
+        window = re.sub(r"[^\w\s']", "", " ".join(x.text for x in cues[i:i + 3]).lower())
+        scores.append((fuzz.partial_ratio(q, window), i))
+    if not scores:
+        return None
+    best = max(sc for sc, _ in scores)
+    if best < 80:
+        return None
+    return cues[max(i for sc, i in scores if sc >= best - 1)].start
+
 def find_quote_end(cues: list[Cue], quote: str, after: float = 0.0, within: float = 150.0) -> float | None:
     """End time of the cue where `quote` (e.g. the last words of a moment) finishes, searching from `after`."""
     from rapidfuzz import fuzz

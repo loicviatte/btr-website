@@ -313,3 +313,24 @@ POSTS_BLOCKS = {
 POSTS_FIX = """These fields are not exact words of the transcript (or were rejected). Give the same JSON again with
 these fields replaced by words really said (cut, never add), everything else unchanged:
 {errors}"""
+
+
+TEASER_MOMENTS = """Episode: "{video_title}" with {guest_name}.{part_line}
+
+The transcript (with [mm:ss] markers) is above.
+
+Build the TEASER of this episode: {n} very short moments cut together (about 30 s in all), then an end screen
+« Episode out now ». It is the trailer that makes DanceSport people click on the full episode.
+Each moment:
+- ONE complete sentence or phrase said by {guest_name} (or a short exchange with Marius), 3 to 9 seconds long.
+- Punchy on its own: a strong opinion, a confession, a surprising fact, an emotional line, a laugh. Never a warm-up.
+- Makes people curious WITHOUT giving the answer away (tease the story, don't tell its ending).
+- Different topics: together they show the range of the episode.
+Order them like a trailer: the strongest hook first, rising tension, the most intriguing line last (just before « out now »).
+For each, the EXACT first words and EXACT last words as they appear in the transcript (3 to 8 words each), so the cut
+can be found in the audio. The moment ends where the sentence ends, never mid-thought.
+{feedback}Return ONLY JSON:
+{{"moments": [
+  {{"start": "mm:ss", "end": "mm:ss", "first_words": "exact first words", "last_words": "exact last words",
+    "line": "the whole sentence, verbatim", "why": "1 short French line: why it teases"}}
+]}}"""

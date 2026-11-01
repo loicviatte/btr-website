@@ -244,6 +244,16 @@ TOOLS = [
                                          "n'est pas le dernier travaillé (lien ou id YouTube).",
      "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
                                                        "link": {"type": "string"}}}},
+    {"name": "teaser_make", "description": "TEASER de l'épisode : 4-5 moments clés courts montés ensemble comme des reels "
+                                           "(sous-titres v3) + écran de fin « Episode out now », envoyé dans le fil Reels. "
+                                           "feedback = le retour de Loïc sur le teaser déjà monté (« remplace le moment 3 », "
+                                           "« mets le 2 en premier », « plus court ») : les moments gardés ne sont pas "
+                                           "refaits. same=true = mêmes moments remontés. link = l'épisode si ce n'est pas "
+                                           "celui en cours.",
+     "input_schema": {"type": "object", "properties": {"link": {"type": "string"}, "feedback": {"type": "string"},
+                                                       "same": {"type": "boolean"}}}},
+    {"name": "teaser_show", "description": "Renvoyer le teaser déjà monté, tel quel.",
+     "input_schema": {"type": "object", "properties": {"link": {"type": "string"}}}},
     {"name": "transcript_search", "description": "Ce qui a été DIT dans un épisode (la transcription SRT) : query = mots ou "
                                                  "phrase à chercher (« chicken », « plan B ») → les passages avec leur "
                                                  "timecode et le contexte ; ou at = « 34:12 » pour lire ce moment. guest "

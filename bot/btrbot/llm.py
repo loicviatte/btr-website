@@ -116,6 +116,13 @@ class LLM:
             6000, task="reels (moments)")
         return r.get("candidates", [])
 
+    def teaser_moments(self, video_title: str, guest_name: str, part: str | None, transcript: str, n: int = 5,
+                       feedback: str = "") -> list[dict]:
+        r = self._json(self._with_transcript(transcript, prompts.TEASER_MOMENTS.format(
+            video_title=video_title, guest_name=guest_name or "the guest", n=n,
+            part_line=f" This is Part {part}." if part else "", feedback=feedback)), 4000, task="teaser (moments)")
+        return r.get("moments", [])
+
     def reel_blocks(self, words: list[str], note: str = "") -> list[dict]:
         listing = " ".join(f"{i}:{w}" for i, w in enumerate(words))
         prompt = prompts.REEL_BLOCKS.format(words=listing)

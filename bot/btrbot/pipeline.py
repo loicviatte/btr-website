@@ -71,6 +71,9 @@ def cover_hook(c, said: str, fallback: bool = False) -> dict | None:
     return None
 
 
+TEASER_N = 1000      # reel numbers from here are teaser moments (Pipeline.reel_work)
+
+
 def mmss(t) -> float:
     if isinstance(t, (int, float)):
         return float(t)
@@ -441,6 +444,93 @@ class Pipeline:
         shutil.rmtree(ep.dir / "reels", ignore_errors=True)       # a new list replaces the previous one
         return {"id": int(time.time()) % 1_000_000, "cands": out, "sel": [], "items": {}}
 
+    @staticmethod
+    def reel_work(ep: Episode, n: int) -> Path:
+        """Work folder of reel n; n ≥ TEASER_N = a moment of the teaser (teaser/m<start second>)."""
+        return ep.dir / "teaser" / f"m{n - TEASER_N:05d}" if n >= TEASER_N else ep.dir / "reels" / f"r{n:02d}"
+
+    def teaser_moments(self, ep: Episode, feedback: str = "", n: int = 5) -> list[dict]:
+        """4-5 short key lines for the teaser, chosen by Claude, each found in the transcript (start and end)."""
+        cues = self.cues(ep)
+        if not cues:
+            raise RuntimeError("pas de transcription pour cet épisode")
+        raw = self.llm.teaser_moments(self.reel_title(ep), ep.get("guest_name", ""), part_number(ep), srt.timed_text(cues, 15), n,
+                                      f"Producer's feedback to apply: {feedback}\n" if feedback else "")
+        out = []
+        for m in raw:
+            a, b = mmss(m.get("start")), mmss(m.get("end"))
+            if not m.get("first_words") or not m.get("last_words"):
+                continue
+            t = srt.find_quote_start(cues, m["first_words"], a)
+            if t is None:                                       # not found where the model says: dropped
+                continue
+            a = t
+            e = srt.find_quote_end(cues, m["last_words"], a, within=30)
+            if e is not None and a + 1.5 < e <= a + 16:
+                b = e
+            if not 1.5 <= b - a <= 16:
+                continue
+            if any(abs(a - o["start_s"]) < 3 for o in out):
+                continue
+            out.append({"start_s": round(a, 2), "end_s": round(b, 2), "first_words": m["first_words"],
+                        "last_words": m["last_words"], "line": str(m.get("line", ""))[:300], "why": str(m.get("why", ""))[:200]})
+        if len(out) < 3:
+            raise RuntimeError("moins de 3 moments retrouvés dans la transcription")
+        return out[:n]
+
+    def render_teaser(self, ep: Episode, moments: list[dict], end_seconds: float = 3.5) -> dict:
+        """Each moment cut, framed and subtitled like a reel (kept per moment: a moment that doesn't change is not made
+        again), then put together, then the end screen « Episode out now »."""
+        from . import reels as R
+        from . import render
+        work = ep.dir / "teaser"
+        work.mkdir(parents=True, exist_ok=True)
+        segs = []
+        for m in moments:
+            n = TEASER_N + int(m["start_s"])
+            cand = {"n": n, "start_s": m["start_s"], "end_s": m["end_s"], "first_words": m["first_words"],
+                    "last_words": m["last_words"]}
+            wd = self.reel_work(ep, n)
+            key = json.dumps(cand, sort_keys=True)
+            done = wd / "seg.json"
+            if done.exists() and done.read_text() == key and Path(json.loads((wd / "seg_file.json").read_text())).exists():
+                f = Path(json.loads((wd / "seg_file.json").read_text()))
+            else:
+                res = self.render_reel(ep, cand, [0.0, 0.0], [])
+                f = Path(res["file"])
+                done.write_text(key)
+                (wd / "seg_file.json").write_text(json.dumps(str(f)))
+                R.slim(wd)
+            segs.append(f)
+        still = work / "end_still.jpg"
+        R.run(["ffmpeg", "-y", "-loglevel", "error", "-sseof", "-0.3", "-i", self.reel_work(ep, TEASER_N + int(moments[-1]["start_s"])) / "base.mp4",
+               "-frames:v", "1", "-q:v", "2", still])
+        part = part_number(ep)
+        end = render.teaser_end(work, still, ep.get("guest_name") or "", part, work / "end.jpg")
+        info = R.probe(segs[0])
+        durs = [R.probe(f)["duration"] for f in segs]
+        k = len(segs)
+        ins, chains = [], []
+        for i, f in enumerate(segs):
+            ins += ["-i", str(f)]
+            d = durs[i]
+            chains.append(f"[{i}:v]fps={info['rate']},scale=1080:1920,setsar=1,format=yuv420p[v{i}]")
+            chains.append(f"[{i}:a]aresample=48000,aformat=channel_layouts=stereo,afade=t=in:d=0.03,"
+                          f"afade=t=out:st={max(0.0, d - 0.08):.3f}:d=0.08[a{i}]")
+        ins += ["-loop", "1", "-t", f"{end_seconds}", "-i", str(end),
+                "-f", "lavfi", "-t", f"{end_seconds}", "-i", "anullsrc=r=48000:cl=stereo"]
+        chains.append(f"[{k}:v]fps={info['rate']},scale=1080:1920,setsar=1,format=yuv420p,fade=t=in:st=0:d=0.35[v{k}]")
+        chains.append(f"[{k + 1}:a]anull[a{k}]")
+        chains.append("".join(f"[v{i}][a{i}]" for i in range(k + 1)) + f"concat=n={k + 1}:v=1:a=1[v][a]")
+        slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
+        out = work / f"BTR_teaser_{slug}{'_p' + str(part) if part else ''}.mp4"
+        R.run(["ffmpeg", "-y", "-loglevel", "error", *ins, "-filter_complex", ";".join(chains), "-map", "[v]", "-map", "[a]",
+               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-maxrate", "6000k", "-bufsize", "12000k",
+               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
+        total = sum(durs) + end_seconds
+        return {"file": str(out), "duration": round(total, 1), "segments": [round(d, 1) for d in durs],
+                "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
     def render_reel(self, ep: Episode, cand: dict, shift: list, cuts: list, fixes: list | None = None,
                     note: str = "") -> dict:
         """Cut, frame, subtitle and render one moment. Pure: returns the reel's new fields, the caller stores them."""
@@ -455,7 +545,7 @@ class Pipeline:
 
         from . import reels as R
         n = cand["n"]
-        work = ep.dir / "reels" / f"r{n:02d}"
+        work = self.reel_work(ep, n)
         work.mkdir(parents=True, exist_ok=True)
         s0, s1 = float(shift[0]), float(shift[1])
         cues_all = self.cues(ep)
@@ -509,10 +599,11 @@ class Pipeline:
         fr = R.sample_frames(clip, a, b, work / "frames")
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
         shots = R.shot_layouts(samples, scene, a, b)
-        try:
-            R.cover_search(clip, samples, dict(fr), work / "cover", mouth=self._mouth_checker(work))  # 4K stills
-        except Exception:  # noqa: BLE001
-            log.exception("reel cover stills")
+        if n < TEASER_N:                                        # a teaser moment needs no cover
+            try:
+                R.cover_search(clip, samples, dict(fr), work / "cover", mouth=self._mouth_checker(work))  # 4K stills
+            except Exception:  # noqa: BLE001
+                log.exception("reel cover stills")
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
         if not pcs:
             raise RuntimeError("extrait vide après le montage")
@@ -540,7 +631,7 @@ class Pipeline:
         from . import subs
         from .config import ASSETS
         n = cand["n"]
-        work = ep.dir / "reels" / f"r{n:02d}"
+        work = self.reel_work(ep, n)
         if not self.reel_edit_kept(ep, n):
             raise RuntimeError("le montage de ce reel n'est plus sur le serveur : il faut le refaire en entier")
         edit = json.loads((work / "edit.json").read_text())
@@ -616,7 +707,7 @@ class Pipeline:
     def reel_edit_kept(self, ep: Episode, n: int) -> bool:
         """The edit of reel n (picture, sound, word timings) is still here: subtitles alone can be redone."""
         from . import reels as R
-        work = ep.dir / "reels" / f"r{n:02d}"
+        work = self.reel_work(ep, n)
         if not all((work / f).exists() for f in ("edit.json", "base.mp4", "audio.m4a")):
             return False
         try:

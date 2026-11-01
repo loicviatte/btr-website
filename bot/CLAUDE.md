@@ -187,6 +187,15 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model
   a question gets an ANSWER citing the transcript, nothing redone unless asked. Test: `tests/transcript_tools.py`.
+- Teaser (Loïc 01.11: « 4-5 moments clés montés ensemble, à la fin un écran episode out now »): `pipeline.teaser_moments`
+  (Opus, prompts.TEASER_MOMENTS: 3-9 s lines, hook first, no spoiler; each start found with `srt.find_quote_start`, end
+  with find_quote_end) → `pipeline.render_teaser`: each moment = a reel render (`render_reel` with n = TEASER_N + start
+  second, work dir `teaser/mNNNNN` via `reel_work`, no cover search; a moment whose start/end/words didn't change is
+  reused, seg.json), then concat (short audio fades) + end screen `templates/teaser_end.html` (`render.teaser_end`: last
+  frame blurred, logo, PART n, name, EPISODE OUT NOW, platforms, link in bio; above Instagram's bottom UI) 3.5 s. State
+  `teaser.json`. Bot (topic reels): /teaser [lien], tools teaser_make (feedback keeps the previous moments in the request)
+  / teaser_show, buttons tz:ok / tz:redo. Not wired yet: Drive + ClickUp « Reel teaser » task + publishing. Test:
+  `tests/teaser_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

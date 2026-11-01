@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Instagram safe zone: nothing below ~1500 px (caption, buttons). Teaser end screen (Loïc 01.11.2026): « Episode out now » after the 4-5 moments. BTR brand: PP Monument Extended,
+     gold #FECB7A / #FCDF9A, near-black #080403; the guest's last frame blurred behind. -->
+<style>
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Heavy.woff2") format("woff2");font-weight:800 900}
+@font-face{font-family:"PP Monument Extended";src:url("{{ assets }}/PPMonumentExtended-Regular.woff2") format("woff2");font-weight:400}
+html,body{margin:0;background:#080403}
+.f{position:relative;width:1080px;height:1920px;overflow:hidden;background:#080403;font-family:"PP Monument Extended","Arial Black",sans-serif;color:#fff}
+.bg{position:absolute;inset:-40px;background:url("{{ bg }}") center/cover;filter:blur(18px) saturate(.9) brightness(.55)}
+.veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,4,3,.55) 0%,rgba(8,4,3,.25) 38%,rgba(8,4,3,.7) 70%,rgba(8,4,3,.95) 100%)}
+.gold{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(223,191,44,.18),rgba(223,191,44,0) 60%)}
+.logo{position:absolute;left:50%;top:250px;width:300px;transform:translateX(-50%)}
+#t{position:absolute;left:60px;right:60px;top:640px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.part{font-size:34px;font-weight:800;letter-spacing:.18em;color:#FECB7A;margin:0 0 26px}
+.name{font-size:96px;line-height:1.02;font-weight:800;text-transform:uppercase;margin:0;white-space:nowrap}
+.name2{font-size:96px;line-height:1.02;font-weight:800;text-transform:uppercase;margin:0;white-space:nowrap;color:#FCDF9A;font-style:italic}
+.out{margin:70px 0 0;font-size:64px;line-height:1.1;font-weight:400;letter-spacing:.02em}
+.out b{display:block;font-size:150px;line-height:.98;font-weight:800;color:#FECB7A}
+.where{position:absolute;left:0;right:0;top:1400px;text-align:center;font-size:30px;font-weight:400;letter-spacing:.12em;color:#EDE6DE}
+</style>
+</head>
+<body>
+<div class="f">
+  <div class="bg"></div><div class="veil"></div><div class="gold"></div>
+  <img class="logo" src="{{ assets }}/btr-secondary-white.png" alt="">
+  <div id="t">
+    {% if part %}<p class="part">PART {{ part }}</p>{% endif %}
+    <p class="name" id="n1">{{ first }}</p>
+    {% if last %}<p class="name2" id="n2">{{ last }}</p>{% endif %}
+    <p class="out">EPISODE<b>OUT NOW</b></p>
+  </div>
+  <p class="where">YOUTUBE · SPOTIFY · APPLE PODCASTS<br><br>LINK IN BIO</p>
+</div>
+<script>
+window.fit = () => {
+  for (const id of ['n1', 'n2']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    let size = 96;
+    while (el.scrollWidth > 960 && size > 48) { size -= 4; el.style.fontSize = size + 'px'; }
+  }
+  return {};
+};
+</script>
+</body>
+</html>

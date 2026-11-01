@@ -1266,6 +1266,24 @@ def tool_handlers(ctx, images: list) -> dict:
                        f"Le reste : {_json.dumps(extra, ensure_ascii=False, default=str)}")
         return "\n\n".join(out)[:8000]
 
+    async def teaser_t(link=None, feedback=None, same=False):
+        vid = None
+        if link:
+            m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link)
+            vid = m.group(1) if m else None
+        ep = teaser_ep(vid)
+        if ep is None:
+            return "quel épisode ? (lien YouTube)"
+        return bg(ctx, "Teaser", teaser_make(ctx, ep, feedback or "", bool(same))) + " (dans le fil Reels)"
+
+    async def teaser_show_t(link=None):
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
+        ep = teaser_ep(m.group(1) if m else None)
+        if ep is None:
+            return "quel épisode ? (lien YouTube)"
+        asyncio.create_task(teaser_send(ctx, ep))
+        return "je renvoie le teaser tel quel dans le fil Reels"
+
     async def shorts_schedule(dates=None):
         from datetime import datetime, timezone
         from . import shorts
@@ -1295,6 +1313,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "transcript_search": transcript_search, "post_texts": post_texts,
+            "teaser_make": teaser_t, "teaser_show": teaser_show_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
@@ -2848,6 +2867,20 @@ def reels_context() -> str:
     return "\n".join(lines)
 
 
+async def teaser_cmd(update: Update, ctx):
+    if not allowed(update):
+        return
+    vid = None
+    if ctx.args:
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", ctx.args[0])
+        vid = m.group(1) if m else None
+    ep = teaser_ep(vid)
+    if ep is None:
+        await update.message.reply_text("Donne-moi le lien de l'épisode : /teaser <lien>")
+        return
+    await update.message.reply_text(bg(ctx, "Teaser", teaser_make(ctx, ep)))
+
+
 async def reels_cmd(update: Update, ctx):
     if not allowed(update):
         return
@@ -2921,6 +2954,9 @@ async def on_button(update: Update, ctx):
         return
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data.startswith("tz:"):
+        await on_teaser_button(ctx, q, q.data)
         return
     if q.data.startswith("ttc:"):
         await on_tt_button(ctx, q, q.data)
@@ -3364,6 +3400,17 @@ def start_polling(app):
 
 async def on_boot(app):
     APP["app"] = app
+    if not reg.data.get("teaser_try_1101"):
+        reg.data["teaser_try_1101"] = True
+        reg.save()
+
+        async def _teaser(ctx):
+            tok = topics.TOPIC.set("reels")
+            try:
+                bg(ctx, "Teaser", teaser_make(ctx, reg.episode("PjDZ8X_JWY0")))
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_teaser, when=60, name="teaser-try-1101")
     if not reg.data.get("posts_file_linked_1101"):
         reg.data["posts_file_linked_1101"] = True
         reg.save()
@@ -4899,11 +4946,106 @@ async def set_origin(update: Update, ctx):
         plan_forget(c.id, update.message.message_id, incoming=True)
 
 
-topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
+# ---------------------------------------------------------------- teaser (Loïc 01.11)
+def teaser_state(ep) -> dict:
+    import json as _json
+    try:
+        return _json.loads(ep.file("teaser.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def teaser_save(ep, d: dict) -> None:
+    import json as _json
+    ep.file("teaser.json").write_text(_json.dumps(d, ensure_ascii=False, indent=1))
+
+
+def teaser_ep(vid: str | None = None):
+    """The episode of the teaser: the link given, else the episode being prepared, else the one of the reels."""
+    if vid:
+        return reg.episode(vid)
+    if reg.active and reg.episode(reg.active).stage not in ("done",):
+        return reg.episode(reg.active)
+    return reel_ep() or (reg.episode(reg.active) if reg.active else None)
+
+
+def teaser_list(ep, ms: list[dict]) -> str:
+    from . import srt as _srt
+    rows = [f"{i}. <code>{_srt.fmt(m['start_s'])}</code> ({m['end_s'] - m['start_s']:.0f} s) « {esc(m.get('line') or m['first_words'] + ' … ' + m['last_words'])} »"
+            + (f"\n   <i>{esc(m['why'])}</i>" if m.get("why") else "") for i, m in enumerate(ms, 1)]
+    return "\n".join(rows)
+
+
+async def teaser_make(ctx, ep, feedback: str = "", same: bool = False):
+    """4-5 key lines of the episode (Opus, found in the transcript) cut like reels and put together, then the end
+    screen « Episode out now »; sent in 🎬 Reels with ✅ / 🔁. same=True: the same moments made again."""
+    from .pipeline import part_number
+    guest = ep.get("guest_name") or ep.video_id
+    part = part_number(ep)
+    name = f"{guest}" + (f" P{part}" if part else "")
+    d = teaser_state(ep)
+    if same and d.get("moments"):
+        ms = d["moments"]
+    else:
+        await say(ctx, f"🎞️ Teaser {esc(name)} : je choisis les moments clés…")
+        old = d.get("moments") or []
+        fb = feedback
+        if old and feedback:
+            fb = (feedback + "\nPrevious moments (keep the ones the producer did not ask to change, same order unless asked): "
+                  + " | ".join(f"{m['first_words']} … {m['last_words']}" for m in old))
+        ms = await run(pipe.teaser_moments, ep, fb)
+    d.update(moments=ms, status="rendering", feedback=(d.get("feedback") or []) + ([feedback] if feedback else []))
+    teaser_save(ep, d)
+    await say(ctx, f"🎞️ Teaser {esc(name)} : {len(ms)} moments, je monte (≈ 2 min par moment, un moment déjà monté est "
+                   f"réutilisé).\n\n{teaser_list(ep, ms)}")
+    res = await run(pipe.render_teaser, ep, ms)
+    d.update(res, status="preview")
+    teaser_save(ep, d)
+    await teaser_send(ctx, ep)
+
+
+async def teaser_send(ctx, ep):
+    d = teaser_state(ep)
+    if not d.get("file") or not Path(d["file"]).exists():
+        await say(ctx, "Pas de teaser monté pour cet épisode.")
+        return
+    kb = K([[B("✅ Valider", callback_data=f"tz:ok:{ep.video_id}"),
+             B("🔁 Autres moments", callback_data=f"tz:redo:{ep.video_id}")]])
+    cap = (f"🎞️ Teaser · {ep.get('guest_name') or ep.video_id} · {d.get('duration')} s "
+           f"({' + '.join(str(x) for x in d.get('segments') or [])} + écran de fin)\n"
+           "Retour libre possible : « remplace le moment 3 », « mets le 2 en premier », « plus court »…")
+    with open(d["file"], "rb") as f:
+        m = await ctx.bot.send_video(cfg.chat_id, f, caption=cap[:1000], supports_streaming=True, width=1080, height=1920,
+                                     duration=int(d.get("duration") or 0), reply_markup=kb, read_timeout=300,
+                                     write_timeout=300)
+    d["msg"] = [m.chat_id, m.message_id]
+    teaser_save(ep, d)
+    MEMORY.add("assistant", f"[vidéo envoyée : teaser {ep.get('guest_name')} ({d.get('duration')} s), moments : "
+                            + " | ".join(x.get("line", "")[:80] for x in d.get("moments") or []) + "]")
+
+
+async def on_teaser_button(ctx, q, data: str):
+    _, what, vid = data.split(":", 2)
+    ep = reg.episode(vid)
+    try:
+        await q.edit_message_reply_markup(None)
+    except Exception:  # noqa: BLE001
+        pass
+    if what == "ok":
+        d = teaser_state(ep)
+        d["status"] = "ok"
+        teaser_save(ep, d)
+        await say(ctx, "✅ Teaser validé. Prochaine étape (à brancher) : rangement Drive + tâche ClickUp « Reel teaser » "
+                       "et publication à l'heure, comme les reels.")
+    elif what == "redo":
+        bg(ctx, "Teaser", teaser_make(ctx, ep, "Pick completely different moments from the previous ones."))
+
+
+topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
-    reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
+    reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
     atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
@@ -4933,6 +5075,7 @@ def main():
     app.add_handler(CommandHandler("nouveau", new_conv_cmd))
     app.add_handler(CommandHandler("couts", couts_cmd))
     app.add_handler(CommandHandler("reels", reels_cmd))
+    app.add_handler(CommandHandler("teaser", teaser_cmd))
     app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CommandHandler("igtest", igtest_cmd))

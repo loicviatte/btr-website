@@ -304,3 +304,20 @@ def mouth_sheet(frames: list[Path], faces: list[dict], out: Path, cols: int = 8)
         d.text((x + 4, y + 1), str(i + 1), fill=(254, 203, 122), font=font)
     sheet.save(out, quality=88)
     return out
+
+
+def teaser_end(work: Path, still: Path, guest_name: str, part: str | None, out: Path) -> Path:
+    """End screen of the teaser, 1080×1920: the guest's last frame blurred, BTR logo, PART n, the name, EPISODE OUT NOW."""
+    work.mkdir(parents=True, exist_ok=True)
+    bg = work / "end_bg.jpg"
+    Image.open(still).convert("RGB").save(bg, quality=90)
+    first, last = _names(guest_name or "Break The Routine")
+    html = env.get_template("teaser_end.html").render(assets=ASSETS.as_uri(), bg=bg.name, first=first, last=last,
+                                                      part=part or "")
+    page = work / "teaser_end.html"
+    page.write_text(html)
+    png = work / "teaser_end.png"
+    _shot(page, png, 1080, 1920)
+    Image.open(png).convert("RGB").save(out, quality=95)
+    png.unlink(missing_ok=True)
+    return out
