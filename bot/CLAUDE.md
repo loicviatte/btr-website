@@ -139,6 +139,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   are wrapped « reels », the episode thumbnail / chapter ones « thumbs » (`topics.assign` at the end of bot.py — a new
   function that sends reel or thumbnail messages goes in that list). One chat memory per topic (`TopicMemory`,
   `MEMORY.everything()` to scrub secrets). In the group only Loïc drives the bot (`allowed`). Test: `tests/topics_flow.py`.
+- Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules
