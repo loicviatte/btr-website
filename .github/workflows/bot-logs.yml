@@ -42,6 +42,6 @@ jobs:
           d=json.load(open(sys.argv[1]))
           print(\"content keys:\", list(d.get(\"content\",{})))
           for k,it in d.get(\"items\",{}).items():
-              print(k, it.get(\"status\"), \"files\", len(it.get(\"files\") or []), \"skip\", it.get(\"skip\"), \"warn\", it.get(\"warn\"), \"overflow\", it.get(\"overflow\"))
+              print(k, it.get(\"status\"), \"files\", len(it.get(\"files\") or []), \"skip\", it.get(\"skip\"), \"task\", it.get(\"task\"), \"at\", it.get(\"at\"), \"drive\", bool(it.get(\"drive\")), \"attached\", bool(it.get(\"attached\")), \"filed\", it.get(\"filed\"), \"warn\", it.get(\"warn\"))
           print(\"shots:\", sorted(d.get(\"shots\",{})))
           " "$f"; done'
