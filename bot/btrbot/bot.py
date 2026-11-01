@@ -1183,6 +1183,75 @@ def tool_handlers(ctx, images: list) -> dict:
         return (f"j'envoie tels quels (sans rien refaire) : {', '.join(post_name(ep, k) for k in keys)}, "
                 "dans le fil Stories & carrousels")
 
+    def text_ep(guest=None, link=None):
+        """The episode Loïc asks about: a YouTube link / id, a guest name (« Oti », « Oti P2 »), else the one of the
+        posts / reels in progress."""
+        import unicodedata
+        if link:
+            m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link)
+            if m:
+                return reg.episode(m.group(1))
+        if guest:
+            fold = lambda x: unicodedata.normalize("NFKD", str(x or "")).encode("ascii", "ignore").decode().lower()
+            g = fold(guest)
+            part = re.search(r"\bp(?:art)?\s*(\d)", g)
+            first = re.sub(r"\bp(?:art)?\s*\d", "", g).split()
+            best = None
+            for d in (cfg.data_dir / "episodes").iterdir():
+                ep = reg.episode(d.name)
+                name = fold(ep.get("guest_name"))
+                if not name or not first or first[0] not in name.split():
+                    continue
+                if part and str(ep.get("part") or "") != part.group(1):
+                    from .pipeline import part_number
+                    if str(part_number(ep) or "") != part.group(1):
+                        continue
+                t = d.stat().st_mtime
+                if best is None or t > best[0]:
+                    best = (t, ep)
+            if best:
+                return best[1]
+            raise RuntimeError(f"pas d'épisode trouvé pour « {guest} »")
+        try:
+            return posts_ep_of()
+        except RuntimeError:
+            ep = reel_ep()
+            if ep:
+                return ep
+        if reg.active:
+            return reg.episode(reg.active)
+        raise RuntimeError("quel épisode ? (nom du guest ou lien)")
+
+    async def transcript_search(query=None, at=None, guest=None, link=None):
+        from . import srt as _srt
+        ep = text_ep(guest, link)
+        sec = None
+        if at:
+            m = re.match(r"^(?:(\d+):)?(\d{1,2}):(\d{2})$", str(at).strip())
+            if not m:
+                return "at = mm:ss ou h:mm:ss"
+            sec = int(m.group(1) or 0) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+        cues = await run(pipe.cues, ep)
+        head = f"Transcription de {ep.get('guest_name') or ep.video_id} ({ep.video_id}) :\n"
+        return head + _srt.search(cues, query or "", at=sec)[:6000]
+
+    async def post_texts(keys=None, link=None, guest=None):
+        import json as _json
+        ep = text_ep(guest, link) if (guest or link) else posts_ep_of((keys or [None])[0])
+        st = _posts.PostState(ep)
+        keys = [str(k).lower().strip() for k in keys or []] or list(st.items)
+        out = []
+        for k in keys:
+            it = st.items.get(k)
+            if not it:
+                out.append(f"{k} : pas fait pour {ep.get('guest_name') or ep.video_id}")
+                continue
+            c = (st.data.get("content") or {}).get(k) or {}
+            extra = {x: it[x] for x in ("captions", "sticker", "collab", "at", "status") if it.get(x)}
+            out.append(f"## {post_name(ep, k)}\nTextes sur les images : {_json.dumps(c, ensure_ascii=False)}\n"
+                       f"Le reste : {_json.dumps(extra, ensure_ascii=False, default=str)}")
+        return "\n\n".join(out)[:8000]
+
     async def shorts_schedule(dates=None):
         from datetime import datetime, timezone
         from . import shorts
@@ -1211,6 +1280,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
+            "transcript_search": transcript_search, "post_texts": post_texts,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
@@ -4644,7 +4714,11 @@ def topic_context_base(here: str) -> str:
     return (f"\nTelegram : Loïc t'écrit dans le fil « {topics.LABELS.get(here, here)} » du groupe BTR Studio. Les autres "
             "fils : " + " · ".join(v for k, v in topics.LABELS.items() if k not in (here, "private")) + ". Les résultats "
             "d'un travail arrivent dans le fil de ce travail (une cover dans Reels même si on te le demande ailleurs) : "
-            "si tu lances quelque chose qui répondra ailleurs, dis-le en une phrase.")
+            "si tu lances quelque chose qui répondra ailleurs, dis-le en une phrase."
+            "\nUne QUESTION de Loïc (« pourquoi ça parle de X ? », « elle a vraiment dit ça ? », « c'est où dans "
+            "l'épisode ? ») appelle une RÉPONSE, pas une modification : lis les textes du post (post_texts) et cherche "
+            "dans la transcription (transcript_search), puis réponds en citant la phrase exacte avec son timecode. Tu ne "
+            "refais rien tant qu'il ne le demande pas (tu peux le proposer).")
 
 
 async def register_group(ctx, chat) -> bool:

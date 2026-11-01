@@ -243,6 +243,19 @@ TOOLS = [
                                          "n'est pas le dernier travaillé (lien ou id YouTube).",
      "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
                                                        "link": {"type": "string"}}}},
+    {"name": "transcript_search", "description": "Ce qui a été DIT dans un épisode (la transcription SRT) : query = mots ou "
+                                                 "phrase à chercher (« chicken », « plan B ») → les passages avec leur "
+                                                 "timecode et le contexte ; ou at = « 34:12 » pour lire ce moment. guest "
+                                                 "(« Oti », « Oti P2 ») ou link si ce n'est pas l'épisode en cours. Pour "
+                                                 "répondre à une question sur un texte, un reel, une citation, un chapitre.",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "at": {"type": "string"},
+                                                       "guest": {"type": "string"}, "link": {"type": "string"}}}},
+    {"name": "post_texts", "description": "Les TEXTES exacts d'un carrousel / d'une story (ce qui est écrit sur les images, "
+                                          "légende, sticker, date) : à lire avant de répondre à une question sur un "
+                                          "post. keys = moment, topics, teaser, poll, rapid, chain, link, ask, qa, "
+                                          "quote, atlas (vide = tous).",
+     "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
+                                                       "guest": {"type": "string"}, "link": {"type": "string"}}}},
     {"name": "shorts_plan", "description": "Montrer quand chaque reel rangé sortira en Short YouTube (plan + bouton "
                                           "« Programmer »). « on en est où des Shorts », « montre le planning YouTube ».",
      "input_schema": {"type": "object", "properties": {}}},

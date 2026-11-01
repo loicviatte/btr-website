@@ -171,6 +171,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   other message there (Loïc's and the bot's) is noted (`plan_forget`, reg.data["plan_msgs"]) and the whole exchange
   is deleted PLAN_TTL (90 s) after its last message; kept while Loïc's request waits for its answer (≤ 15 min).
   Test: `tests/planning_overview.py`.
+- Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
+  context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
+  `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model
+  a question gets an ANSWER citing the transcript, nothing redone unless asked. Test: `tests/transcript_tools.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

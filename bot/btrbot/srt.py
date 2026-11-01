@@ -102,3 +102,39 @@ def find_quote_end(cues: list[Cue], quote: str, after: float = 0.0, within: floa
             if score >= 95:
                 break
     return best_end if best >= 80 else None
+
+
+def _fold(s: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^\w\s']", " ", s)
+
+
+def search(cues: list[Cue], query: str = "", at: float | None = None, around: int = 2, limit: int = 8) -> str:
+    """What was said: the cues matching `query` (the phrase, else all its words within ~3 cues; plurals and case /
+    accents ignored), each with `around` cues of context and its timecode; or the ~40 s around `at` (seconds)."""
+    if not cues:
+        return "pas de transcription pour cet épisode"
+    if at is not None:
+        sel = [c for c in cues if at - 20 <= c.start <= at + 20]
+        return "\n".join(f"[{fmt(c.start)}] {c.text}" for c in sel) or "rien à ce moment-là"
+    q = " ".join(_fold(query).split())
+    words = [w for w in q.split() if len(w) >= 3] or q.split()
+    if not q:
+        return "rien à chercher"
+    folded = [_fold(c.text) for c in cues]
+    hits = []
+    for i in range(len(cues)):
+        win = " ".join(folded[i:i + 3])
+        if q in " ".join(win.split()) or all(w in win for w in words):
+            first = next((j for j in range(i, min(i + 3, len(cues))) if any(w in folded[j] for w in words)), i)
+            if not hits or first > hits[-1] + around:
+                hits.append(first)
+    if not hits:
+        return f"« {query} » n'est pas dans la transcription"
+    out = []
+    for i in hits[:limit]:
+        lo, hi = max(0, i - around), min(len(cues), i + around + 1)
+        out.append("\n".join(("» " if j == i else "  ") + f"[{fmt(cues[j].start)}] {cues[j].text}" for j in range(lo, hi)))
+    more = f"\n(+ {len(hits) - limit} autres passages)" if len(hits) > limit else ""
+    return f"{len(hits)} passage(s) :\n\n" + "\n\n".join(out) + more
