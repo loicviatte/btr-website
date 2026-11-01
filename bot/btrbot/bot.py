@@ -3158,6 +3158,10 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("ig_test_topics_1101"):             # Loïc 01.11: can music be added after?
+                    reg.data["ig_test_topics_1101"] = True
+                    reg.save()
+                    bg(app, "Test Instagram · Topics Oti P2 sans musique", posts_ig_test(app, ep, "topics"))
                 if reg.data.get("posts_chain_1101") and not reg.data.get("posts_chain_1101b"):  # « garde-la mais moins zoom »
                     reg.data["posts_chain_1101b"] = True
                     reg.save()
@@ -3872,6 +3876,30 @@ async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str
     await show_changed(ctx, ep, k, sids, what)
 
 
+async def posts_ig_test(ctx, ep, k: str):
+    """A carousel published now by the API, without music and without collab invites, so Loïc can check whether he
+    can add music afterwards in the app (then he archives it)."""
+    from . import instagram, share
+    st = _posts.PostState(ep)
+    it = st.items.get(k)
+    if not it or not it.get("files"):
+        await say(ctx, "Test Instagram : le carrousel n'est pas prêt.")
+        return
+    if not it.get("drive"):
+        it = await run(maker().file, ep, st, k)
+    urls = [_posts.drive_direct(d["id"]) for d in it.get("drive") or []]
+    sec = share.Secrets(cfg.data_dir)
+    I = instagram.Instagram(sec)
+    cid = await run(I.carousel, urls, (it.get("captions") or {}).get("instagram", ""), [])
+    r = await run(I.publish, cid)
+    st = _posts.PostState(ep)
+    st.items[k].setdefault("ig_test", {}).update(id=r.get("id"), link=r.get("permalink"))
+    st.save()
+    await say(ctx, f"🧪 Test publié sur Instagram, sans musique ni invitation collab : {esc(r.get('permalink') or '')}\n"
+                   "Dans l'app : ouvre le post → « … » → Modifier, et regarde si « Ajouter de la musique » est proposé. "
+                   "Ensuite « … » → Archiver. Dis-moi ce que tu vois.")
+
+
 async def posts_cmd(update: Update, ctx):
     """/posts [lien] [moment|topics|poll|…] — carousels & stories of an episode."""
     if not allowed(update):
@@ -3988,7 +4016,7 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
     atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
-    show_changed""")
+    show_changed posts_ig_test""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
