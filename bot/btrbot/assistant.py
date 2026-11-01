@@ -209,8 +209,9 @@ TOOLS = [
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
                       "factor": {"type": "number"}, "previous": {"type": "boolean"},
                       "shift_x": {"type": "number"}, "shift_y": {"type": "number"}}, "required": ["key"]}},
-    {"name": "planning_list", "description": "Le calendrier Instagram (ClickUp) des carrousels et stories : une ligne par "
-                                            "tâche « id · nom · statut · date ». À appeler avant de changer quoi que ce soit.",
+    {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
+                                            "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
+                                            "quoi que ce soit (seuls les carrousels / stories se changent ici).",
      "input_schema": {"type": "object", "properties": {"days": {"type": "integer"}, "posted": {"type": "boolean"}}}},
     {"name": "planning_change", "description": "Changer UNE tâche du calendrier : son type (« remplace la Poll du 4.11 "
                                               "par un Rapid fire » → new_type rapid) et/ou sa date-heure (« décale à 11h », "

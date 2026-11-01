@@ -41,12 +41,14 @@ bot.CU_CACHE.update(at=9e18, tasks=[
     T("l", "Carousel · World Atlas 05 Chad · catch-up", "scheduled", 1793872800000)])
 text = bot.plan_overview_text()
 print(text)
-assert "Oti Mabuse · Part 2" in text and "4 posts restants" in text and "2 Atlas en rattrapage" in text, text
+assert "Oti Mabuse · Part 2" in text and "5 posts restants" in text and "2 Atlas en rattrapage" in text, text
 assert "Reel 3/3 · Her One Question" in text and "Carrousel Topics" in text and "⬜" in text and "Story The Chain" in text
-assert "Key moment" not in text and "Short" not in text and "Community" not in text and "Teaser share" not in text
+assert "▶️ Short · Studios Lack Gratitude" in text and "📸 Carrousel Topics" in text
+assert "Key moment" not in text and "Community" not in text and "Teaser share" not in text     # posted / next episode
 assert "🌍 Atlas 04 Namibia" in text and "Atlas 05 Chad" in text and "Japan" not in text and "Papua" not in text
 assert "en retard" not in text
-assert dashboard.ig_kind("Carrousel · World Atlas 03 Mexico") == "atlas" and dashboard.ig_kind("Short · x") is None
+assert dashboard.ig_kind("Carrousel · World Atlas 03 Mexico") == "atlas" and dashboard.ig_kind("Short · x") == "short"
+assert dashboard.short_name("YouTube Community · Poll · Ep Nov 3", "community") == "Community · Poll"
 print("OK overview")
 
 sent, edits, deleted = [], [], []
@@ -72,7 +74,7 @@ async def main():
     assert len(sent) == 1 and not edits                       # nothing changed: untouched
     bot.CU_CACHE["tasks"][1]["status"]["status"] = "posted"
     await bot.plan_overview_tick(ctx)
-    assert len(edits) == 1 and "3 posts restants" in edits[0]
+    assert len(edits) == 1 and "4 posts restants" in edits[0]
     # the conversation: Loïc asks (kept while unanswered), the bot answers, then everything goes
     bot.reg.data["plan_msgs"] = []
     bot.plan_forget(-100555, 801, incoming=True)

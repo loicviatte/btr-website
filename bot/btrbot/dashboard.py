@@ -149,14 +149,16 @@ def episode_code(guest: str, part: str | None, taken: dict, vid: str) -> str:
     return code
 
 
-# ── « 🗓️ Instagram planning » : the overview on top (Loïc 01.11.2026) ─────────────────────────────────────────────────
+# ── « 🗓️ Posts planning » : the overview on top (Loïc 01.11.2026) ─────────────────────────────────────────────────
 DONE = ("posted", "complete", "completed", "closed", "done")
 PLAN_ICON = {"to generate": TODO, "generated": WAIT, "approved": OK, "ready": PLAN, "scheduled": PLAN}
 
 
 def ig_kind(name: str) -> str | None:
-    """What a calendar task is on Instagram: atlas / carousel / story / reel (None = not Instagram: Short, Community…)."""
+    """What a calendar task is: atlas / carousel / story / reel / short / community / other (every platform)."""
     n = (name or "").strip().lower()
+    if not n:
+        return None
     if re.match(r"car+ousel\s+·\s+world atlas", n):
         return "atlas"
     if n.startswith(("carousel", "carrousel")):
@@ -165,19 +167,31 @@ def ig_kind(name: str) -> str | None:
         return "story"
     if n.startswith("reel"):
         return "reel"
-    return None
+    if n.startswith("short"):
+        return "short"
+    if "community" in n.split("·")[0]:
+        return "community"
+    return "other"
+
+
+PLATFORM = {"atlas": "📸", "carousel": "📸", "story": "📸", "reel": "📸", "short": "▶️", "community": "▶️", "other": "•"}
 
 
 def short_name(name: str, kind: str) -> str:
     """« Reel 3/3 · Oti Mabuse P2 · Her One Question » → « Reel 3/3 · Her One Question »; « Carousel · World Atlas 04
-    Namibia · catch-up » → « Atlas 04 Namibia »; « Story · The Chain · Oti P2 » → « Story The Chain »."""
+    Namibia · catch-up » → « Atlas 04 Namibia »; « Story · The Chain · Oti P2 » → « Story The Chain »; « YouTube
+    Community · Poll · Ep Nov 3 » → « Community · Poll »."""
     parts = [p.strip() for p in re.split(r"\s+·\s+", name or "") if p.strip()]
     if kind == "atlas":
         return re.sub(r"(?i)^world atlas", "Atlas", parts[1] if len(parts) > 1 else name)
-    if kind == "reel":
+    if kind in ("reel", "short"):
         return " · ".join([parts[0]] + parts[2:]) if len(parts) > 2 else parts[0]
-    head = {"carousel": "Carrousel", "story": "Story"}[kind]
-    return f"{head} {parts[1]}" if len(parts) > 1 else head
+    if kind == "community":
+        return f"Community · {parts[1]}" if len(parts) > 1 else "Community"
+    if kind in ("carousel", "story"):
+        head = {"carousel": "Carrousel", "story": "Story"}[kind]
+        return f"{head} {parts[1]}" if len(parts) > 1 else head
+    return name
 
 
 def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], now: datetime) -> str:
@@ -201,8 +215,10 @@ def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], no
         late = " ⚠️ en retard" if at and at < now else ""
         icon = PLAN_ICON.get((r.get("status") or "").lower(), WORK)
         hour = d.strftime("%H:%M") + " " if d else ""
-        lines.append(f"{icon} {hour}{'🌍 ' if kind == 'atlas' else ''}{esc(short_name(r['name'], kind))}{late}")
-    legend = f"\n\n<i>{TODO} à générer · {WAIT} à valider · {OK} validé · {PLAN} programmé</i>"
+        lines.append(f"{icon} {hour}{PLATFORM.get(kind, '•')} {'🌍 ' if kind == 'atlas' else ''}"
+                     f"{esc(short_name(r['name'], kind))}{late}")
+    legend = (f"\n\n<i>{TODO} à générer · {WAIT} à valider · {OK} validé · {PLAN} programmé · 📸 Instagram (+ TikTok) · "
+              "▶️ YouTube</i>")
     foot = ("\n<i>Écris ta demande ici (changer un type, une date, ajouter, retirer) : la conversation s'efface une fois "
             "faite, ce message se met à jour.</i>")
     return head + "\n" + "\n".join(lines) + legend + foot

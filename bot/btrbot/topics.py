@@ -16,13 +16,13 @@ from pathlib import Path
 TOPIC: contextvars.ContextVar = contextvars.ContextVar("btr_topic", default=None)
 # key → topic name (General = "system", no thread id); order = creation order
 NAMES = {"reels": "🎬 Reels & covers", "thumbs": "🖼️ Miniatures épisode", "stories": "📚 Stories & carrousels",
-         "dash": "✅ À valider", "planning": "🗓️ Instagram planning"}
+         "dash": "✅ À valider", "planning": "🗓️ Posts planning"}
 COLORS = {"reels": 0xFF93B2, "thumbs": 0xFFD67E, "stories": 0x6FB9F0, "dash": 0x8EEE98, "planning": 0xCB86DB}
 LABELS = {"reels": "Reels & covers (reels, covers, Shorts YouTube, Instagram, TikTok)",
           "thumbs": "Miniatures épisode (miniatures YouTube / podcast / reel teaser, titres, chapitres)",
           "stories": "Stories & carrousels", "dash": "À valider (un message par épisode, mis à jour tout seul)",
-          "planning": "Instagram planning (le calendrier ClickUp des carrousels et stories : changer un type, une date, "
-                      "ajouter, retirer ; outils planning_*)",
+          "planning": "Posts planning (le calendrier ClickUp de tous les posts, toutes plateformes ; on y change les "
+                      "carrousels et stories : type, date, ajouter, retirer ; outils planning_*)",
           "system": "Général (système, alertes, /check, /couts)",
           "private": "chat privé (connexions, secrets)"}
 WELCOME = {"reels": "Ici : les reels, leurs covers, les Shorts YouTube, Instagram et TikTok.",
@@ -30,7 +30,7 @@ WELCOME = {"reels": "Ici : les reels, leurs covers, les Shorts YouTube, Instagra
            "stories": "Ici : les stories et les carrousels.",
            "dash": "Ici : un seul message par épisode, mis à jour tout seul : ce qui reste à valider (⏳), ce qui est "
                    "programmé (📅) et publié (🟢). Un tap ouvre l'élément dans son fil ; ce qui est publié est verrouillé.",
-           "planning": "Ici : on change le calendrier Instagram dans ClickUp en parlant (« remplace la story Poll du 4.11 par "
+           "planning": "Ici : en haut, tous les posts qui restent pour l'épisode en cours (toutes plateformes) ; on change le calendrier dans ClickUp en parlant (« remplace la story Poll du 4.11 par "
                        "un Rapid fire », « décale Topics à 11h », « ajoute une Citation jeudi 19h »). Le nouveau contenu est "
                        "généré pour validation et « À valider » se met à jour."}
 

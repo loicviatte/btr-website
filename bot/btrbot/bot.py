@@ -4387,8 +4387,8 @@ def plan_current_ep():
 
 
 def plan_overview_text() -> str:
-    """Instagram posts still to go out for the episode in progress (reels, carousels, stories) + the World Atlas
-    catch-ups up to the same horizon (at least a week), from the ClickUp calendar."""
+    """Every post still to go out for the episode in progress, all platforms (reels, carousels, stories, Shorts,
+    YouTube Community…) + the World Atlas catch-ups up to the same horizon (at least a week), from the ClickUp calendar."""
     from datetime import datetime as _dt, timedelta
     from . import share
     from .pipeline import part_number
@@ -4547,12 +4547,12 @@ def plan_when(text: str | None, base=None):
 
 
 def plan_list_text(days: int = 21, posted: bool = False) -> str:
-    """Carousels / stories of the calendar in the next `days` (and the last 2 days), for the chat model."""
+    """Every post of the calendar (all platforms) in the next `days` (and the last 2 days), for the chat model."""
     from datetime import timedelta
     now = _posts.now()
     rows = []
     for t in CU_CACHE["tasks"]:
-        k = _posts.task_kind(t.get("name", ""))
+        k = _dash.ig_kind(t.get("name", ""))
         at = _posts.due(t)
         status = (t.get("status") or {}).get("status", "")
         if not k or not at or (status == "posted" and not posted):
