@@ -131,8 +131,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   task's time, carousels + Question/answer + Quote stories by the Instagram API (container 20 min before, Drive direct
   links), sticker stories / TikTok / no API = files + ready-to-copy text sent to Loïc with « ✅ Posté » buttons; >12 h
   late = never posted, Loïc told once; `posts_refresh` (10 min) follows ClickUp dates. World Atlas catch-ups
-  (`atlas_tick`, images + captions from btr-media): ClickUp « ready » = posted by the API (no music), « approved » = sent
-  to Loïc with the music. Test: `tests/posts_flow.py [--render]`.
+  (`atlas_tick`, images + captions from btr-media): approved / ready = posted by the API at their time, then Loïc gets
+  the music to add in the app (Modifier → Ajouter de la musique works after posting, tested 01.11); episode carousels
+  too when their task has a « Music: » line. Test: `tests/posts_flow.py [--render]`.
 - Telegram group « BTR Studio » (`btrbot/topics.py`, Loïc 31.10): Loïc writes in a forum group where the bot is admin →
   `bot.register_group` keeps it (data/topics.json) and creates the topics 🎬 Reels & covers / 🖼️ Miniatures épisode /
   📚 Stories & carrousels (General = system). `ExtBot._do_post` is patched: every send* to Loïc's private chat goes to

@@ -3578,7 +3578,16 @@ async def posts_tick(ctx):
                             it["status"] = "posted" if kind not in _posts.CAROUSELS else "ok"
                             st.save()
                             await run(maker().mark, it, True, False, r.get("permalink", ""))
-                            await say(ctx, f"📸 {esc(name)} publié sur Instagram : {esc(r.get('permalink') or '')}")
+                            music = ""
+                            try:
+                                t = await run(maker()._task, it)
+                                m = re.search(r"Music:\s*(.+)", (t or {}).get("text_content") or "")
+                                music = m.group(1).strip() if m else ""
+                            except Exception:  # noqa: BLE001
+                                pass
+                            await say(ctx, f"📸 {esc(name)} publié sur Instagram : {esc(r.get('permalink') or '')}"
+                                      + (f"\n🎵 Ajoute la musique : <b>{esc(music)}</b>\n(post → « … » → Modifier → "
+                                         "Ajouter de la musique)" if music else ""))
                     except Exception as e:  # noqa: BLE001
                         ig["fails"] = ig.get("fails", 0) + 1
                         ig.pop("cid", None)
@@ -3665,7 +3674,7 @@ async def atlas_tick(ctx, connected: bool, sec):
         except Exception:  # noqa: BLE001
             caps = {}
         if ig_due and not s.get("ig_done") and not s.get("ig_sent"):
-            if status in ("ready", "scheduled") and connected and not s.get("api_failed"):
+            if connected and not s.get("api_failed"):          # Loïc 01.11: posted by the API, he adds the music after
                 try:
                     from . import instagram
                     I = instagram.Instagram(sec)
@@ -3677,7 +3686,9 @@ async def atlas_tick(ctx, connected: bool, sec):
                         s.update(ig_done=True, link=r.get("permalink"))
                         reg.save()
                         await run(maker().mark, {"task": t["id"], "kind": "atlas"}, True, False, r.get("permalink", ""))
-                        await say(ctx, f"📸 {esc(name)} publié sur Instagram (sans musique) : {esc(r.get('permalink') or '')}")
+                        await say(ctx, f"📸 {esc(name)} publié sur Instagram : {esc(r.get('permalink') or '')}"
+                                  + (f"\n🎵 Ajoute la musique : <b>{esc(a['music'])}</b>\n(post → « … » → Modifier → "
+                                     "Ajouter de la musique)" if a.get("music") else ""))
                 except Exception as e:  # noqa: BLE001
                     s["fails"] = s.get("fails", 0) + 1
                     s.pop("cid", None)
