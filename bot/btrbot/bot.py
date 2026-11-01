@@ -67,12 +67,13 @@ async def _routed_post(self, endpoint, data, *a, **k):
     data = TOPICS.route(cfg.chat_id, endpoint, data)
     res = await _do_post(self, endpoint, data, *a, **k)
     try:
-        dash = TOPICS.threads.get("dash")
-        if (to_owner and dash and data.get("message_thread_id") == dash and endpoint.lower().startswith("send")
+        th = data.get("message_thread_id")
+        key = TOPICS.key_of(th) if th and str(data.get("chat_id")) == str(TOPICS.group) else None
+        if (key in ("dash", "planning") and (to_owner or key == "planning") and endpoint.lower().startswith("send")
                 and endpoint.lower() != "sendchataction" and not DASH_KEEP.get()):
             for m in (res if isinstance(res, list) else [res]):
                 if isinstance(m, dict) and m.get("message_id"):
-                    dash_forget(data["chat_id"], m["message_id"])
+                    (dash_forget if key == "dash" else plan_forget)(data["chat_id"], m["message_id"])
     except Exception:  # noqa: BLE001
         log.exception("dash cleanup")
     return res
@@ -90,6 +91,45 @@ def dash_forget(chat, mid, delay: int = DASH_TTL) -> None:
         except Exception:  # noqa: BLE001
             pass
     app.job_queue.run_once(gone, when=delay, name=f"dash-del-{mid}")
+
+
+PLAN_TTL = 90          # s after the bot's last answer: the « Instagram planning » conversation disappears (overview stays)
+
+
+def plan_forget(chat, mid, incoming: bool = False) -> None:
+    """Note a message of « Instagram planning »; the whole exchange is deleted PLAN_TTL after its last message (a
+    request still waiting for its answer is kept, up to 15 min)."""
+    import time as _t
+    reg.data.setdefault("plan_msgs", []).append([chat, mid, _t.time(), incoming])
+    reg.save()
+    plan_schedule()
+
+
+def plan_schedule(delay: int = PLAN_TTL) -> None:
+    app = APP.get("app")
+    if not app or not app.job_queue:
+        return
+    for j in app.job_queue.get_jobs_by_name("plan-sweep"):
+        j.schedule_removal()
+    app.job_queue.run_once(plan_sweep, when=delay, name="plan-sweep")
+
+
+async def plan_sweep(ctx):
+    import time as _t
+    msgs = reg.data.get("plan_msgs") or []
+    if not msgs:
+        return
+    last = msgs[-1]
+    if len(last) > 3 and last[3] and _t.time() - last[2] < 900:     # Loïc wrote last: the answer is still coming
+        plan_schedule(30)
+        return
+    reg.data["plan_msgs"] = []
+    reg.save()
+    for chat, mid, *_ in msgs:
+        try:
+            await ctx.bot.delete_message(chat, mid)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 ExtBot._do_post = _routed_post
@@ -3225,6 +3265,8 @@ def start_polling(app):
 
 async def on_boot(app):
     APP["app"] = app
+    if reg.data.get("plan_msgs"):
+        plan_schedule(60)
     if cfg.chat_id:
         await ensure_dash_topic(app)
         start_polling(app)
@@ -4252,6 +4294,87 @@ async def dash_tick(ctx):
                 cur = {"mid": m.message_id}
             store[ep.video_id] = {**cur, "sig": sig}
             reg.save()
+        try:
+            await plan_overview_tick(ctx)
+        except Exception:  # noqa: BLE001
+            log.exception("planning overview")
+
+
+def plan_current_ep():
+    """The episode in progress = the last one already released (else the active one)."""
+    from datetime import datetime as _dt
+    now, best = _posts.now(), None
+    for ep in dash_episodes():
+        try:
+            rel = _dt.fromisoformat(ep.get("release_at") or "")
+        except ValueError:
+            continue
+        if rel <= now and (best is None or rel > best[0]):
+            best = (rel, ep)
+    if best:
+        return best[1]
+    return reg.episode(reg.active) if reg.active else None
+
+
+def plan_overview_text() -> str:
+    """Instagram posts still to go out for the episode in progress (reels, carousels, stories) + the World Atlas
+    catch-ups up to the same horizon (at least a week), from the ClickUp calendar."""
+    from datetime import datetime as _dt, timedelta
+    from . import share
+    from .pipeline import part_number
+    now, ep = _posts.now(), plan_current_ep()
+    mine, atlas = [], []
+    title = None
+    if ep is not None:
+        guest, part = ep.get("guest_name") or "", part_number(ep)
+        title = f"{guest or ep.get('public_title') or ep.video_id}" + (f" · Part {part}" if part else "")
+        try:
+            ep_date = _dt.fromisoformat(ep.get("release_at") or "")
+        except ValueError:
+            ep_date = None
+        label = share.episode_label(guest, part)
+    for t in CU_CACHE["tasks"]:
+        kind = _dash.ig_kind(t.get("name", ""))
+        status = ((t.get("status") or {}).get("status") or "").lower()
+        if not kind or status in _dash.DONE:
+            continue
+        row = {"name": t.get("name", ""), "status": status, "at": _posts.due(t)}
+        if kind == "atlas":
+            atlas.append(row)
+        elif ep is not None and guest and share.matches_episode(t, label, guest, part, ep_date):
+            mine.append(row)
+    horizon = max([now + timedelta(days=7)] + [r["at"] for r in mine if r["at"]])
+    atlas = [r for r in atlas if r["at"] and r["at"] <= horizon]
+    return _dash.planning_overview(title, mine, atlas, now)
+
+
+async def plan_overview_tick(ctx):
+    """The message on top of « Instagram planning »: edited in place when the calendar changes (sent once)."""
+    import hashlib
+    if "planning" not in TOPICS.threads or not CU_CACHE["tasks"]:
+        return
+    text = plan_overview_text()
+    sig = hashlib.md5(text.encode()).hexdigest()
+    cur = reg.data.get("planning_msg") or {}
+    if cur.get("sig") == sig:
+        return
+    try:
+        if not cur.get("mid"):
+            raise LookupError
+        await ctx.bot.edit_message_text(text, chat_id=TOPICS.group, message_id=cur["mid"], parse_mode=ParseMode.HTML,
+                                        disable_web_page_preview=True)
+    except Exception as e:  # noqa: BLE001
+        if "not modified" not in str(e).lower():
+            tok, tok2 = DASH_KEEP.set(True), topics.TOPIC.set("planning")
+            try:
+                m = await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML,
+                             disable_web_page_preview=True)
+            finally:
+                DASH_KEEP.reset(tok)
+                topics.TOPIC.reset(tok2)
+            cur = {"mid": m.message_id}
+    reg.data["planning_msg"] = {**cur, "sig": sig}
+    reg.save()
 
 
 async def on_dash_cmd(update: Update, ctx):
@@ -4575,6 +4698,8 @@ async def set_origin(update: Update, ctx):
     topics.TOPIC.set(TOPICS.key_of(th))
     if TOPICS.key_of(th) == "dash" and update.message is not None:      # « À valider » keeps only the overview
         dash_forget(c.id, update.message.message_id)
+    elif TOPICS.key_of(th) == "planning" and update.message is not None:    # the conversation goes once answered
+        plan_forget(c.id, update.message.message_id, incoming=True)
 
 
 topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch

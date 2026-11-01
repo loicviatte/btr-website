@@ -3,6 +3,7 @@
 the preview message, or the bot sends it again). What is published is locked (🟢, no button, edits refused).
 Pure: builds the text and the buttons from the episode state; bot.dash_tick sends / edits the messages."""
 import html
+import re
 from datetime import datetime
 
 from . import posts
@@ -146,3 +147,62 @@ def episode_code(guest: str, part: str | None, taken: dict, vid: str) -> str:
     while taken.get(code) not in (None, vid):
         code += vid[-1].lower() if vid[-1].isalnum() else "x"
     return code
+
+
+# ── « 🗓️ Instagram planning » : the overview on top (Loïc 01.11.2026) ─────────────────────────────────────────────────
+DONE = ("posted", "complete", "completed", "closed", "done")
+PLAN_ICON = {"to generate": TODO, "generated": WAIT, "approved": OK, "ready": PLAN, "scheduled": PLAN}
+
+
+def ig_kind(name: str) -> str | None:
+    """What a calendar task is on Instagram: atlas / carousel / story / reel (None = not Instagram: Short, Community…)."""
+    n = (name or "").strip().lower()
+    if re.match(r"car+ousel\s+·\s+world atlas", n):
+        return "atlas"
+    if n.startswith(("carousel", "carrousel")):
+        return "carousel"
+    if n.startswith("story"):
+        return "story"
+    if n.startswith("reel"):
+        return "reel"
+    return None
+
+
+def short_name(name: str, kind: str) -> str:
+    """« Reel 3/3 · Oti Mabuse P2 · Her One Question » → « Reel 3/3 · Her One Question »; « Carousel · World Atlas 04
+    Namibia · catch-up » → « Atlas 04 Namibia »; « Story · The Chain · Oti P2 » → « Story The Chain »."""
+    parts = [p.strip() for p in re.split(r"\s+·\s+", name or "") if p.strip()]
+    if kind == "atlas":
+        return re.sub(r"(?i)^world atlas", "Atlas", parts[1] if len(parts) > 1 else name)
+    if kind == "reel":
+        return " · ".join([parts[0]] + parts[2:]) if len(parts) > 2 else parts[0]
+    head = {"carousel": "Carrousel", "story": "Story"}[kind]
+    return f"{head} {parts[1]}" if len(parts) > 1 else head
+
+
+def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], now: datetime) -> str:
+    """mine / atlas: [{"name", "status", "at" (datetime|None)}], not posted. → the HTML message, grouped by day."""
+    days = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
+    rows = [(r, ig_kind(r["name"]) or "carousel") for r in mine + atlas]
+    rows.sort(key=lambda x: (x[0].get("at") is None, x[0].get("at") or now))
+    n_mine, n_atlas = len(mine), len(atlas)
+    head = f"<b>🗓️ {esc(title or 'Épisode en cours')}</b>\n"
+    head += (f"{n_mine} post{'s' if n_mine > 1 else ''} restant{'s' if n_mine > 1 else ''}" if n_mine else f"{OK} Tout est publié")
+    if n_atlas:
+        head += f" · {n_atlas} Atlas en rattrapage"
+    lines, day = [], None
+    for r, kind in rows:
+        at = r.get("at")
+        d = at.astimezone(posts.TZ) if at else None
+        key = d.date() if d else "?"
+        if key != day:
+            day = key
+            lines.append("\n<b>" + (f"{days[d.weekday()]} {d.strftime('%d.%m')}" if d else "Sans date") + "</b>")
+        late = " ⚠️ en retard" if at and at < now else ""
+        icon = PLAN_ICON.get((r.get("status") or "").lower(), WORK)
+        hour = d.strftime("%H:%M") + " " if d else ""
+        lines.append(f"{icon} {hour}{'🌍 ' if kind == 'atlas' else ''}{esc(short_name(r['name'], kind))}{late}")
+    legend = f"\n\n<i>{TODO} à générer · {WAIT} à valider · {OK} validé · {PLAN} programmé</i>"
+    foot = ("\n<i>Écris ta demande ici (changer un type, une date, ajouter, retirer) : la conversation s'efface une fois "
+            "faite, ce message se met à jour.</i>")
+    return head + "\n" + "\n".join(lines) + legend + foot
