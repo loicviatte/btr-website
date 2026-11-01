@@ -3515,7 +3515,8 @@ async def on_post_button(ctx, q, d: str):
     if not it:
         await say(ctx, "Ce post n'existe plus.")
         return
-    if act in ("ok", "ph", "tx", "b", "ps") and _dash.post_locked(it):
+    if act in ("ok", "ph", "tx", "b", "ps") and (_dash.post_locked(it) or
+                                                 ((ep_tasks(ep).get(k) or {}).get("status") or "").lower() == "posted"):
         await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié : plus de modification possible.")
         return
     if act == "ok":
@@ -4094,6 +4095,36 @@ def dash_episodes() -> list:
     return [reg.episode(v) for v, _ in sorted(out.items(), key=lambda kv: kv[1])]
 
 
+CU_CACHE = {"at": 0.0, "tasks": []}
+
+
+def ep_tasks(ep) -> dict:
+    """The episode's ClickUp tasks (cache refreshed by dash_tick): carousels / stories by kind, reels by « reelN »."""
+    from datetime import datetime as _dt
+    from . import share
+    from .pipeline import part_number
+    tasks = CU_CACHE["tasks"]
+    if not tasks:
+        return {}
+    guest, part = ep.get("guest_name") or "", part_number(ep)
+    rel = ep.get("release_at")
+    ep_date = _dt.fromisoformat(rel) if rel else None
+    label = share.episode_label(guest, part)
+    out = {}
+    for t in sorted(tasks, key=lambda t: int(t.get("due_date") or 9e15)):
+        k = _posts.task_kind(t.get("name", ""))
+        if k and k not in out and guest and share.matches_episode(t, label, guest, part, ep_date):
+            due = _posts.due(t)
+            out[k] = {"id": t["id"], "status": (t.get("status") or {}).get("status", ""), "due_iso": due.isoformat() if due else None}
+    by_id = {t["id"]: t for t in tasks}
+    if ep.file("reels.json").exists():
+        for n, it in (Reels.of(ep).data.get("items") or {}).items():
+            t = by_id.get(it.get("clickup_task") or "")
+            if t:
+                out[f"reel{n}"] = {"id": t["id"], "status": (t.get("status") or {}).get("status", "")}
+    return out
+
+
 def dash_content(ep):
     from .pipeline import part_number
     rs = Reels.of(ep).data if ep.file("reels.json").exists() else None
@@ -4102,10 +4133,14 @@ def dash_content(ep):
     guest = ep.get("guest_name") or ep.get("public_title") or ep.get("title") or ep.video_id
     part = part_number(ep)
     title = f"{guest} · Part {part}" if part else guest
-    text, rows, waiting = _dash.render(ep, title, rs, titles, pst)
-    kb = K([[B(b["text"], url=b["url"]) if b.get("url") else B(b["text"], callback_data=b["callback_data"]) for b in row]
-            for row in rows]) if rows else None
-    return text, kb
+    codes = reg.data.setdefault("dash_codes", {})
+    code = next((c for c, v in codes.items() if v == ep.video_id), None)
+    if not code:
+        code = _dash.episode_code(ep.get("guest_name") or "", part, codes, ep.video_id)
+        codes[code] = ep.video_id
+        reg.save()
+    text, waiting = _dash.render(ep, code, title, rs, titles, pst, ep_tasks(ep))
+    return text, None
 
 
 async def dash_tick(ctx):
@@ -4114,8 +4149,23 @@ async def dash_tick(ctx):
         return
     async with DASH_LOCK:
         import hashlib
+        import time as _t
+        if _t.time() - CU_CACHE["at"] > 300:                    # ClickUp statuses every 5 min
+            try:
+                CU_CACHE["tasks"] = await run(maker().clickup().tasks)
+            except Exception:  # noqa: BLE001
+                pass
+            CU_CACHE["at"] = _t.time()
         store = reg.data.setdefault("dash", {})
         for ep in dash_episodes():
+            if not ep.get("release_at") and ep.get("guest_name"):     # to match the « Ep Nov 3 » tasks
+                try:
+                    from . import share
+                    d = share.episode_date(await run(pipe.yt.video, ep.video_id))
+                    ep["release_at"] = d.isoformat() if d else ""
+                    ep.save()
+                except Exception:  # noqa: BLE001
+                    pass
             try:
                 text, kb = dash_content(ep)
             except Exception:  # noqa: BLE001
@@ -4140,6 +4190,39 @@ async def dash_tick(ctx):
                 cur = {"mid": m.message_id}
             store[ep.video_id] = {**cur, "sig": sig}
             reg.save()
+
+
+async def on_dash_cmd(update: Update, ctx):
+    """/oti2_reel3, /oti2_topics, /oti2_miniatures, /oti2_faire_poll: tapped in « À valider »; the item goes to its
+    own topic (with its buttons), the command message is deleted to keep the list clean."""
+    if not allowed(update) or not update.message:
+        return
+    m = re.match(r"^/([a-z0-9]+)_([a-z0-9_]+?)(?:@\w+)?$", (update.message.text or "").strip())
+    if not m:
+        return
+    code, what = m.groups()
+    vid = (reg.data.get("dash_codes") or {}).get(code)
+    if not vid:
+        return
+    try:
+        await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
+    except Exception:  # noqa: BLE001
+        pass
+    ep = reg.episode(vid)
+    if what.startswith("reel") and what[4:].isdigit():
+        await on_dash_button(ctx, f"dash:r:{vid}:{int(what[4:])}")
+    elif what == "miniatures":
+        for d in ("youtube", "instagram", "square"):
+            if ep.file(f"render/thumb_{d}.jpg").exists():
+                await send_thumb(ctx, ep, d)
+    elif what.startswith("faire_") and what[6:] in _posts.LABEL:
+        bg(ctx, f"{_posts.LABEL[what[6:]]} · {ep.get('guest_name') or vid}", posts_make(ctx, ep, [what[6:]]))
+    elif what in _posts.LABEL:
+        t = ep_tasks(ep).get(what) or {}
+        if (t.get("status") or "").lower() == "posted":
+            await say(ctx, f"🔒 {esc(_posts.LABEL[what])} est déjà publié.")
+            return
+        await on_dash_button(ctx, f"dash:p:{vid}:{what}")
 
 
 async def on_dash_button(ctx, d: str):
@@ -4296,6 +4379,7 @@ def main():
     app.add_handler(CommandHandler("posts", posts_cmd))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageReactionHandler(on_reaction))
+    app.add_handler(MessageHandler(filters.COMMAND & filters.Regex(r"^/[a-z0-9]+_[a-z0-9_]+(@\w+)?$"), on_dash_cmd))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))

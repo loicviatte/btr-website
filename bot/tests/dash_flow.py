@@ -31,15 +31,18 @@ st.data["items"] = {"topics": {"kind": "topics", "status": "draft", "msg": [-100
                     "poll": {"kind": "poll", "status": "ok", "at": "2026-11-04T19:00:00+00:00"},
                     "moment": {"kind": "moment", "status": "posted", "ig": {"done": True, "link": "https://instagram.com/p/x"}}}
 st.save()
+bot.CU_CACHE.update(at=9e18, tasks=[
+    {"id": "K", "name": "Carousel · Key moment · Oti P2", "status": {"status": "posted"}, "custom_fields": []},
+    {"id": "S", "name": "Story · Ask the next guest · Oti P2", "status": {"status": "to generate"}, "custom_fields": []}])
 text, kb = bot.dash_content(ep)
-assert "Oti Mabuse · Part 2" in text and "3 à valider" in text, text
+assert kb is None and "Oti Mabuse · Part 2" in text and "3 à valider" in text, text
 assert "Reel 4" not in text and "🟢 Reel 1" in text and "⏳ Reel 2" in text and "cover à valider" in text
-assert "🟢 Key moment" in text and "📅 Story Poll" in text and "mer. 04.11 19:00" in text
-labels = [b.text for row in kb.inline_keyboard for b in row]
-assert "⏳ Topics" in labels and not any("Reel 1" in x for x in labels) and not any("Key moment" in x for x in labels)
-topics_btn = [b for row in kb.inline_keyboard for b in row if b.text == "⏳ Topics"][0]
-assert topics_btn.url == "https://t.me/c/555/77"
+assert "/oti2_reel2" in text and "/oti2_reel1" not in text and "/oti2_topics" in text
+assert "🟢 Key moment" in text and "/oti2_moment" not in text                       # posted (bot or ClickUp) = locked
+assert "📅 Story Poll" in text and "mer. 04.11 19:00" in text
+assert "⬜ Story Ask the next guest — à générer" in text and "/oti2_faire_ask" in text, text
 assert dashboard.reel_locked(rs.data["items"]["1"]) and not dashboard.reel_locked(rs.data["items"]["2"])
+assert dashboard.episode_code("Oti Mabuse", "2", {}, "x") == "oti2" and dashboard.episode_code("Zoë Ball", None, {"zoe": "a"}, "b1") == "zoe1"
 print("OK render")
 
 sent, edits = [], []
@@ -58,6 +61,7 @@ ctx = NS(bot=FakeBot())
 
 
 async def main():
+    bot.pipe.yt.video = lambda vid: {"status": {}, "snippet": {"publishedAt": "2026-10-27T18:00:00Z"}}
     await bot.dash_tick(ctx)
     assert len(sent) == 1 and not edits
     await bot.dash_tick(ctx)                             # nothing changed: nothing sent or edited
@@ -79,3 +83,25 @@ async def main():
     print("OK tick")
 
 asyncio.run(main())
+
+# a tapped command shows the item in its topic (and is deleted from « À valider »)
+shown = []
+
+
+async def fake_btn(c, d):
+    shown.append(d)
+
+
+async def cmd():
+    bot.on_dash_button = fake_btn
+    deleted = []
+
+    class B2(FakeBot):
+        async def delete_message(self, chat, mid):
+            deleted.append(mid)
+    up = NS(message=NS(text="/oti2_reel2@BTRStudioBot", message_id=9), effective_chat=NS(id=-100555), effective_user=NS(id=42))
+    await bot.on_dash_cmd(up, NS(bot=B2()))
+    assert shown == [f"dash:r:{ep.video_id}:2"] and deleted == [9], (shown, deleted)
+    print("OK command")
+
+asyncio.run(cmd())

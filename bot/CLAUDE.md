@@ -144,12 +144,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   function that sends reel or thumbnail messages goes in that list). One chat memory per topic (`TopicMemory`,
   `MEMORY.everything()` to scrub secrets). In the group only Loïc drives the bot (`allowed`). Test: `tests/topics_flow.py`.
 - « ✅ À valider » topic (`btrbot/dashboard.py`, Loïc 01.11): ONE message per episode (reels.json / posts.json touched in
-  the last 21 days + the active episode), edited in place by `bot.dash_tick` (30 s, only when its text / buttons
-  change; reg.data["dash"][vid] = message id + signature): miniatures (ep.stage), reels (preview ⏳, cover to validate ⏳,
-  Short planned 📅, published 🟢), carousels / stories (draft ⏳, validated 📅 with the time, published 🟢). Taps = link
-  to the preview message (item["msg"], reel item["msg"] / ["cover_msg"], ep["thumb_msgs"] + thumb_chat) or `dash:r` /
-  `dash:p` callbacks that send it again in its topic. Published = locked: no button, `on_post_button` and the reel /
-  post tools refuse edits (`dashboard.reel_locked` / `post_locked`). Topic created at boot for an existing group
+  the last 21 days + the active episode), edited in place by `bot.dash_tick` (30 s, only when the text changes;
+  reg.data["dash"][vid] = message id + signature). No buttons: tappable /commands like BotFather, per episode code
+  (`dashboard.episode_code`: oti2, kiera…, reg.data["dash_codes"]): /oti2_reel3 (preview or cover sent again in Reels),
+  /oti2_topics, /oti2_poll… (in Stories), /oti2_miniatures, /oti2_faire_poll (a ClickUp task « to generate » → made);
+  `bot.on_dash_cmd` deletes the command message. Lines: miniatures (ep.stage), reels (⏳ preview / cover to validate,
+  📅 Short planned, 🟢 published), carousels + stories = the episode's ClickUp tasks (`bot.ep_tasks`, cache CU_CACHE 5 min,
+  release date cached in ep["release_at"] for « Ep Nov 3 » names) merged with the bot's items: ClickUp « posted » or
+  bot posted = 🟢 locked (no command, edits refused), to generate ⬜. Topic created at boot for an existing group
   (`ensure_dash_topic`). Test: `tests/dash_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
