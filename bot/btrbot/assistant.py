@@ -209,6 +209,25 @@ TOOLS = [
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
                       "factor": {"type": "number"}, "previous": {"type": "boolean"},
                       "shift_x": {"type": "number"}, "shift_y": {"type": "number"}}, "required": ["key"]}},
+    {"name": "planning_list", "description": "Le calendrier Instagram (ClickUp) des carrousels et stories : une ligne par "
+                                            "tâche « id · nom · statut · date ». À appeler avant de changer quoi que ce soit.",
+     "input_schema": {"type": "object", "properties": {"days": {"type": "integer"}, "posted": {"type": "boolean"}}}},
+    {"name": "planning_change", "description": "Changer UNE tâche du calendrier : son type (« remplace la Poll du 4.11 "
+                                              "par un Rapid fire » → new_type rapid) et/ou sa date-heure (« décale à 11h », "
+                                              "« jeudi 19h » → when « 5.11 19h » ou « 11h »). Un nouveau type remet la tâche "
+                                              "en « to generate » et le bot refait le contenu pour validation. Jamais sur "
+                                              "une tâche posted. Types : moment, topics, teaser, poll, rapid, chain, link, "
+                                              "ask, qa, quote, atlas.",
+     "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "new_type": {"type": "string"},
+                      "when": {"type": "string"}}, "required": ["task_id"]}},
+    {"name": "planning_add", "description": "AJOUTER un carrousel / une story au calendrier : type, when (« 6.11 19h »), "
+                                           "like_task_id = une tâche du même épisode (pour le libellé et l'épisode), "
+                                           "sinon label (« Ep Nov 3 »).",
+     "input_schema": {"type": "object", "properties": {"type": {"type": "string"}, "when": {"type": "string"},
+                      "like_task_id": {"type": "string"}, "label": {"type": "string"}}, "required": ["type", "when"]}},
+    {"name": "planning_remove", "description": "RETIRER une tâche du calendrier (seulement si Loïc le demande "
+                                              "clairement ; jamais une tâche posted ; récupérable 30 jours dans ClickUp).",
+     "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]}},
     {"name": "posts_validate", "description": "Loïc VALIDE des carrousels / stories en aperçu (« ok pour le key moment », "
                                              "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
                                              "prévue. keys vides = tous les aperçus en attente.",

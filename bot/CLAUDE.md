@@ -156,6 +156,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (`ensure_dash_topic`). Only the overviews stay: any other bot message routed there (`_routed_post`, DASH_KEEP
   marks the overview) and Loïc's own messages (`set_origin`) are deleted after DASH_TTL 40 s (`dash_forget`).
   Test: `tests/dash_flow.py`.
+- « 🗓️ Instagram planning » topic (Loïc 01.11): Loïc changes the ClickUp calendar by chat; tools planning_list (CU_CACHE
+  refreshed, « id · name · status · date »), planning_change (task_id, new_type and/or when: renamed with
+  `posts.task_name`, Time line / description from `posts.task_desc`, status « to generate », the old kind's draft dropped,
+  content made again via posts_make([kind]) when the task belongs to an episode the bot has (`bot.episode_of_task`);
+  carousel ↔ story refused; posted = locked), planning_add (type, when, like_task_id or label: new task with Format /
+  Instagram / placement / TikTok / YouTube fields), planning_remove (ClickUp trash, never posted). Dates « 4.11 19h »,
+  « 11h » (`bot.plan_when`). « À valider » follows on its next tick. Topics added later are created at boot
+  (`ensure_dash_topic` loops over topics.NAMES). Test: `tests/planning_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

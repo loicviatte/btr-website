@@ -38,6 +38,42 @@ LABEL = {"moment": "Carrousel Key moment", "topics": "Carrousel Topics", "teaser
          "poll": "Story Poll", "rapid": "Story Rapid fire", "chain": "Story The Chain", "link": "Story Link",
          "ask": "Story Ask the next guest", "qa": "Story Question / réponse", "quote": "Story Citation",
          "atlas": "Story Quiz World Atlas"}
+TASK_NAME = {"moment": "Key moment", "topics": "Topics", "teaser": "Teaser share", "poll": "Poll", "rapid": "Rapid fire",
+             "chain": "The Chain", "link": "Link", "ask": "Ask the next guest", "qa": "Question / answer",
+             "quote": "Quote", "atlas": "Atlas quiz"}
+TASK_WHAT = {
+    "moment": "4 slides, stills of the guest + the exact subtitle (cut, never add words).",
+    "topics": "8 slides, 6 topics (title, context, quote). Don’t reuse the key-moment quote.",
+    "teaser": "Share the reel teaser to story (paper plane → Add to story) + link sticker to the episode.",
+    "poll": "Poll sticker under the question, on a question from the episode. Or version b: no poll, link at the bottom.",
+    "rapid": "Quiz sticker: guess the guest's rapid fire answer. Or version b: link at the bottom.",
+    "chain": "Quiz sticker: guess the guest's answer to the previous guest's question. Or version b: link at the bottom.",
+    "link": "Link sticker to the episode at the bottom, wide shot of the set between two gold lines.",
+    "ask": "Question sticker: what should we ask the next guest?",
+    "qa": "No sticker: Marius asks at the top, the guest answers at the bottom.",
+    "quote": "No sticker: the guest in colour with a big exact quote.",
+    "atlas": "Quiz sticker: where did the guest land in the World Atlas? Only on the day of the week's Atlas carousel.",
+}
+
+
+def task_name(kind: str, label: str) -> str:
+    return f"{'Carousel' if kind in ('moment', 'topics') else 'Story'} · {TASK_NAME[kind]} · {label}"
+
+
+def task_desc(kind: str, at: datetime | None) -> str:
+    t = at.astimezone(TZ).strftime("%H:%M") if at else "—"
+    if kind in ("moment", "topics"):
+        tt = (at + timedelta(hours=2)).astimezone(TZ).strftime("%H:%M") if at else "—"
+        return f"Where: Instagram (grid) + TikTok\nTime: {t} Instagram · {tt} TikTok\nWhat: {TASK_WHAT[kind]}"
+    return f"Where: Instagram story\nTime: {t}\nWhat: {TASK_WHAT[kind]}"
+
+
+def task_label(name: str) -> str:
+    """« Story · Poll · Ep Nov 3 » → « Ep Nov 3 »."""
+    parts = re.split(r"\s+·\s+", name or "")
+    return parts[-1] if len(parts) >= 3 else (name or "")
+
+
 CAROUSELS = ("moment", "topics")
 AUTO_STORIES = ("qa", "quote")        # no sticker: the API posts them; the others need Loïc's sticker in the app
 STICKER = {"teaser": "partage du reel teaser + sticker lien", "poll": "sondage", "rapid": "quiz", "chain": "quiz",

@@ -1096,6 +1096,19 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"Cadrage {post_name(ep, key)}", posts_zoom(ctx, ep, key, [int(x) for x in slides or []] or None,
                                                                  part, f, bool(previous), move))
 
+    async def planning_list(days=21, posted=False):
+        await plan_refresh()
+        return plan_list_text(int(days or 21), bool(posted))
+
+    async def planning_change(task_id, new_type=None, when=None):
+        return await plan_change(ctx, str(task_id), (new_type or "").lower() or None, when)
+
+    async def planning_add(type, when, like_task_id=None, label=None):  # noqa: A002
+        return await plan_add(ctx, str(type).lower(), str(when), like_task_id, label)
+
+    async def planning_remove(task_id):
+        return await plan_remove(str(task_id))
+
     async def posts_validate(keys=None):
         ep = posts_ep_of()
         st = _posts.PostState(ep)
@@ -1154,7 +1167,9 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
-            "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom, "posts_validate": posts_validate,
+            "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
+            "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
+            "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
@@ -4295,15 +4310,185 @@ async def on_dash_button(ctx, d: str):
 
 
 async def ensure_dash_topic(app) -> None:
-    if not TOPICS.group or "dash" in TOPICS.threads:
+    """Topics added after the group was made (À valider, Instagram planning) are created at boot."""
+    if not TOPICS.group:
         return
+    for key in topics.NAMES:
+        if key in TOPICS.threads:
+            continue
+        try:
+            t = await app.bot.create_forum_topic(TOPICS.group, topics.NAMES[key], icon_color=topics.COLORS[key])
+            TOPICS.threads[key] = t.message_thread_id
+            TOPICS.save()
+            await app.bot.send_message(TOPICS.group, topics.WELCOME[key], message_thread_id=t.message_thread_id)
+        except Exception:  # noqa: BLE001
+            log.exception("topic %s", key)
+
+
+# ---------------------------------------------------------------- « Instagram planning »: the ClickUp calendar by chat
+def plan_when(text: str | None, base=None):
+    """« 4.11 19h », « 2026-11-04 19:00 », « 19h » (same day as base) → London datetime (no « too soon » check)."""
+    from datetime import datetime as _dt
+    if not text:
+        return None
+    t = str(text).strip().lower()
+    m = re.match(r"^(\d{1,2})\s*[h:]\s*(\d{2})?$", t)
+    if m and base is not None:
+        return base.astimezone(_posts.TZ).replace(hour=int(m.group(1)), minute=int(m.group(2) or 0), second=0, microsecond=0)
+    m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", t) or None
+    if m:
+        y, mo, d = (int(x) for x in m.groups())
+        rest = t[m.end():]
+    else:
+        m = re.match(r"(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?", t)
+        if not m:
+            raise ValueError(f"date illisible : {text}")
+        d, mo = int(m.group(1)), int(m.group(2))
+        now = _posts.now().astimezone(_posts.TZ)
+        y = int(m.group(3)) + (2000 if m.group(3) and int(m.group(3)) < 100 else 0) if m.group(3) else now.year
+        rest = t[m.end():]
+    h = re.search(r"(\d{1,2})\s*[h:]\s*(\d{2})?", rest)
+    hh, mm = (int(h.group(1)), int(h.group(2) or 0)) if h else ((base.astimezone(_posts.TZ).hour, base.astimezone(_posts.TZ).minute)
+                                                                  if base is not None else (19, 0))
+    return _dt(y, mo, d, hh, mm, tzinfo=_posts.TZ)
+
+
+def plan_list_text(days: int = 21, posted: bool = False) -> str:
+    """Carousels / stories of the calendar in the next `days` (and the last 2 days), for the chat model."""
+    from datetime import timedelta
+    now = _posts.now()
+    rows = []
+    for t in CU_CACHE["tasks"]:
+        k = _posts.task_kind(t.get("name", ""))
+        at = _posts.due(t)
+        status = (t.get("status") or {}).get("status", "")
+        if not k or not at or (status == "posted" and not posted):
+            continue
+        if not (now - timedelta(days=2) <= at <= now + timedelta(days=days)):
+            continue
+        rows.append((at, f"{t['id']} · {t['name']} · {status} · {_posts.label_time(at)}"))
+    return "\n".join(r for _, r in sorted(rows)) or "rien de prévu sur cette période"
+
+
+def episode_of_task(tid: str):
+    """The bot's episode (with transcript) a calendar task belongs to, if any."""
+    for ep in dash_episodes():
+        try:
+            if any(t["id"] == tid for t in maker().episode_tasks(ep, CU_CACHE["tasks"]).values()):
+                return ep
+        except Exception:  # noqa: BLE001
+            continue
+    return None
+
+
+async def plan_refresh():
+    import time as _t
+    CU_CACHE["tasks"] = await run(maker().clickup().tasks)
+    CU_CACHE["at"] = _t.time()
+
+
+async def plan_change(ctx, tid: str, new_kind: str | None = None, when: str | None = None, make: bool = True) -> str:
+    from . import share
+    cu = maker().clickup()
+    t = await run(cu.task, tid)
+    old = _posts.task_kind(t.get("name", ""))
+    status = ((t.get("status") or {}).get("status") or "").lower()
+    if status == "posted":
+        return "déjà publié : verrouillé, je n'y touche pas"
+    if not old:
+        return "ce n'est pas une tâche carrousel / story"
+    at = _posts.due(t)
+    if when:
+        try:
+            at = plan_when(when, at)
+        except ValueError as e:
+            return str(e)
+    kind = new_kind if new_kind in _posts.LABEL else old
+    if (kind in _posts.CAROUSELS) != (old in _posts.CAROUSELS):
+        return "un carrousel ne devient pas une story (ni l'inverse) : retire l'un et ajoute l'autre"
+    fields = {}
+    if at and (when or kind != old):
+        fields.update(due_date=int(at.timestamp() * 1000), due_date_time=True)
+    ep = episode_of_task(tid)
+    if kind != old:
+        fields.update(name=_posts.task_name(kind, _posts.task_label(t["name"])), markdown_content=_posts.task_desc(kind, at),
+                      status="to generate")
+        if ep:                                               # the old kind's content no longer has a slot here
+            st = _posts.PostState(ep)
+            it = st.items.get(old)
+            if it and it.get("task") == tid and not _dash.post_locked(it):
+                st.items.pop(old)
+                st.save()
+    elif when and at:
+        keep = (t.get("markdown_description") or "").split(share.MARK)
+        head = re.sub(r"Time: [^\n]*", _posts.task_desc(kind, at).split("\n")[1], keep[0])
+        fields["markdown_content"] = head + (share.MARK + keep[1] if len(keep) > 1 else "")
+    await run(lambda: cu.update(tid, **fields))
+    await plan_refresh()
+    done = f"« {fields.get('name', t['name'])} » {('le ' + _posts.label_time(at)) if at else ''}".strip()
+    if kind != old and make and ep:
+        bg(ctx, f"{_posts.LABEL[kind]} · {ep.get('guest_name')}", posts_make(ctx, ep, [kind]))
+        return f"fait : {done}, nouveau contenu en préparation (aperçu dans Stories & carrousels)"
+    if kind != old and make:
+        return f"fait : {done}, en « to generate » : le bot le fera quand l'épisode aura sa transcription"
+    if ep and when:                                          # a validated post follows the new time
+        st = _posts.PostState(ep)
+        it = st.items.get(kind)
+        if it and it.get("status") == "ok" and at:
+            it["at"] = at.isoformat()
+            st.save()
+    return f"fait : {done}"
+
+
+async def plan_add(ctx, kind: str, when: str, like: str | None = None, label: str | None = None) -> str:
+    from . import share
+    if kind not in _posts.LABEL:
+        return f"type inconnu : {kind}"
+    cu = maker().clickup()
+    ref = await run(cu.task, like) if like else None
+    base = _posts.due(ref) if ref else None
     try:
-        t = await app.bot.create_forum_topic(TOPICS.group, topics.NAMES["dash"], icon_color=topics.COLORS["dash"])
-        TOPICS.threads["dash"] = t.message_thread_id
-        TOPICS.save()
-        await app.bot.send_message(TOPICS.group, topics.WELCOME["dash"], message_thread_id=t.message_thread_id)
-    except Exception:  # noqa: BLE001
-        log.exception("dash topic")
+        at = plan_when(when, base)
+    except ValueError as e:
+        return str(e)
+    lab = label or (_posts.task_label(ref["name"]) if ref else None)
+    if not lab:
+        return "il me faut l'épisode (une tâche de cet épisode en exemple, ou son libellé « Ep Nov 3 » / « Oti P2 »)"
+    car = kind in _posts.CAROUSELS
+    ep_field = share._field(ref, share.F_EPISODE) if ref else None
+    fields = [{"id": share.F_FORMAT, "value": share.FMT_CAROUSEL if car else share.FMT_STORY},
+              {"id": share.F_IG, "value": share.IG_TODO},
+              {"id": share.F_PLACEMENT, "value": share.GRID if car else share.STORY_PLACE},
+              {"id": share.F_TT, "value": share.TT_TODO if car else share.TT_NO},
+              {"id": share.F_YT, "value": share.YT_NO}]
+    if ep_field:
+        fields.append({"id": share.F_EPISODE, "value": ep_field})
+    t = await run(lambda: cu.create(name=_posts.task_name(kind, lab), markdown_content=_posts.task_desc(kind, at),
+                                     status="to generate", due_date=int(at.timestamp() * 1000), due_date_time=True,
+                                     custom_fields=fields))
+    await plan_refresh()
+    ep = episode_of_task(t["id"])
+    if ep:
+        bg(ctx, f"{_posts.LABEL[kind]} · {ep.get('guest_name')}", posts_make(ctx, ep, [kind]))
+        return f"ajouté : « {t['name']} » le {_posts.label_time(at)}, contenu en préparation"
+    return f"ajouté : « {t['name']} » le {_posts.label_time(at)} (to generate)"
+
+
+async def plan_remove(tid: str) -> str:
+    cu = maker().clickup()
+    t = await run(cu.task, tid)
+    if ((t.get("status") or {}).get("status") or "").lower() == "posted":
+        return "déjà publié : je ne le retire pas"
+    ep = episode_of_task(tid)
+    await run(cu.delete, tid)                               # ClickUp keeps it 30 days in its trash
+    if ep:
+        st = _posts.PostState(ep)
+        for k, it in list(st.items.items()):
+            if it.get("task") == tid and not _dash.post_locked(it):
+                st.items.pop(k)
+        st.save()
+    await plan_refresh()
+    return f"retiré : « {t['name']} » (récupérable 30 jours dans la corbeille ClickUp)"
 
 
 # ---------------------------------------------------------------- BTR Studio group (one topic per kind of work)
@@ -4320,6 +4505,11 @@ def topic_context() -> str:
     if not TOPICS.group:
         return ""
     here = topics.TOPIC.get() or "system"
+    if here == "planning":
+        return (topic_context_base(here) + "\nCe fil sert à changer le calendrier Instagram (ClickUp) : commence par "
+                "planning_list pour voir les tâches (id · nom · statut · date), puis planning_change / planning_add / "
+                "planning_remove. Types : moment, topics (carrousels) ; teaser, poll, rapid, chain, link, ask, qa, quote, "
+                "atlas (stories). Un changement de type remet la tâche en « to generate » et le bot refait le contenu.")
     if here == "stories":
         extra = posts_lines()
         if extra:

@@ -29,6 +29,9 @@ TT_SCHEDULED, TT_POSTED = "b1b05eb7-20a6-4a78-8602-98e1ba8262b0", "cc9d50cc-9317
 F_YT, YT_TODO = "42cc05f2-218b-405a-ad1b-6069c5e2b04a", "93280cc0-4dd6-4654-b1cf-b3fa39cd1949"
 IG_SCHEDULED, IG_POSTED = "eb8ad4fc-67be-4503-acca-7c14e6ad370d", "3594b624-2ee1-4d1b-83ff-bc4c8d5d9509"
 GRID = "b64d9e9c-6809-4527-9511-736f4d21ca4e"           # Instagram placement « Grid » (orderindex 0)
+STORY_PLACE = "f1f6f3ca-f4db-4e3f-9918-4d2015dc4908"    # Instagram placement « Story »
+FMT_STORY, FMT_CAROUSEL = "6af1e79f-f33e-40bc-8a2c-6ab1f8f96649", "768a686c-3286-45d1-980a-06869af04629"
+TT_NO, YT_NO = "affcf24b-8be9-454c-ad20-98c92ceddc41", "783dfbd6-cd19-4e22-9479-0befa6b0f759"
 YT_SCHEDULED, YT_POSTED = "a95e6c4c-35e7-4a87-8705-fcd3dc7592e0", "530bf62a-705a-4647-b596-364aff465ebf"
 WHERE_IG = ("Where: Instagram (Reels tab, not in grid) + TikTok + YouTube Shorts\n"
             "Cover: whole head + hook inside Instagram's 3:4 grid tile (centre).\nShorts: set “Related video” to the episode, no link in the description.")
