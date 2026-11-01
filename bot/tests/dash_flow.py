@@ -111,3 +111,34 @@ async def cmd():
     print("OK command")
 
 asyncio.run(cmd())
+
+# « À valider » keeps only the overview: other bot messages and Loïc's own disappear after a while
+jobs = []
+bot.APP["app"] = NS(job_queue=NS(run_once=lambda cb, when, name=None: jobs.append((when, name))))
+
+
+async def fake_post(self, endpoint, data, *a, **k):
+    return {"message_id": 70, "chat": {"id": data["chat_id"]}}
+bot._do_post = fake_post
+
+
+async def clean():
+    from btrbot import topics
+    tok = topics.TOPIC.set("dash")
+    await bot._routed_post(None, "sendMessage", {"chat_id": 42, "text": "J'ai lancé…"})
+    assert jobs and jobs[-1][1] == "dash-del-70", jobs
+    n = len(jobs)
+    k = bot.DASH_KEEP.set(True)
+    await bot._routed_post(None, "sendMessage", {"chat_id": 42, "text": "overview"})
+    bot.DASH_KEEP.reset(k)
+    assert len(jobs) == n                                    # the overview itself stays
+    await bot._routed_post(None, "sendMessage", {"chat_id": -100555, "message_thread_id": 9, "text": "welcome"})
+    assert len(jobs) == n                                    # not routed (welcome, pinned): stays
+    topics.TOPIC.reset(tok)
+    up = NS(effective_chat=NS(id=-100555, type="supergroup"), effective_user=NS(id=42), callback_query=None,
+            effective_message=NS(message_thread_id=9, is_topic_message=True), message=NS(message_id=71))
+    await bot.set_origin(up, None)
+    assert jobs[-1][1] == "dash-del-71"
+    print("OK clean")
+
+asyncio.run(clean())

@@ -153,7 +153,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   📅 Short planned, 🟢 published), carousels + stories = the episode's ClickUp tasks (`bot.ep_tasks`, cache CU_CACHE 5 min,
   release date cached in ep["release_at"] for « Ep Nov 3 » names) merged with the bot's items (an item whose kind has no task is hidden when the episode has tasks): ClickUp « posted » or
   bot posted = 🟢 locked (no command, edits refused), to generate ⬜. Topic created at boot for an existing group
-  (`ensure_dash_topic`). Test: `tests/dash_flow.py`.
+  (`ensure_dash_topic`). Only the overviews stay: any other bot message routed there (`_routed_post`, DASH_KEEP
+  marks the overview) and Loïc's own messages (`set_origin`) are deleted after DASH_TTL 40 s (`dash_forget`).
+  Test: `tests/dash_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

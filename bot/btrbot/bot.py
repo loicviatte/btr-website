@@ -54,9 +54,42 @@ MEMORY = TopicMemory()
 _do_post = ExtBot._do_post
 
 
+import contextvars as _cv  # noqa: E402
+DASH_KEEP = _cv.ContextVar("dash_keep", default=False)   # True only while dash_tick posts the overview itself
+APP = {"app": None}
+DASH_TTL = 40                                            # s: anything else in « À valider » disappears after this
+
+
 async def _routed_post(self, endpoint, data, *a, **k):
-    """Everything sent to Loïc's private chat goes to the group's topic of the current work (topics.py)."""
-    return await _do_post(self, endpoint, TOPICS.route(cfg.chat_id, endpoint, data), *a, **k)
+    """Everything sent to Loïc's private chat goes to the group's topic of the current work (topics.py). In « À
+    valider » only the overview stays: any other message the bot posts there is deleted after DASH_TTL."""
+    to_owner = str(data.get("chat_id")) == str(cfg.chat_id)
+    data = TOPICS.route(cfg.chat_id, endpoint, data)
+    res = await _do_post(self, endpoint, data, *a, **k)
+    try:
+        dash = TOPICS.threads.get("dash")
+        if (to_owner and dash and data.get("message_thread_id") == dash and endpoint.lower().startswith("send")
+                and endpoint.lower() != "sendchataction" and not DASH_KEEP.get()):
+            for m in (res if isinstance(res, list) else [res]):
+                if isinstance(m, dict) and m.get("message_id"):
+                    dash_forget(data["chat_id"], m["message_id"])
+    except Exception:  # noqa: BLE001
+        log.exception("dash cleanup")
+    return res
+
+
+def dash_forget(chat, mid, delay: int = DASH_TTL) -> None:
+    """Delete this message from « À valider » in a little while (time to read a short answer)."""
+    app = APP.get("app")
+    if not app or not app.job_queue:
+        return
+
+    async def gone(ctx):
+        try:
+            await ctx.bot.delete_message(chat, mid)
+        except Exception:  # noqa: BLE001
+            pass
+    app.job_queue.run_once(gone, when=delay, name=f"dash-del-{mid}")
 
 
 ExtBot._do_post = _routed_post
@@ -3176,6 +3209,7 @@ def start_polling(app):
 
 
 async def on_boot(app):
+    APP["app"] = app
     if cfg.chat_id:
         await ensure_dash_topic(app)
         start_polling(app)
@@ -4194,8 +4228,12 @@ async def dash_tick(ctx):
                 if "not modified" in str(e).lower():
                     store[ep.video_id] = {**cur, "sig": sig}
                     continue
-                m = await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML, reply_markup=kb,
-                             disable_web_page_preview=True)
+                tok = DASH_KEEP.set(True)
+                try:
+                    m = await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML, reply_markup=kb,
+                                 disable_web_page_preview=True)
+                finally:
+                    DASH_KEEP.reset(tok)
                 cur = {"mid": m.message_id}
             store[ep.video_id] = {**cur, "sig": sig}
             reg.save()
@@ -4345,6 +4383,8 @@ async def set_origin(update: Update, ctx):
     m = update.effective_message
     th = m.message_thread_id if m is not None and m.is_topic_message else None
     topics.TOPIC.set(TOPICS.key_of(th))
+    if TOPICS.key_of(th) == "dash" and update.message is not None:      # « À valider » keeps only the overview
+        dash_forget(c.id, update.message.message_id)
 
 
 topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
