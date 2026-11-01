@@ -1038,6 +1038,13 @@ def tool_handlers(ctx, images: list) -> dict:
             return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
         return bg(ctx, f"Photos {post_name(ep, key)}", posts_photos(ctx, ep, key, sl or [0], part, at, who, size))
 
+    async def post_zoom(key, slides=None, part=None, factor=None, previous=False):
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        f = float(factor) if factor else None
+        return bg(ctx, f"Cadrage {post_name(ep, key)}", posts_zoom(ctx, ep, key, [int(x) for x in slides or []] or None,
+                                                                 part, f, bool(previous)))
+
     async def posts_validate(keys=None):
         ep = posts_ep_of()
         st = _posts.PostState(ep)
@@ -1078,7 +1085,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
-            "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "posts_validate": posts_validate,
+            "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom, "posts_validate": posts_validate,
             "posts_status": posts_status_t,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
@@ -3150,6 +3157,23 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if reg.data.get("posts_chain_1101") and not reg.data.get("posts_chain_1101b"):  # « garde-la mais moins zoom »
+                    reg.data["posts_chain_1101b"] = True
+                    reg.save()
+                    pst = _posts.PostState(ep)
+                    from PIL import Image
+                    files = sorted((ep.dir / "posts" / "shots").glob("chain_face_*.jpg"), key=lambda p: p.stat().st_mtime)
+                    files = [f for f in files if "_ext" not in f.name]
+                    if len(files) >= 2 and "chain:face" in pst.data.get("shots", {}):
+                        cur = pst.data["shots"]["chain:face"]
+                        pst.data.setdefault("history", {}).setdefault("chain:face", []).append(dict(cur))
+                        keep = files[-2]                                    # the smiling one Loïc chose
+                        pst.data["shots"]["chain:face"] = {"file": str(keep), "t": float(keep.stem.split("_")[-1]),
+                                                           "size": list(Image.open(keep).size), "who": "guest",
+                                                           "face": dict(cur.get("face") or {})}
+                        maker().refine(pst.data["shots"]["chain:face"])  # noqa
+                        pst.save()
+                        bg(app, "Story The Chain (même photo, moins zoomée)", posts_zoom(app, ep, "chain", None, "droite"))
                 if not reg.data.get("posts_chain_1101"):                 # Oti matched to Leila's face size (Loïc)
                     reg.data["posts_chain_1101"] = True
                     reg.save()
@@ -3749,50 +3773,88 @@ async def posts_rerender(ctx, ep, keys: list[str]):
         await send_post_safe(ctx, ep, k)
 
 
+def post_sids(st, k: str, slides: list[int] | None, part: str | None) -> list[str]:
+    """Which photos Loïc means: slides of a carousel (↑/↓ on the Key moment), or the left / right (top / bottom)
+    photo of a two-photo story, else all the photos of the post."""
+    kind = st.items[k]["kind"]
+    allp = sorted(x for x in st.data.get("shots", {}) if x.startswith(k + ":"))
+    if part and kind not in _posts.CAROUSELS:
+        order = {"chain": [f"{k}:prev", f"{k}:face"], "qa": [f"{k}:q", f"{k}:a"]}.get(kind, allp)
+        first = str(part).lower() in ("haut", "gauche", "left", "top", "h", "1", "prev", "q", "marius")
+        return [order[0] if first else order[-1]]
+    if not slides or list(slides) == [0]:
+        return allp
+    nt = len((st.data.get("content", {}).get(k) or {}).get("items") or []) or 6
+    return [f"{k}:{x}" for sl in slides for x in _posts.slide_sids(kind, int(sl), part, nt)] or allp
+
+
+async def show_changed(ctx, ep, k: str, sids: list[str], what: str, warn: list | None = None):
+    """Only the slides that changed are shown again (a story is shown whole)."""
+    from telegram import InputMediaPhoto as P
+    st = _posts.PostState(ep)
+    it = st.items[k]
+    kind = it["kind"]
+    if kind not in _posts.CAROUSELS:
+        await send_post_safe(ctx, ep, k, warn)
+        return
+    nt = len((st.data.get("content", {}).get(k) or {}).get("items") or []) or 6
+    changed = sorted({_posts.sid_slide(kind, sid.split(":", 1)[1], nt) for sid in sids})
+    files = it.get("files") or []
+    pick = [files[i - 1] for i in changed if 0 < i <= len(files)]
+    if len(pick) == 1:
+        await tg(ctx.bot.send_photo, cfg.chat_id, Path(pick[0]).read_bytes())
+    elif pick:
+        await tg(ctx.bot.send_media_group, cfg.chat_id, [P(Path(f).read_bytes()) for f in pick])
+    note = ("\n⚠️ " + "\n⚠️ ".join(esc(w) for w in warn)) if warn else ""
+    await say(ctx, f"📷 {esc(post_name(ep, k))} : {what} slide{'s' if len(changed) > 1 else ''} "
+                   f"{', '.join(map(str, changed))}, les autres slides n'ont pas changé.{note}",
+              reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
+    it["sent"] = True
+    st.save()
+
+
 async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = None, at: str | None = None,
                        who: str | None = None, size: str | None = None):
-    """New photos on these slides only (the other slides keep theirs); only the changed slides are shown again."""
-    from telegram import InputMediaPhoto as P
+    """New photos on these slides only (the other slides keep theirs)."""
     M = maker()
     st = _posts.PostState(ep)
-    it = st.items.get(k)
-    if not it or not it.get("files"):
+    if not (st.items.get(k) or {}).get("files"):
         await say(ctx, "Ce post n'est pas encore fait.")
         return
-    kind = it["kind"]
-    nt = len((st.data.get("content", {}).get(k) or {}).get("items") or []) or 6
-    sids = [f"{k}:{x}" for sl in slides for x in _posts.slide_sids(kind, int(sl), part, nt)]
-    if not sids:                                          # a story: all its photos
-        sids = [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]
+    sids = post_sids(st, k, slides, part)
     t = _posts.secs(at) if at else None
-    if not slides or slides == [0]:
-        sids = [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]
-    if part and kind not in _posts.CAROUSELS:             # a story with two photos: left / top = 1st, right / bottom = 2nd
-        two = sorted(x for x in st.data.get("shots", {}) if x.startswith(k + ":"))
-        order = {"chain": [f"{k}:prev", f"{k}:face"], "qa": [f"{k}:q", f"{k}:a"]}.get(kind, two)
-        first = str(part).lower() in ("haut", "gauche", "left", "top", "h", "1", "prev", "q", "marius")
-        sids = [order[0] if first else order[-1]]
     want = {sid: {"t": t, "who": who, "size": size} for sid in sids}
     warn = await run(M.shots, ep, st, [k], None, set(sids), want)
     await run(M.render, ep, st, [k])
+    await show_changed(ctx, ep, k, sids, "nouvelle photo", warn)
+
+
+async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str | None = None,
+                     factor: float | None = None, previous: bool = False):
+    """SAME photo, closer or wider (factor < 1 = wider: the set around is generated), or back to the photo before."""
+    M = maker()
     st = _posts.PostState(ep)
-    it = st.items[k]
-    changed = sorted({_posts.sid_slide(kind, sid.split(":", 1)[1], nt) for sid in sids})
-    files = it.get("files") or []
-    if kind in _posts.CAROUSELS:
-        pick = [files[i - 1] for i in changed if 0 < i <= len(files)]
-        if len(pick) == 1:
-            await tg(ctx.bot.send_photo, cfg.chat_id, Path(pick[0]).read_bytes())
-        elif pick:
-            await tg(ctx.bot.send_media_group, cfg.chat_id, [P(Path(f).read_bytes()) for f in pick])
-        note = ("\n⚠️ " + "\n⚠️ ".join(esc(w) for w in warn)) if warn else ""
-        await say(ctx, f"📷 {esc(post_name(ep, k))} : nouvelle photo slide{'s' if len(changed) > 1 else ''} "
-                       f"{', '.join(map(str, changed))}, les autres slides n'ont pas changé.{note}",
-                  reply_markup=post_buttons(ep.video_id, k, kind, bool(it.get("b"))))
-        it["sent"] = True
-        st.save()
-    else:
-        await send_post_safe(ctx, ep, k, warn)
+    if not (st.items.get(k) or {}).get("files"):
+        await say(ctx, "Ce post n'est pas encore fait.")
+        return
+    sids = post_sids(st, k, slides, part)
+    shots = st.data.setdefault("shots", {})
+    for sid in sids:
+        if previous:
+            hist = st.data.get("history", {}).get(sid) or []
+            if not hist:
+                await say(ctx, "Je n'ai pas de photo d'avant pour celle-ci.")
+                return
+            back = hist.pop()
+            hist.append({x: v for x, v in shots[sid].items() if x != "ext"})
+            shots[sid] = back
+        if factor:
+            cur = float(shots[sid].get("zoom_adj") or 1.0)
+            shots[sid]["zoom_adj"] = round(max(0.45, min(2.2, cur * float(factor))), 3)
+    st.save()
+    await run(M.render, ep, st, [k])
+    what = "photo d'avant" if previous else ("moins zoomée" if factor and factor < 1 else "plus zoomée")
+    await show_changed(ctx, ep, k, sids, what)
 
 
 async def posts_cmd(update: Update, ctx):
@@ -3910,7 +3972,8 @@ topics.assign(globals(), "reels", """propose_reels send_reel make_reel reel_chai
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
-    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos""")
+    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
+    show_changed""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for

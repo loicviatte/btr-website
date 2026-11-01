@@ -207,42 +207,62 @@ def captions(kind: str, c: dict, guest: str, handle: str | None, part: str | Non
 
 # ---------------------------------------------------------------- photo placement
 def place(src: str, size: tuple[int, int], box: tuple[int, int, int, int], face: dict | None = None,
-          cx: float = 0.5, cy: float | None = None, zoom: float = 1.0, css: str = "") -> dict:
-    """The photo covers the box; the face (fractions of the frame) lands at (cx, cy) of the box when it can."""
+          cx: float = 0.5, cy: float | None = None, zoom: float = 1.0, css: str = "", shot: dict | None = None,
+          sid: str | None = None) -> dict:
+    """The photo covers the box; the face (fractions of the frame) lands at (cx, cy) of the box. zoom > 1 = closer;
+    zoom < 1 = wider than the frame allows: the missing set around it is generated (Maker.fill_gaps → shot["ext"])."""
     W, H = size
     bw, bh = box[2], box[3]
-    s = max(bw / W, bh / H) * max(1.0, zoom)
+    s = max(bw / W, bh / H) * zoom
     w, h = W * s, H * s
     if face:
-        left = min(0.0, max(bw - w, bw * cx - face["cx"] * w))
-        top = (min(0.0, max(bh - h, bh * cy - face["cy"] * h)) if cy is not None else (bh - h) / 2)
+        fx, fy = bw * cx - face["cx"] * w, (bh * cy - face["cy"] * h) if cy is not None else (bh - h) / 2
+        left = min(0.0, max(bw - w, fx)) if w >= bw else fx
+        top = min(0.0, max(bh - h, fy)) if h >= bh else fy
     else:
         left, top = (bw - w) / 2, (bh - h) / 2
-    return {"src": src, "box": box, "left": round(left, 1), "top": round(top, 1), "w": round(w, 1), "h": round(h, 1),
-            "css": css}
+    p = {"src": src, "box": box, "left": round(left, 1), "top": round(top, 1), "w": round(w, 1), "h": round(h, 1),
+         "css": css, "sid": sid}
+    gap = left > 0.5 or top > 0.5 or left + w < bw - 0.5 or top + h < bh - 0.5
+    if gap:
+        p["gap_key"] = f"{bw}x{bh}|{p['left']:.0f}|{p['top']:.0f}|{p['w']:.0f}"
+        ext = ((shot or {}).get("ext") or {}).get(p["gap_key"])
+        if ext and Path(ext).exists():                  # the set around the photo already generated: it fills the box
+            p.update(src=Path(ext).as_uri(), left=0, top=0, w=bw, h=bh, gap_key=None)
+    return p
+
+
+def gap_region(p: dict, size: tuple[int, int]) -> tuple[float, float, float, float]:
+    """The part of the source photo (pixels, may go outside it) that the box shows."""
+    k = p["w"] / size[0]
+    bw, bh = p["box"][2], p["box"][3]
+    return (-p["left"] / k, -p["top"] / k, (bw - p["left"]) / k, (bh - p["top"]) / k)
 
 
 def pair_zoom(faces: list[dict], sizes: list[tuple[int, int]], box: tuple[int, int, int, int]) -> list[float]:
-    """Zooms so two faces side by side (or stacked) have the same height on screen (the bigger one wins, then both
-    a little closer so each can slide up or down and have the eyes at the same height)."""
+    """Zooms so two faces side by side (or stacked) have the same height on screen: the SMALLER face sets the size
+    (the closer photo is pulled back, the set around it generated), so nobody looks blown up."""
     hs = []
     for f, (W, H) in zip(faces, sizes):
         s = max(box[2] / W, box[3] / H)
         hs.append((f or {}).get("fh", 0.2) * H * s)
-    top = max(hs)
-    return [min(2.2, 1.12 * top / h) if h else 1.12 for h in hs]
+    low = min(hs)
+    return [max(0.45, low / h) if h else 1.0 for h in hs]
 
 
 def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], boxes: list[tuple], eye_y: float,
-               css: str = "") -> list[dict]:
+               css: str = "", shots: list | None = None, sids: list | None = None) -> list[dict]:
     """Two photos with the faces at the same size and the eyes on the same line (eye_y, fraction of the box)."""
     zs = pair_zoom(faces, sizes, boxes[0])
+    shots = shots or [None] * len(src)
+    sids = sids or [None] * len(src)
     out = []
-    for s_, f, size, box, z in zip(src, faces, sizes, boxes, zs):
+    for s_, f, size, box, z, sh, sid in zip(src, faces, sizes, boxes, zs, shots, sids):
         f = dict(f or {})
         if "eyes" in f:                                  # place the eyes (not the face centre) on the line
             f["cy"] = f["eyes"]
-        out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css))
+        z *= float((sh or {}).get("zoom_adj") or 1.0)
+        out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css, sh, sid))
     return out
 
 
@@ -351,7 +371,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
 
     def ph(sid, box, cx=0.5, cy=None, zoom=1.0, css=""):
         s = shots.get(sid) or {}
-        return place(uri(sid), tuple(s.get("size") or (3840, 2160)), box, s.get("face"), cx, cy, zoom, css)
+        z = zoom * float(s.get("zoom_adj") or 1.0)
+        return place(uri(sid), tuple(s.get("size") or (3840, 2160)), box, s.get("face"), cx, cy, z, css, s, sid)
 
     def logo_x(sid):
         f = (shots.get(sid) or {}).get("face") or {}
@@ -399,7 +420,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     elif kind == "chain":
         p1, p2 = pair_place([uri("prev"), uri("face")], [(shots.get(k) or {}).get("face") for k in ("prev", "face")],
                             [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("prev", "face")],
-                            [(0, 0, 538, 1920), (542, 0, 538, 1920)], 0.33)
+                            [(0, 0, 538, 1920), (542, 0, 538, 1920)], 0.33,
+                            shots=[shots.get("prev"), shots.get("face")], sids=["prev", "face"])
         base.update(p1=p1, p2=p2,
                     prev_upper=str(c.get("prev_guest") or "THE LAST GUEST").upper(), question=c.get("question", ""))
     elif kind == "link":
@@ -412,7 +434,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     elif kind == "qa":
         p1, p2 = pair_place([uri("q"), uri("a")], [(shots.get(k) or {}).get("face") for k in ("q", "a")],
                             [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("q", "a")],
-                            [(0, 0, 1080, 958), (0, 962, 1080, 958)], 0.34)
+                            [(0, 0, 1080, 958), (0, 962, 1080, 958)], 0.34,
+                            shots=[shots.get("q"), shots.get("a")], sids=["q", "a"])
         base.update(p1=p1, p2=p2,
                     question=c.get("question", ""), answer=c.get("answer", ""))
     elif kind == "quote":

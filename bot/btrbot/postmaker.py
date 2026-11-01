@@ -346,6 +346,10 @@ class Maker:
                         continue
                 except Exception:  # noqa: BLE001
                     log.exception("refine face")
+                if sid in shots:                              # kept so Loïc can go back to it (« reprends la photo d'avant »)
+                    hist = st.data.setdefault("history", {}).setdefault(sid, [])
+                    hist.append({k_: v for k_, v in shots[sid].items() if k_ != "ext"})
+                    del hist[:-6]
                 shots[sid] = shot
                 break
         for k in {r["key"] for r in reqs}:
@@ -486,6 +490,9 @@ class Maker:
             sh = {sid.split(":", 1)[1]: v for sid, v in st.data.get("shots", {}).items() if sid.startswith(k + ":")}
             b = bool(it.get("b")) and kind in posts.B_OK
             pg = posts.pages(kind, c, sh, ctx, b)
+            if self.fill_gaps(pg, sh):                       # a photo pulled back: the set around it generated
+                st.save()
+                pg = posts.pages(kind, c, sh, ctx, b)
             work = ep.dir / "posts" / k
             for old in work.glob("*.jpg"):
                 old.unlink()
@@ -504,6 +511,24 @@ class Maker:
             out[k] = it
         st.save()
         return out
+
+    def fill_gaps(self, pg: list[dict], sh: dict) -> bool:
+        """Every photo placed wider than its frame allows gets the missing set generated (LaMa), once per framing."""
+        from . import imaging
+        made = False
+        for page in pg:
+            for p in [v for v in page.values() if isinstance(v, dict) and v.get("gap_key")]:
+                shot = sh.get(p.get("sid") or "")
+                if not shot:
+                    continue
+                img = Image.open(shot["file"]).convert("RGB")
+                region = posts.gap_region(p, img.size)
+                out = Path(shot["file"]).with_name(f"{Path(shot['file']).stem}_ext{abs(hash(p['gap_key'])) % 10 ** 8}.jpg")
+                imaging.fill_out(self.cfg.models_dir, img, region).resize(
+                    (p["box"][2] * 2, p["box"][3] * 2), Image.LANCZOS).save(out, quality=93)
+                shot.setdefault("ext", {})[p["gap_key"]] = str(out)
+                made = True
+        return made
 
     @staticmethod
     def sticker(kind: str, c: dict, b: bool, ep) -> dict:

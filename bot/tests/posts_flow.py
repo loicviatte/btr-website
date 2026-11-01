@@ -228,3 +228,24 @@ after = {k: v["t"] for k, v in st2.data["shots"].items()}
 assert after["moment:m3"] != before["moment:m3"] and abs(after["moment:m3"] - 100) <= 20, after
 assert all(after[k] == before[k] for k in before if k != "moment:m3")
 print("OK one slide")
+
+# ---- pulled back: the smaller face sets the size, the set around the bigger one is generated ------------
+from btrbot import imaging  # noqa: E402
+tmp = Path(tempfile.mkdtemp())
+big, small = tmp / "big.jpg", tmp / "small.jpg"
+Image.new("RGB", (3840, 2160), (120, 80, 60)).save(big)
+Image.new("RGB", (3840, 2160), (60, 80, 120)).save(small)
+sh = {"prev": {"file": str(small), "size": [3840, 2160], "face": {"cx": .5, "cy": .35, "fh": .2, "eyes": .32}},
+      "face": {"file": str(big), "size": [3840, 2160], "face": {"cx": .5, "cy": .4, "fh": .4, "eyes": .36}}}
+pg = posts.pages("chain", {"question": "Q?", "prev_guest": "Leila Stewart"}, sh, {"guest": "Oti Mabuse", "part": "2"})
+p2 = pg[0]["p2"]
+assert p2.get("gap_key") and abs(p2["h"] * 0.4 - pg[0]["p1"]["h"] * 0.2) < 2, (p2, pg[0]["p1"])   # same face size
+imaging.fill_out = lambda md, img, region, max_side=1600: Image.new("RGB", (int(region[2] - region[0]), int(region[3] - region[1])))
+M2 = postmaker.Maker(NS(cfg=NS(models_dir=tmp)), bot.cfg.data_dir)
+assert M2.fill_gaps(pg, sh) and sh["face"]["ext"]
+pg = posts.pages("chain", {"question": "Q?", "prev_guest": "Leila Stewart"}, sh, {"guest": "Oti Mabuse", "part": "2"})
+assert pg[0]["p2"]["w"] == 538 and pg[0]["p2"]["left"] == 0 and not pg[0]["p2"].get("gap_key")
+sh["face"]["zoom_adj"] = 0.8                                  # « moins zoomé » on the same photo
+pg = posts.pages("chain", {"question": "Q?"}, sh, {"guest": "Oti Mabuse", "part": "2"})
+assert pg[0]["p2"].get("gap_key")                             # a new framing: generated again
+print("OK pull back")
