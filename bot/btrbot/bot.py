@@ -1038,12 +1038,13 @@ def tool_handlers(ctx, images: list) -> dict:
             return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
         return bg(ctx, f"Photos {post_name(ep, key)}", posts_photos(ctx, ep, key, sl or [0], part, at, who, size))
 
-    async def post_zoom(key, slides=None, part=None, factor=None, previous=False):
+    async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
         f = float(factor) if factor else None
+        move = (float(shift_x or 0), float(shift_y or 0)) if (shift_x or shift_y) else None
         return bg(ctx, f"Cadrage {post_name(ep, key)}", posts_zoom(ctx, ep, key, [int(x) for x in slides or []] or None,
-                                                                 part, f, bool(previous)))
+                                                                 part, f, bool(previous), move))
 
     async def posts_validate(keys=None):
         ep = posts_ep_of()
@@ -3260,6 +3261,12 @@ async def on_boot(app):
                     if sel:
                         await say(app, f"✨ Reels : {REELS_RULES[1]}", reply_markup=K([[B(
                             f"🎬 Renvoyer les reels {', '.join(map(str, sel))}", callback_data=f"rall:{rs.get('id')}")]]))
+            if not reg.data.get("chain_level_1101"):           # 01.11.2026: Oti's The Chain, heads level with Leila's
+                reg.data["chain_level_1101"] = True
+                reg.save()
+                oti = reg.episode("PjDZ8X_JWY0")
+                if (_posts.PostState(oti).items.get("chain") or {}).get("status") == "draft":
+                    bg(app, "The Chain · têtes alignées", posts_zoom(app, oti, "chain", part="droite"))
             err = cfg.data_dir / "last_deploy_error.txt"
             if err.exists():
                 reg.data["deploy_error"] = err.read_text()[-3000:]
@@ -3830,8 +3837,10 @@ async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = No
 
 
 async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str | None = None,
-                     factor: float | None = None, previous: bool = False):
-    """SAME photo, closer or wider (factor < 1 = wider: the set around is generated), or back to the photo before."""
+                     factor: float | None = None, previous: bool = False, move: tuple | None = None):
+    """SAME photo, closer or wider (factor < 1 = wider: the set around is generated), moved inside its frame
+    (move = (dx, dy) fractions of the frame, + = right / down; the set uncovered is generated), or back to the photo
+    before."""
     M = maker()
     st = _posts.PostState(ep)
     if not (st.items.get(k) or {}).get("files"):
@@ -3851,9 +3860,15 @@ async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str
         if factor:
             cur = float(shots[sid].get("zoom_adj") or 1.0)
             shots[sid]["zoom_adj"] = round(max(0.45, min(2.2, cur * float(factor))), 3)
+        if move:
+            cur = shots[sid].get("shift") or [0.0, 0.0]
+            shots[sid]["shift"] = [round(max(-0.4, min(0.4, float(cur[i]) + float(move[i]))), 3) for i in (0, 1)]
     st.save()
     await run(M.render, ep, st, [k])
-    what = "photo d'avant" if previous else ("moins zoomée" if factor and factor < 1 else "plus zoomée")
+    dx, dy = move or (0, 0)
+    bits = ([("moins zoomée" if factor < 1 else "plus zoomée")] if factor else []) + \
+        (["plus à droite" if dx > 0 else "plus à gauche"] if dx else []) + (["plus bas" if dy > 0 else "plus haut"] if dy else [])
+    what = "photo d'avant" if previous else (", ".join(bits) or "même photo, recadrée")
     await show_changed(ctx, ep, k, sids, what)
 
 

@@ -187,7 +187,7 @@ TOOLS = [
                                           "photos par slide) ; at = moment voulu « mm:ss » ; who = guest | marius | both "
                                           "(les deux) | wide (plan large) ; size = smaller | bigger = une autre photo où le visage est plus "
                                           "petit / plus grand. S'il veut GARDER la photo (« garde-la », « même photo ») "
-                                          "et juste zoomer / dézoomer : post_zoom, pas cet outil. Pour une story à 2 photos, part = gauche/haut (1re) ou droite/bas "
+                                          "et juste zoomer / dézoomer / la déplacer : post_zoom, pas cet outil. Pour une story à 2 photos, part = gauche/haut (1re) ou droite/bas "
                                           "(2e) : The Chain = guest précédent à gauche, guest à droite ; Question / "
                                           "réponse = Marius en haut, guest en bas. Ne touche jamais aux textes.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
@@ -197,12 +197,18 @@ TOOLS = [
     {"name": "post_zoom", "description": "GARDER la même photo et changer seulement son cadrage : « moins zoomé », "
                                         "« dézoome », « recule », « plus serré », ou « reprends la photo d'avant ». "
                                         "factor < 1 = plus large (0.8 = un peu, 0.65 = beaucoup ; le décor autour est "
-                                        "généré), > 1 = plus serré (1.25) ; previous=true = revenir à la photo précédente. "
+                                        "généré), > 1 = plus serré (1.25) ; previous=true = revenir à la photo précédente ; "
+                                        "« plus bas / plus haut / plus à gauche / à droite », « descends-la » = déplacer "
+                                        "la photo dans son cadre : shift_y > 0 = la photo descend (< 0 monte), shift_x > 0 "
+                                        "= vers la droite (< 0 gauche), en fraction du cadre (0.05 = un peu, 0.1 = net, "
+                                        "0.2 = beaucoup ; le décor découvert est généré). The Chain et Question / réponse "
+                                        "alignent déjà les yeux des deux photos tout seuls. "
                                         "Mêmes key / slides / part que post_photos (The Chain : part droite = le guest, "
                                         "gauche = le guest précédent). Ne change ni la photo ni les textes.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
-                      "factor": {"type": "number"}, "previous": {"type": "boolean"}}, "required": ["key"]}},
+                      "factor": {"type": "number"}, "previous": {"type": "boolean"},
+                      "shift_x": {"type": "number"}, "shift_y": {"type": "number"}}, "required": ["key"]}},
     {"name": "posts_validate", "description": "Loïc VALIDE des carrousels / stories en aperçu (« ok pour le key moment », "
                                              "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
                                              "prévue. keys vides = tous les aperçus en attente.",

@@ -208,19 +208,24 @@ def captions(kind: str, c: dict, guest: str, handle: str | None, part: str | Non
 # ---------------------------------------------------------------- photo placement
 def place(src: str, size: tuple[int, int], box: tuple[int, int, int, int], face: dict | None = None,
           cx: float = 0.5, cy: float | None = None, zoom: float = 1.0, css: str = "", shot: dict | None = None,
-          sid: str | None = None) -> dict:
+          sid: str | None = None, free_y: float = 0.0) -> dict:
     """The photo covers the box; the face (fractions of the frame) lands at (cx, cy) of the box. zoom > 1 = closer;
-    zoom < 1 = wider than the frame allows: the missing set around it is generated (Maker.fill_gaps → shot["ext"])."""
+    zoom < 1 = wider than the frame allows: the missing set around it is generated (Maker.fill_gaps → shot["ext"]).
+    free_y = the face may pull the photo up to that fraction of the box past its edge (pairs: heads level, set generated).
+    shot["shift"] = [dx, dy] (fractions of the box, + = right / down): Loïc's « plus bas / plus à gauche », same photo."""
     W, H = size
     bw, bh = box[2], box[3]
     s = max(bw / W, bh / H) * zoom
     w, h = W * s, H * s
     if face:
         fx, fy = bw * cx - face["cx"] * w, (bh * cy - face["cy"] * h) if cy is not None else (bh - h) / 2
+        lim = free_y * bh if cy is not None else 0.0
         left = min(0.0, max(bw - w, fx)) if w >= bw else fx
-        top = min(0.0, max(bh - h, fy)) if h >= bh else fy
+        top = min(lim, max(bh - h - lim, fy)) if h >= bh else fy
     else:
         left, top = (bw - w) / 2, (bh - h) / 2
+    dx, dy = ((shot or {}).get("shift") or [0, 0])[:2]
+    left, top = left + float(dx) * bw, top + float(dy) * bh
     p = {"src": src, "box": box, "left": round(left, 1), "top": round(top, 1), "w": round(w, 1), "h": round(h, 1),
          "css": css, "sid": sid}
     gap = left > 0.5 or top > 0.5 or left + w < bw - 0.5 or top + h < bh - 0.5
@@ -252,7 +257,8 @@ def pair_zoom(faces: list[dict], sizes: list[tuple[int, int]], box: tuple[int, i
 
 def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], boxes: list[tuple], eye_y: float,
                css: str = "", shots: list | None = None, sids: list | None = None) -> list[dict]:
-    """Two photos with the faces at the same size and the eyes on the same line (eye_y, fraction of the box)."""
+    """Two photos with the faces at the same size and the eyes on the same line (eye_y, fraction of the box): a photo
+    whose frame would stop at the edge is moved anyway (up to 30 % of the box), the set above / below generated."""
     zs = pair_zoom(faces, sizes, boxes[0])
     shots = shots or [None] * len(src)
     sids = sids or [None] * len(src)
@@ -262,7 +268,7 @@ def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], 
         if "eyes" in f:                                  # place the eyes (not the face centre) on the line
             f["cy"] = f["eyes"]
         z *= float((sh or {}).get("zoom_adj") or 1.0)
-        out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css, sh, sid))
+        out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css, sh, sid, free_y=0.3))
     return out
 
 
