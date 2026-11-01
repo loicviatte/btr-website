@@ -220,13 +220,20 @@ def planning_overview(title: str | None, mine: list[dict], atlas: list[dict], no
         if key != day:
             day = key
             lines.append("\n<b>" + (f"{days[d.weekday()]} {d.strftime('%d.%m')}" if d else "Sans date") + "</b>")
-        late = " ⚠️ en retard" if at and at < now else ""
+        miss = r.get("missing") or []
+        late = (" ⚠️ en retard" + (f" ({', '.join(miss)})" if miss else "")) if at and at < now else ""
         icon = PLAN_ICON.get((r.get("status") or "").lower(), WORK)
         hour = d.strftime("%H:%M") + " " if d else ""
+        done = f"  /fait_{r['id']}" if late and r.get("id") and re.fullmatch(r"[a-z0-9]+", r["id"]) else ""
         lines.append(f"{icon} {hour}{PLATFORM.get(kind, '•')} {'🌍 ' if kind == 'atlas' else ''}"
-                     f"{esc(short_name(r['name'], kind))}{late}")
+                     f"{esc(short_name(r['name'], kind))}{late}{done}")
     legend = (f"\n\n<i>{TODO} à générer · {WAIT} à valider · {OK} validé · {PLAN} programmé · 📸 Instagram (+ TikTok) · "
               "▶️ YouTube</i>")
+    if any(r.get("at") and r["at"] < now for r, _ in rows):
+        legend += "\n<i>Déjà publié à la main ? Tape /fait_… sur sa ligne : la tâche passe en « posted ».</i>"
     foot = ("\n<i>Écris ta demande ici (changer un type, une date, ajouter, retirer) : la conversation s'efface une fois "
             "faite, ce message se met à jour.</i>")
-    return head + "\n" + "\n".join(lines) + legend + foot
+    body = "\n".join(lines)
+    if len(head + body + legend + foot) > 4000:
+        body = body[:4000 - len(head + legend + foot) - 30].rsplit("\n", 1)[0] + "\n…"
+    return head + "\n" + body + legend + foot

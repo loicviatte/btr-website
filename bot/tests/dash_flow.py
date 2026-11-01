@@ -113,8 +113,8 @@ async def cmd():
 asyncio.run(cmd())
 
 # « À valider » keeps only the overview: other bot messages and Loïc's own disappear after a while
-jobs = []
-bot.APP["app"] = NS(job_queue=NS(run_once=lambda cb, when, name=None: jobs.append((when, name))))
+bot.reg.data["del_queue"] = []
+jobs = bot.reg.data["del_queue"]          # [chat, message id, when]: deleted by del_tick (kept across restarts)
 
 
 async def fake_post(self, endpoint, data, *a, **k):
@@ -126,7 +126,7 @@ async def clean():
     from btrbot import topics
     tok = topics.TOPIC.set("dash")
     await bot._routed_post(None, "sendMessage", {"chat_id": 42, "text": "J'ai lancé…"})
-    assert jobs and jobs[-1][1] == "dash-del-70", jobs
+    assert jobs and jobs[-1][1] == 70, jobs
     n = len(jobs)
     k = bot.DASH_KEEP.set(True)
     await bot._routed_post(None, "sendMessage", {"chat_id": 42, "text": "overview"})
@@ -138,7 +138,7 @@ async def clean():
     up = NS(effective_chat=NS(id=-100555, type="supergroup"), effective_user=NS(id=42), callback_query=None,
             effective_message=NS(message_thread_id=9, is_topic_message=True), message=NS(message_id=71))
     await bot.set_origin(up, None)
-    assert jobs[-1][1] == "dash-del-71"
+    assert jobs[-1][1] == 71
     print("OK clean")
 
 asyncio.run(clean())

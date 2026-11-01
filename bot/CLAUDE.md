@@ -172,6 +172,13 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   reg.data["plan_msgs"]) and the whole exchange is deleted PLAN_TTL (90 s) after its last message; kept while Loïc's
   request waits for its answer (≤ 15 min).
   Test: `tests/planning_overview.py`.
+- Stress pass (01.11, `tests/planning_stress.py`): « À valider » deletions are kept in reg.data["del_queue"] and done by
+  `del_tick` (10 s), so a restart no longer leaves messages behind; the planning sweep waits while the chat model is
+  still working on a request from that topic (`PLAN_BUSY`, set in `ask_assistant`, max 30 min); an overview edit that
+  fails for a passing reason (timeout) is retried next tick instead of posting a duplicate (`gone_msg`); late posts
+  show the platforms still open (`plan_missing`, from the ClickUp Instagram / TikTok / YouTube fields) and a tappable
+  `/fait_<task id>` (`plan_mark_done`: those fields → Posted, status posted; refused for a post not yet due); the
+  overview is capped under Telegram's 4096 chars; `run()` passes keyword arguments.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model

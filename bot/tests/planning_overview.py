@@ -79,12 +79,15 @@ async def main():
     bot.CU_CACHE["tasks"][1]["status"]["status"] = "posted"
     await bot.plan_overview_tick(ctx)
     assert len(edits) == 1 and "4 posts restants" in edits[0]
-    # the conversation: Loïc asks (kept while unanswered), the bot answers, then everything goes
+    # the conversation: Loïc asks (kept while the model works), the bot answers, then everything goes
+    import time
     bot.reg.data["plan_msgs"] = []
     bot.plan_forget(-100555, 801, incoming=True)
+    bot.PLAN_BUSY.update(n=1, since=time.time())
     await bot.plan_sweep(ctx)
     assert not deleted and bot.reg.data["plan_msgs"]          # answer still coming
     bot.plan_forget(-100555, 802)
+    bot.PLAN_BUSY.update(n=0)
     await bot.plan_sweep(ctx)
     assert deleted == [801, 802] and bot.reg.data["plan_msgs"] == []
     print("OK tick + sweep")

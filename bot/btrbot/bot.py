@@ -80,17 +80,27 @@ async def _routed_post(self, endpoint, data, *a, **k):
 
 
 def dash_forget(chat, mid, delay: int = DASH_TTL) -> None:
-    """Delete this message from « À valider » in a little while (time to read a short answer)."""
-    app = APP.get("app")
-    if not app or not app.job_queue:
-        return
+    """Delete this message from « À valider » in a little while (time to read a short answer). Kept in reg.data so a
+    restart in between does not leave it there (del_tick)."""
+    import time as _t
+    reg.data.setdefault("del_queue", []).append([chat, mid, _t.time() + delay])
+    reg.save()
 
-    async def gone(ctx):
+
+async def del_tick(ctx):
+    """Every 10 s: the messages whose time is up are deleted (Telegram refuses after 48 h: dropped)."""
+    import time as _t
+    q = reg.data.get("del_queue") or []
+    due = [x for x in q if x[2] <= _t.time()]
+    if not due:
+        return
+    reg.data["del_queue"] = [x for x in q if x[2] > _t.time()]
+    reg.save()
+    for chat, mid, _ in due:
         try:
             await ctx.bot.delete_message(chat, mid)
         except Exception:  # noqa: BLE001
             pass
-    app.job_queue.run_once(gone, when=delay, name=f"dash-del-{mid}")
 
 
 PLAN_TTL = 90          # s after the bot's last answer: the « Instagram planning » conversation disappears (overview stays)
@@ -114,13 +124,15 @@ def plan_schedule(delay: int = PLAN_TTL) -> None:
     app.job_queue.run_once(plan_sweep, when=delay, name="plan-sweep")
 
 
+PLAN_BUSY = {"n": 0, "since": 0.0}     # the chat model is working on a request from « Posts planning »
+
+
 async def plan_sweep(ctx):
     import time as _t
     msgs = reg.data.get("plan_msgs") or []
     if not msgs:
         return
-    last = msgs[-1]
-    if len(last) > 3 and last[3] and _t.time() - last[2] < 900:     # Loïc wrote last: the answer is still coming
+    if PLAN_BUSY["n"] > 0 and _t.time() - PLAN_BUSY["since"] < 1800:   # the answer is still coming: keep everything
         plan_schedule(30)
         return
     reg.data["plan_msgs"] = []
@@ -190,8 +202,8 @@ async def tg(fn, *a, **kw):
     return await fn(*a, **kw)
 
 
-async def run(fn, *a):
-    return await asyncio.to_thread(fn, *a)
+async def run(fn, *a, **k):
+    return await asyncio.to_thread(fn, *a, **k)
 
 
 JOB_LIMIT = 45 * 60      # a heavy job never holds the queue longer than this (a stuck download, a hung ffmpeg)
@@ -1198,6 +1210,8 @@ def tool_handlers(ctx, images: list) -> dict:
             first = re.sub(r"\bp(?:art)?\s*\d", "", g).split()
             best = None
             for d in (cfg.data_dir / "episodes").iterdir():
+                if not d.is_dir():
+                    continue
                 ep = reg.episode(d.name)
                 name = fold(ep.get("guest_name"))
                 if not name or not first or first[0] not in name.split():
@@ -1296,6 +1310,20 @@ ASSIST_LOCK = asyncio.Lock()
 
 async def ask_assistant(ctx, text: str, images: list | None = None):
     """One message from Loïc → the chat model acts with its tools → one short answer."""
+    import time as _t
+    busy = topics.TOPIC.get() == "planning"
+    if busy:
+        PLAN_BUSY["n"] += 1
+        PLAN_BUSY["since"] = PLAN_BUSY["since"] if PLAN_BUSY["n"] > 1 else _t.time()
+    try:
+        await _ask_assistant(ctx, text, images)
+    finally:
+        if busy:
+            PLAN_BUSY["n"] = max(0, PLAN_BUSY["n"] - 1)
+            plan_schedule()                                   # the exchange goes PLAN_TTL after the answer
+
+
+async def _ask_assistant(ctx, text: str, images: list | None = None):
     import base64
     images = list(images or [])
     MEMORY.add("user", text + (f" [+{len(images)} capture(s)]" if images else ""))
@@ -3328,6 +3356,7 @@ def start_polling(app):
         app.job_queue.run_repeating(tt_tick, interval=60, first=40, name="tt")
     if not app.job_queue.get_jobs_by_name("dash"):
         app.job_queue.run_repeating(dash_tick, interval=30, first=20, name="dash")
+        app.job_queue.run_repeating(del_tick, interval=10, first=15, name="del")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
         app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")
@@ -4355,6 +4384,9 @@ async def dash_tick(ctx):
                 if "not modified" in str(e).lower():
                     store[ep.video_id] = {**cur, "sig": sig}
                     continue
+                if cur.get("mid") and not gone_msg(e):            # network hiccup: try again next tick, no duplicate
+                    log.warning("dash edit %s: %s", ep.video_id, e)
+                    continue
                 tok = DASH_KEEP.set(True)
                 try:
                     m = await tg(ctx.bot.send_message, cfg.chat_id, text, parse_mode=ParseMode.HTML, reply_markup=kb,
@@ -4368,6 +4400,49 @@ async def dash_tick(ctx):
             await plan_overview_tick(ctx)
         except Exception:  # noqa: BLE001
             log.exception("planning overview")
+
+
+PLAT = (("Instagram", "F_IG", "IG_POSTED"), ("TikTok", "F_TT", "TT_POSTED"), ("YouTube", "F_YT", "YT_POSTED"))
+
+
+def plan_missing(t: dict) -> list[str]:
+    """The platforms planned for this task (ClickUp Instagram / TikTok / YouTube fields) not « Posted » yet."""
+    out = []
+    for name, f, _ in PLAT:
+        v = _share.option_name(t, getattr(_share, f)).lower()
+        if v and v not in ("not planned", "posted"):
+            out.append(name)
+    return out
+
+
+async def plan_mark_done(ctx, tid: str):
+    """/fait_<task id>: Loïc published it himself (YouTube Community, a story…): the task goes to « posted »
+    (only a task whose time has passed; a future one stays as it is)."""
+    cu = maker().clickup()
+    try:
+        t = await run(cu.task, tid)
+    except Exception:  # noqa: BLE001
+        await say(ctx, "Tâche introuvable dans ClickUp.")
+        return
+    at = _posts.due(t)
+    if not at or at > _posts.now():
+        await say(ctx, f"« {esc(t.get('name'))} » n'est pas encore passé : je n'y touche pas.")
+        return
+    for name, f, ok in PLAT:                             # the platforms still open are marked « Posted » too
+        if name in plan_missing(t):
+            try:
+                await run(cu.set_field, tid, getattr(_share, f), getattr(_share, ok))
+            except Exception:  # noqa: BLE001
+                log.exception("clickup field %s", name)
+    await run(cu.update, tid, status="posted")
+    await plan_refresh()
+    await say(ctx, f"🟢 « {esc(t.get('name'))} » marqué publié.")
+
+
+def gone_msg(e) -> bool:
+    """The message to edit no longer exists (deleted by Loïc, topic cleared): it must be sent again."""
+    t = str(e).lower()
+    return isinstance(e, LookupError) or "not found" in t or "can't be edited" in t or "message_id_invalid" in t
 
 
 def plan_current_ep():
@@ -4411,7 +4486,8 @@ def plan_overview_text() -> str:
         at = _posts.due(t)
         if not kind or status in _dash.DONE or not at or not (start <= at < end):
             continue
-        (atlas if kind == "atlas" else posts_).append({"name": t.get("name", ""), "status": status, "at": at})
+        (atlas if kind == "atlas" else posts_).append({"id": t.get("id"), "name": t.get("name", ""), "status": status,
+                                                       "at": at, "missing": plan_missing(t)})
     return _dash.planning_overview(title, posts_, atlas, now, week=(start, end))
 
 
@@ -4431,6 +4507,9 @@ async def plan_overview_tick(ctx):
         await ctx.bot.edit_message_text(text, chat_id=TOPICS.group, message_id=cur["mid"], parse_mode=ParseMode.HTML,
                                         disable_web_page_preview=True)
     except Exception as e:  # noqa: BLE001
+        if cur.get("mid") and "not modified" not in str(e).lower() and not gone_msg(e):
+            log.warning("planning edit: %s", e)                  # network hiccup: next tick, no duplicate
+            return
         if "not modified" not in str(e).lower():
             tok, tok2 = DASH_KEEP.set(True), topics.TOPIC.set("planning")
             try:
@@ -4453,6 +4532,9 @@ async def on_dash_cmd(update: Update, ctx):
     if not m:
         return
     code, what = m.groups()
+    if code == "fait":                                   # « Posts planning »: a late post was published by hand
+        await plan_mark_done(ctx, what)
+        return
     vid = (reg.data.get("dash_codes") or {}).get(code)
     if not vid:
         return
