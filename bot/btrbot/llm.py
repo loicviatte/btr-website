@@ -84,11 +84,16 @@ class LLM:
 
     def open_eyes(self, sheet: Path) -> list[int]:
         img = base64.standard_b64encode(sheet.read_bytes()).decode()
-        r = self._json([
-            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
-            {"type": "text", "text": prompts.EYES_OPEN},
-        ], max_tokens=300, tier="vision_cheap", task="yeux ouverts")
-        return [int(i) for i in r.get("open", [])]
+        for tier, mt in (("vision_cheap", 600), ("work", 800)):   # Haiku sometimes answers nothing: Sonnet then
+            try:
+                r = self._json([
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
+                    {"type": "text", "text": prompts.EYES_OPEN},
+                ], max_tokens=mt, tier=tier, task="yeux ouverts")
+                return [int(i) for i in r.get("open", [])]
+            except ValueError:
+                continue
+        raise ValueError("eyes check: no answer")
 
     def retime_chapters(self, timed: str, chapters: list[list[str]]) -> list[list[str]]:
         lines = "\n".join(f"{t} {title}" for t, title in chapters)
