@@ -174,7 +174,7 @@ TOOLS = [
                                         "posts (moment, topics, teaser, poll, rapid, chain, link, ask, qa, quote, atlas).",
      "input_schema": {"type": "object", "properties": {"link": {"type": "string"},
                       "only": {"type": "array", "items": {"type": "string"}}}}},
-    {"name": "post_feedback", "description": "Retour de Loïc sur UN carrousel ou UNE story déjà en aperçu (« dans le "
+    {"name": "post_feedback", "description": "Retour de Loïc sur les TEXTES d'UN carrousel ou d'UNE story déjà en aperçu (« dans le "
                                             "topics, change le titre 3 », « la story poll : question trop longue », "
                                             "« autre photo pour la citation »). key = moment, topics, poll, … ; "
                                             "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle.",
@@ -185,10 +185,15 @@ TOOLS = [
                                           "« key moment slide 2 en bas, prends vers 33:50 ». key = moment / topics / "
                                           "poll…; slides = numéros (vide = toutes) ; part = haut | bas (Key moment : 2 "
                                           "photos par slide) ; at = moment voulu « mm:ss » ; who = guest | marius | both "
-                                          "(les deux) | wide (plan large).",
+                                          "(les deux) | wide (plan large) ; size = smaller | bigger quand il veut le visage plus petit / "
+                                          "plus grand (« la tête d'Oti plus petite » → key chain, part droite, size "
+                                          "smaller). Pour une story à 2 photos, part = gauche/haut (1re) ou droite/bas "
+                                          "(2e) : The Chain = guest précédent à gauche, guest à droite ; Question / "
+                                          "réponse = Marius en haut, guest en bas. Ne touche jamais aux textes.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
-                      "at": {"type": "string"}, "who": {"type": "string"}}, "required": ["key"]}},
+                      "at": {"type": "string"}, "who": {"type": "string"},
+                      "size": {"type": "string", "enum": ["smaller", "bigger"]}}, "required": ["key"]}},
     {"name": "posts_validate", "description": "Loïc VALIDE des carrousels / stories en aperçu (« ok pour le key moment », "
                                              "« je valide tout ») : Drive + ClickUp « ready », publication à l'heure "
                                              "prévue. keys vides = tous les aperçus en attente.",

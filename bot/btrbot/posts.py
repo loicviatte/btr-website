@@ -461,6 +461,12 @@ def pick(cands: list[dict], need: dict, used: list[float]) -> list[dict]:
     """Candidates for one shot, best first: in the window when the moment is known (the guest's own sentence for the
     key moment), never a frame already used (3 s apart)."""
     pool = [c for c in cands if c["kind"] == need["who"] and all(abs(c["t"] - u) >= 3 for u in used)]
+    fh = need.get("fh")
+    if fh:                                    # a given face size (« plus petite », or matched to the other face)
+        near_t = need.get("t")
+        pool = sorted(pool, key=lambda c: abs(c.get("fh", 0) - fh) / fh * 3 - score(c) / 400
+                      + (abs(c["t"] - near_t) / 600 if near_t is not None else 0))
+        return pool
     t, win = need.get("t"), need.get("win")
     if t is not None and win:
         lo, hi = (t - 1, t + win) if need.get("after") else (t - win, t + win)

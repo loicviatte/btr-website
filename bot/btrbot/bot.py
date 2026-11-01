@@ -514,7 +514,7 @@ async def send_recap(ctx, ep):
     await say(ctx, "Dernier check : " + valid_status(ep) + "\nTout est bon ?", reply_markup=thumb_kb(ep))
 
 
-CHAT_MODEL = os.environ.get("CHAT_MODEL") or os.environ.get("MODEL_CHAT") or "claude-haiku-5-5"   # Haiku talks (~20x cheaper than Sonnet)
+CHAT_MODEL = os.environ.get("CHAT_MODEL") or os.environ.get("MODEL_CHAT") or "claude-opus-5-5"   # Loïc 01.11: « un bot intelligent comme Claude »
 
 
 RECENT = {"at": 0.0, "text": ""}
@@ -1030,13 +1030,13 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"{post_name(ep, key)} (retour)", posts_make(ctx, ep, [key], feedback=feedback or "",
                                                                    photos=bool(photos), reset=bool(feedback)))
 
-    async def post_photos(key, slides=None, part=None, at=None, who=None):
+    async def post_photos(key, slides=None, part=None, at=None, who=None, size=None):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
         sl = [int(x) for x in slides or []]
-        if not sl:
+        if not sl and not part and not size and not at and not who:
             return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
-        return bg(ctx, f"Photos slides {sl} · {post_name(ep, key)}", posts_photos(ctx, ep, key, sl, part, at, who))
+        return bg(ctx, f"Photos {post_name(ep, key)}", posts_photos(ctx, ep, key, sl or [0], part, at, who, size))
 
     async def posts_validate(keys=None):
         ep = posts_ep_of()
@@ -3150,6 +3150,12 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("posts_chain_1101"):                 # Oti matched to Leila's face size (Loïc)
+                    reg.data["posts_chain_1101"] = True
+                    reg.save()
+                    pst = _posts.PostState(ep)
+                    if (pst.items.get("chain") or {}).get("status") == "draft" and "chain:prev" in pst.data.get("shots", {}):
+                        bg(app, "Story The Chain (Oti à la taille de Leila)", posts_photos(app, ep, "chain", [0], "droite"))
                 if reg.data.get("posts_chain_1031") and not reg.data.get("posts_chain_1031b"):   # same face size (Loïc)
                     reg.data["posts_chain_1031b"] = True
                     reg.save()
@@ -3302,9 +3308,14 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
     warn = []
     if need_text:
         warn += await run(M.content, ep, st, need_text, feedback)
-        for k in need_text:                                     # new texts = new moments: photos chosen again
+        for k in need_text:                     # new texts: a photo whose moment moved is chosen again, the others stay
+            kind = st.items[k]["kind"]
+            new = {f"{k}:{n['id']}": n for n in _posts.needs(kind, st.data.get("content", {}).get(k) or {})}
             for sid in [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]:
-                st.data["shots"].pop(sid)
+                sh, nd = st.data["shots"][sid], new.get(sid)
+                if nd is None or (nd.get("t") is not None and sh.get("t") is not None and abs(nd["t"] - sh["t"]) > 20
+                                  and kind in _posts.CAROUSELS + ("qa", "quote")):
+                    st.data["shots"].pop(sid)
         st.save()
     skipped = [k for k in keys if st.items[k].get("skip")]
     keys = [k for k in keys if k not in skipped]
@@ -3739,7 +3750,7 @@ async def posts_rerender(ctx, ep, keys: list[str]):
 
 
 async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = None, at: str | None = None,
-                       who: str | None = None):
+                       who: str | None = None, size: str | None = None):
     """New photos on these slides only (the other slides keep theirs); only the changed slides are shown again."""
     from telegram import InputMediaPhoto as P
     M = maker()
@@ -3754,7 +3765,14 @@ async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = No
     if not sids:                                          # a story: all its photos
         sids = [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]
     t = _posts.secs(at) if at else None
-    want = {sid: {"t": t, "who": who} for sid in sids}
+    if not slides or slides == [0]:
+        sids = [x for x in st.data.get("shots", {}) if x.startswith(k + ":")]
+    if part and kind not in _posts.CAROUSELS:             # a story with two photos: left / top = 1st, right / bottom = 2nd
+        two = sorted(x for x in st.data.get("shots", {}) if x.startswith(k + ":"))
+        order = {"chain": [f"{k}:prev", f"{k}:face"], "qa": [f"{k}:q", f"{k}:a"]}.get(kind, two)
+        first = str(part).lower() in ("haut", "gauche", "left", "top", "h", "1", "prev", "q", "marius")
+        sids = [order[0] if first else order[-1]]
+    want = {sid: {"t": t, "who": who, "size": size} for sid in sids}
     warn = await run(M.shots, ep, st, [k], None, set(sids), want)
     await run(M.render, ep, st, [k])
     st = _posts.PostState(ep)

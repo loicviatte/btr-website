@@ -218,7 +218,7 @@ class Maker:
                     continue
                 H, W = img.shape[:2]
                 fs = faces.analyse(img)
-                info = posts.classify(fs, W, H, MATCH, NOT_MATCH)
+                info = posts.classify(fs, W, H, MATCH, 0.2)
                 if info["kind"] in ("guest", "marius") and fs:
                     f = max(fs, key=lambda f: f.box[3])
                     info["sharp"] = sharpness(img, f.box)
@@ -256,6 +256,11 @@ class Maker:
                     nd.update(t=float(w["t"]), win=20, after=False)
                 if w.get("who") in ("guest", "marius", "both", "wide", "noface"):
                     nd["who"] = w["who"]
+                old = (shots.get(nd["sid"]) or {}).get("face") or {}
+                if w.get("size") in ("smaller", "bigger") and old.get("fh"):
+                    nd["fh"] = old["fh"] * (0.72 if w["size"] == "smaller" else 1.35)
+                    if nd.get("t") is None and (shots.get(nd["sid"]) or {}).get("t") is not None:
+                        nd["t"] = shots[nd["sid"]]["t"]
                 reqs.append(nd)
         warn = []
         if not reqs:
@@ -267,6 +272,22 @@ class Maker:
                 lo, hi = t - 3 * win, t + 3 * win
                 times |= {x for x, _ in fr if lo <= x <= hi}
         cands = self._classify(ep, fr, times)
+        sdir = ep.dir / "posts" / "shots"
+        sdir.mkdir(parents=True, exist_ok=True)
+        for nd in [r for r in reqs if r["who"] == "prev"]:      # the previous guest first: Oti is matched to Leila
+            sid = nd["sid"]
+            try:
+                shots[sid] = self.refine(self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir))
+                if shots[sid].get("name") and not (c_all.get(nd["key"]) or {}).get("prev_guest"):
+                    c_all.setdefault(nd["key"], {})["prev_guest"] = shots[sid]["name"]
+            except Exception as e:  # noqa: BLE001
+                log.exception("prev shot")
+                warn.append(f"{nd['key']}: photo du guest précédent introuvable ({str(e)[:80]})")
+        for nd in reqs:
+            if st.items[nd["key"]]["kind"] == "chain" and nd["who"] == "guest" and not nd.get("fh"):
+                pf = (shots.get(f"{nd['key']}:prev") or {}).get("face") or {}
+                if pf.get("fh"):
+                    nd["fh"] = pf["fh"]
         changing = {r["sid"] for r in reqs}
         used = [s["t"] for sid, s in shots.items() if s.get("t") is not None and sid not in changing]
         for sid in changing:                                  # « autres photos »: never the same photo again
@@ -300,46 +321,54 @@ class Maker:
             log.exception("eyes")
             okset = {(sid, c["t"]) for sid, c in flat}
         url = None
-        sdir = ep.dir / "posts" / "shots"
-        sdir.mkdir(parents=True, exist_ok=True)
         for nd in reqs:
             sid = nd["sid"]
-            if nd["who"] == "prev":
-                try:
-                    shots[sid] = self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir)
-                    try:
-                        self.refine(shots[sid])
-                    except Exception:  # noqa: BLE001
-                        log.exception("refine face")
-                    if shots[sid].get("name") and not (c_all.get(nd["key"]) or {}).get("prev_guest"):
-                        c_all.setdefault(nd["key"], {})["prev_guest"] = shots[sid]["name"]
-                except Exception as e:  # noqa: BLE001
-                    log.exception("prev shot")
-                    warn.append(f"{nd['key']}: photo du guest précédent introuvable ({str(e)[:80]})")
-                    st.items[nd["key"]].setdefault("warn", []).append(f"{nd['key']}: photo du guest précédent introuvable")
-                continue
-            if sid not in chosen:
+            if nd["who"] == "prev" or sid not in chosen:
                 continue
             opts = chosen[sid]
             if nd["who"] in ("guest", "marius"):
-                opts = [c for c in opts if (sid, c["t"]) in okset] or opts
-            c = opts[0]
-            out = sdir / f"{sid.replace(':', '_')}_{int(c['t'])}.jpg"
-            if not out.exists():
+                opts = [c for c in opts if (sid, c["t"]) in okset] + [c for c in opts if (sid, c["t"]) not in okset]
+            for c in opts[:4]:
+                out = sdir / f"{sid.replace(':', '_')}_{int(c['t'])}.jpg"
+                if not out.exists():
+                    try:
+                        url = url or frames.full_res_url(ep.video_id, self.cfg.ytdlp_cookies)
+                        frames.grab(url, c["t"], out)
+                    except Exception:  # noqa: BLE001
+                        frames.grab(str(ep.file("scan.mp4")), c["t"], out)
+                size = Image.open(out).size
+                shot = {"file": str(out), "t": c["t"], "size": list(size), "who": nd["who"],
+                        "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
                 try:
-                    url = url or frames.full_res_url(ep.video_id, self.cfg.ytdlp_cookies)
-                    frames.grab(url, c["t"], out)
+                    self.refine(shot)
+                    if not self.right_person(shot):          # Marius taken for the guest (or the reverse): next one
+                        log.info("posts: %s at %s is not the %s", sid, c["t"], nd["who"])
+                        continue
                 except Exception:  # noqa: BLE001
-                    frames.grab(str(ep.file("scan.mp4")), c["t"], out)
-            size = Image.open(out).size
-            shots[sid] = {"file": str(out), "t": c["t"], "size": list(size), "who": nd["who"],
-                          "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
-            try:
-                self.refine(shots[sid])
-            except Exception:  # noqa: BLE001
-                log.exception("refine face")
+                    log.exception("refine face")
+                shots[sid] = shot
+                break
+        for k in {r["key"] for r in reqs}:
+            st.items[k]["warn"] = [w for w in warn if w.startswith(k + ":")]
         st.save()
         return warn
+
+    def right_person(self, shot: dict) -> bool:
+        """On the 4K photo, the face is Marius when Marius is wanted, and not Marius when the guest is wanted."""
+        import cv2
+        if shot.get("who") not in ("guest", "marius", "prev"):
+            return True
+        img = cv2.imread(shot["file"])
+        if img is None:
+            return True
+        H, W = img.shape[:2]
+        small = cv2.resize(img, (1280, int(H * 1280 / W)))
+        fs = self.pipe.faces.analyse(small)
+        if not fs:
+            return True
+        want = (shot.get("face") or {}).get("cx", 0.5)
+        f = min(fs, key=lambda f: abs((f.box[0] + f.box[2] / 2) / 1280 - want))
+        return f.sim_marius >= MATCH if shot["who"] == "marius" else f.sim_marius < 0.3
 
     def uploads(self, n: int = 250) -> list[dict]:
         """The channel's uploads, newest first, past the last 50 (lots of Shorts in between the episodes)."""
@@ -427,7 +456,7 @@ class Maker:
                 continue
             H, W = img.shape[:2]
             fs = self.pipe.faces.analyse(img)
-            info_c = posts.classify(fs, W, H, MATCH, NOT_MATCH)
+            info_c = posts.classify(fs, W, H, MATCH, 0.2)
             if info_c["kind"] != "guest":
                 continue
             f = max(fs, key=lambda f: f.box[3])

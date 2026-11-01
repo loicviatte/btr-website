@@ -13,7 +13,7 @@ from .usage import Ledger
 
 # One model per kind of job (see usage.py): Haiku talks, Sonnet works, Opus writes the hook and the code.
 MODELS = {
-    "chat": os.environ.get("MODEL_CHAT", "claude-haiku-5-5"),
+    "chat": os.environ.get("MODEL_CHAT", "claude-opus-5-5"),
     "creative": os.environ.get("MODEL_CREATIVE", "claude-opus-5-5"),
     "work": os.environ.get("MODEL_WORK", "claude-sonnet-5-5"),
     "vision_cheap": os.environ.get("MODEL_VISION_CHEAP", "claude-haiku-5-5"),

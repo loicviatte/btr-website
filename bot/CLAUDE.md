@@ -23,7 +23,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `assistant.Memory` keeps the chat (Loïc + everything the bot posted). Add a capability = a tool + a handler, not a regex.
   Exact « titre: / citation: / part: / description: » stay instant fast paths. `tests/stress.py` = 30 real-model scenarios
   (workflow « Bot stress test », runs after a deploy whose commit message contains [stress]).
-- Models (`llm.MODELS`, `usage.py`): chat Haiku, creative Opus (axes, title, description), work Sonnet (chapters, frames),
+- Models (`llm.MODELS`, `usage.py`): chat Opus (Loïc 01.11: « un bot intelligent comme Claude »; was Haiku), creative Opus (axes, title, description), work Sonnet (chapters, frames),
   vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
 - Reels (workflow: claude/btr-reels-workflow.md in the Claude project): `btrbot/reels.py` (section download in 4K,
@@ -125,7 +125,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   their episode; render; file = Drive « BTR Posts / <guest> » (public links) + ClickUp block below MARK, status ready).
   State: data/episodes/<id>/posts.json. Bot (topic « stories »): /posts [lien] [kind…], auto after « chapters_ok »,
   tools posts_make / post_feedback / posts_validate / posts_status; previews (carousel album + IG caption; story = file
-  + Instagram zones) with ✅ Valider / 📷 Autres photos (carousels: pick the slide, ↑/↓ for the Key moment's two photos → `bot.posts_photos`, only those photos change, `Maker.shots(redo=, want=)`; tool post_photos with slides / part / at / who) / ✍️ Autres textes / 🔀 Version b. Faces are measured again on the 4K photos (`Maker.refine`): side-by-side stories match face size and eye line (`posts.pair_place`). `posts_tick` (60 s): at the
+  + Instagram zones) with ✅ Valider / 📷 Autres photos (carousels: pick the slide, ↑/↓ for the Key moment's two photos → `bot.posts_photos`, only those photos change, `Maker.shots(redo=, want=)`; tool post_photos with slides / part / at / who) / ✍️ Autres textes / 🔀 Version b. Faces are measured again on the 4K photos (`Maker.refine`) and the person checked (`Maker.right_person`: never Marius for the guest); The Chain picks the guest's photo with the previous guest's face size (need fh, `posts.pick`); post_photos size smaller/bigger = another photo with a face 0.72x / 1.35x; text feedback keeps the photos whose moment didn't move: side-by-side stories match face size and eye line (`posts.pair_place`). `posts_tick` (60 s): at the
   task's time, carousels + Question/answer + Quote stories by the Instagram API (container 20 min before, Drive direct
   links), sticker stories / TikTok / no API = files + ready-to-copy text sent to Loïc with « ✅ Posté » buttons; >12 h
   late = never posted, Loïc told once; `posts_refresh` (10 min) follows ClickUp dates. World Atlas catch-ups
