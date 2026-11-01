@@ -3203,6 +3203,12 @@ async def on_boot(app):
                     RS(ep).save()
                     await say(app, f"🔄 Le redémarrage a interrompu les reels {', '.join(map(str, stuck))} : je les reprends.")
                     bg(app, f"Reel {stuck[0]}", reel_chain(app, ep, rs.get("id"), stuck))
+                if not reg.data.get("posts_link_topics_1101"):          # Topics validated before it was linked
+                    reg.data["posts_link_topics_1101"] = True
+                    reg.save()
+                    pst = _posts.PostState(ep)
+                    if (pst.items.get("topics") or {}).get("status") == "ok" and not pst.items["topics"].get("task"):
+                        bg(app, "Topics Oti P2 → tâche ClickUp", post_validate(app, ep, "topics"))
                 if not reg.data.get("ig_test_topics_1101"):             # Loïc 01.11: can music be added after?
                     reg.data["ig_test_topics_1101"] = True
                     reg.save()
@@ -4139,7 +4145,10 @@ def dash_content(ep):
         code = _dash.episode_code(ep.get("guest_name") or "", part, codes, ep.video_id)
         codes[code] = ep.video_id
         reg.save()
-    text, waiting = _dash.render(ep, code, title, rs, titles, pst, ep_tasks(ep))
+    tasks = ep_tasks(ep)
+    if any(k in _posts.LABEL for k in tasks):            # the calendar decides: the trial's extra stories are hidden
+        pst = {k: v for k, v in pst.items() if v.get("kind", k) in tasks}
+    text, waiting = _dash.render(ep, code, title, rs, titles, pst, tasks)
     return text, None
 
 

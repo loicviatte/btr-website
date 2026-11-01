@@ -33,7 +33,12 @@ st.data["items"] = {"topics": {"kind": "topics", "status": "draft", "msg": [-100
 st.save()
 bot.CU_CACHE.update(at=9e18, tasks=[
     {"id": "K", "name": "Carousel · Key moment · Oti P2", "status": {"status": "posted"}, "custom_fields": []},
-    {"id": "S", "name": "Story · Ask the next guest · Oti P2", "status": {"status": "to generate"}, "custom_fields": []}])
+    {"id": "S", "name": "Story · Ask the next guest · Oti P2", "status": {"status": "to generate"}, "custom_fields": []},
+    {"id": "T", "name": "Carousel · Topics · Oti P2", "status": {"status": "generated"}, "custom_fields": []},
+    {"id": "P", "name": "Story · Poll · Oti P2", "status": {"status": "to generate"}, "custom_fields": []}])
+s0 = posts.PostState(ep)
+s0.items["quote"] = {"kind": "quote", "status": "ok"}          # made outside the calendar (trial): hidden
+s0.save()
 text, kb = bot.dash_content(ep)
 assert kb is None and "Oti Mabuse · Part 2" in text and "3 à valider" in text, text
 assert "Reel 4" not in text and "🟢 Reel 1" in text and "⏳ Reel 2" in text and "cover à valider" in text
@@ -41,6 +46,7 @@ assert "/oti2_reel2" in text and "/oti2_reel1" not in text and "/oti2_topics" in
 assert "🟢 Key moment" in text and "/oti2_moment" not in text                       # posted (bot or ClickUp) = locked
 assert "📅 Story Poll" in text and "mer. 04.11 19:00" in text
 assert "⬜ Story Ask the next guest — à générer" in text and "/oti2_faire_ask" in text, text
+assert "Citation" not in text, text
 assert dashboard.reel_locked(rs.data["items"]["1"]) and not dashboard.reel_locked(rs.data["items"]["2"])
 assert dashboard.episode_code("Oti Mabuse", "2", {}, "x") == "oti2" and dashboard.episode_code("Zoë Ball", None, {"zoe": "a"}, "b1") == "zoe1"
 print("OK render")

@@ -26,39 +26,63 @@ class Maker:
         sec = share.Secrets(self.data_dir)
         return share.ClickUp(sec.get("clickup_token"))
 
-    def plan(self, ep, st: posts.PostState, only: list[str] | None = None) -> dict:
-        """The episode's carousels / stories from its ClickUp tasks (else the default rotation)."""
+    def episode_tasks(self, ep, tasks: list | None = None) -> dict:
+        """kind → the episode's ClickUp task (any status), earliest first."""
         guest = ep.get("guest_name") or ""
         part = part_number(ep)
-        try:
-            cu = self.clickup()
-            tasks = cu.tasks()
-            ep_date = None
+        if tasks is None:
+            tasks = self.clickup().tasks()
+        ep_date = None
+        if ep.get("release_at"):
+            try:
+                ep_date = datetime.fromisoformat(ep["release_at"])
+            except ValueError:
+                ep_date = None
+        if ep_date is None:
             try:
                 ep_date = share.episode_date(self.pipe.yt.video(ep.video_id))
+                ep["release_at"] = ep_date.isoformat() if ep_date else ""
+                ep.save()
             except Exception:  # noqa: BLE001
                 pass
-            label = share.episode_label(guest, part)
-            def mine(t):                      # not a post made by hand (Oti P2 Topics…): only « to generate » or the bot's own
-                status = (t.get("status") or {}).get("status", "").lower()
-                text = t.get("text_content") or t.get("description") or ""
-                return (status in ("to generate", "generated") and (status == "to generate" or share.MARK in text
-                                                                     or t["id"] in {i.get("task") for i in st.items.values()}))
-            items = posts.episode_items(tasks, lambda t: mine(t) and share.matches_episode(t, label, guest, part, ep_date))
+        label = share.episode_label(guest, part)
+        out = {}
+        for t in sorted(tasks, key=lambda t: int(t.get("due_date") or 9e15)):
+            k = posts.task_kind(t.get("name", ""))
+            if k and k not in out and guest and share.matches_episode(t, label, guest, part, ep_date):
+                out[k] = t
+        return out
+
+    def plan(self, ep, st: posts.PostState, only: list[str] | None = None) -> dict:
+        """The episode's carousels / stories = its ClickUp tasks: made when « to generate » (or the bot's own); a task
+        made by hand or already posted is left alone. The default rotation only when the episode has NO such task."""
+        try:
+            all_t = self.episode_tasks(ep)
         except Exception as e:  # noqa: BLE001
             log.warning("clickup plan: %s", e)
-            items = {}
-        st.data["from_clickup"] = bool(items)
-        if not items:
+            all_t = {}
+        mine_ids = {i.get("task") for i in st.items.values()}
+
+        def mine(t):
+            status = (t.get("status") or {}).get("status", "").lower()
+            text = t.get("text_content") or t.get("description") or ""
+            return status == "to generate" or (status == "generated" and (share.MARK in text or t["id"] in mine_ids))
+        items = {k: {"kind": k, "task": t["id"], "name": t.get("name", "")} for k, t in all_t.items() if mine(t)}
+        st.data["from_clickup"] = bool(all_t)
+        if not all_t:
             items = posts.default_items(self.pipe.ep_number(ep))
-        if only:
-            items = {k: v for k, v in items.items() if k in only} or {k: {"kind": k, "task": None, "name": posts.LABEL[k]}
-                                                                     for k in only if k in posts.LABEL}
+        if only:                                       # asked by Loïc: made even if done by hand, linked to its task
+            items = {k: {"kind": k, "task": (all_t.get(k) or {}).get("id"), "name": (all_t.get(k) or {}).get("name")
+                         or posts.LABEL[k]} for k in only if k in posts.LABEL}
         for k, v in items.items():
             cur = st.items.setdefault(k, {})
             if cur.get("status") in ("ok", "posted"):
                 continue
             cur.update(kind=v["kind"], task=v.get("task") or cur.get("task"), name=v["name"])
+        for k, cur in st.items.items():                # link what was made before the task was found
+            t = all_t.get(cur.get("kind", k))
+            if t and not cur.get("task") and (t.get("status") or {}).get("status", "").lower() != "posted":
+                cur["task"] = t["id"]
         st.save()
         return items
 
@@ -569,6 +593,13 @@ class Maker:
             it["folder"] = d.folder_link(folder)
         except share.NotConnected:
             raise
+        if not it.get("task"):                           # validated before it was linked: its task in the calendar
+            try:
+                t0 = self.episode_tasks(ep).get(it["kind"])
+                if t0 and (t0.get("status") or {}).get("status", "").lower() != "posted":
+                    it["task"] = t0["id"]
+            except Exception:  # noqa: BLE001
+                log.exception("posts task lookup")
         tid = it.get("task")
         if tid:
             cu = self.clickup()

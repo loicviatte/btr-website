@@ -118,8 +118,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   same positions, texts shrink with window.fit): `btrbot/posts.py` (pure: ClickUp task names → kinds, shot needs,
   pages, captions, placement, zone previews, render) + `btrbot/postmaker.py` (Maker: plan from the episode's ClickUp
   tasks « Carousel · Key moment / Topics · Ep … », « Story · Poll / Rapid fire / The Chain / Link / Ask the next guest /
-  Question / answer / Quote / Atlas quiz / Teaser share · … » in « to generate » (or the bot's own, MARK), else the
-  3-episode CYCLE; content = one Opus call (prompts.POSTS, every EXACT field checked with said_exactly, one fix retry,
+  Question / answer / Quote / Atlas quiz / Teaser share · … » in « to generate » (or the bot's own, MARK); the 3-episode
+  CYCLE only when the episode has NO such task in any status (`Maker.episode_tasks`); a post asked by kind is linked to
+  its task even if made by hand, and `Maker.file` links a validated post to its task if it wasn't; content = one Opus call (prompts.POSTS, every EXACT field checked with said_exactly, one fix retry,
   times pinned by posts.find_time); shots = 720p scan copy sampled every 2 s, classified guest / marius / both / wide /
   noface (cache posts_scan.json), eyes checked (Haiku), 4K grab; The Chain = previous guest's close-up from the end of
   their episode; render; file = Drive « BTR Posts / <guest> » (public links) + ClickUp block below MARK, status ready).
@@ -150,7 +151,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   /oti2_topics, /oti2_poll… (in Stories), /oti2_miniatures, /oti2_faire_poll (a ClickUp task « to generate » → made);
   `bot.on_dash_cmd` deletes the command message. Lines: miniatures (ep.stage), reels (⏳ preview / cover to validate,
   📅 Short planned, 🟢 published), carousels + stories = the episode's ClickUp tasks (`bot.ep_tasks`, cache CU_CACHE 5 min,
-  release date cached in ep["release_at"] for « Ep Nov 3 » names) merged with the bot's items: ClickUp « posted » or
+  release date cached in ep["release_at"] for « Ep Nov 3 » names) merged with the bot's items (an item whose kind has no task is hidden when the episode has tasks): ClickUp « posted » or
   bot posted = 🟢 locked (no command, edits refused), to generate ⬜. Topic created at boot for an existing group
   (`ensure_dash_topic`). Test: `tests/dash_flow.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).

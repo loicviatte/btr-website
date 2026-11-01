@@ -260,3 +260,18 @@ assert share.all_posted(T(3, 3, 3)) and share.all_posted(T(0, 3, "o3"))         
 assert not share.all_posted(T(3, 2, 3)) and not share.all_posted(T(0, 0, 0))
 assert share.all_posted({"custom_fields": [{"id": share.F_IG, "value": {"name": "Posted"}}]})
 print("OK posted status")
+
+# ---- the calendar decides which posts exist ------------------------------------------------------------
+M3 = postmaker.Maker(NS(cfg=NS(), ep_number=lambda ep: 13), bot.cfg.data_dir)
+ep3 = bot.reg.episode("VIDPOSTS003")
+ep3["guest_name"] = "Oti Mabuse"
+ep3.save()
+M3.episode_tasks = lambda ep, tasks=None: {
+    "topics": {"id": "TT", "name": "Carousel · Topics · Oti P2", "status": {"status": "generated"}, "text_content": "by hand"},
+    "link": {"id": "TL", "name": "Story · Link · Oti P2", "status": {"status": "posted"}},
+    "poll": {"id": "TP", "name": "Story · Poll · Oti P2", "status": {"status": "to generate"}}}
+st3 = posts.PostState(ep3)
+assert list(M3.plan(ep3, st3)) == ["poll"]                      # not the default rotation, not the hand-made ones
+assert st3.items["poll"]["task"] == "TP"
+assert list(M3.plan(ep3, st3, ["topics"])) == ["topics"] and st3.items["topics"]["task"] == "TT"   # asked: linked
+print("OK calendar")
