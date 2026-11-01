@@ -177,3 +177,25 @@ assert "café" in srt.search(cues, "CAFE")[:400] and "autres passages" in srt.se
 assert srt.search(cues, "") == "rien à chercher" and srt.search([], "x").startswith("pas de transcription")
 assert "chickens" in srt.search(cues, at=9631).lower()
 print("OK transcript search", round(time.time() - t0, 2), "s")
+
+# ── a validated post linked to its task afterwards is filed (« Posts planning » switched Ask → The Chain, 01.11) ──
+ep = bot.reg.episode("VIDLINK0001")
+ep["guest_name"] = "Oti Mabuse"
+ep.save()
+st = posts.PostState(ep)
+st.data["items"] = {"chain": {"kind": "chain", "status": "ok", "task": "agvq", "files": []},
+                    "poll": {"kind": "poll", "status": "draft", "task": "p1"},
+                    "topics": {"kind": "topics", "status": "ok", "task": "agvm"}}
+st.save()
+filed = []
+
+
+class CU2:
+    def task(self, tid):
+        return {"agvq": {"status": {"status": "to generate"}}, "agvm": {"status": {"status": "scheduled"}}}[tid]
+
+
+bot.maker = lambda: NS(clickup=lambda: CU2(), file=lambda ep, st, k: filed.append(k))
+out = asyncio.run(bot.posts_file_linked(ep))
+assert filed == ["chain"] and out == ["Story The Chain · Oti Mabuse"], (filed, out)
+print("OK file linked")

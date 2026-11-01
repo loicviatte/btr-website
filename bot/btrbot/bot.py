@@ -3364,6 +3364,23 @@ def start_polling(app):
 
 async def on_boot(app):
     APP["app"] = app
+    if not reg.data.get("posts_file_linked_1101"):
+        reg.data["posts_file_linked_1101"] = True
+        reg.save()
+
+        async def _fix(ctx):
+            for st in _posts.all_states(cfg.data_dir):
+                try:
+                    done = await posts_file_linked(st.ep)
+                    if done:
+                        tok = topics.TOPIC.set("stories")
+                        try:
+                            await say(ctx, "📅 Rangé dans ClickUp (programmé) : " + esc(", ".join(done)))
+                        finally:
+                            topics.TOPIC.reset(tok)
+                except Exception:  # noqa: BLE001
+                    log.exception("file linked boot")
+        app.job_queue.run_once(_fix, when=40, name="file-linked-1101")
     if reg.data.get("plan_msgs"):
         plan_schedule(60)
     if cfg.chat_id:
@@ -3565,7 +3582,9 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
     keys = [k for k in items if (st.items.get(k) or {}).get("status") not in ("ok", "posted")]
     skipped = []
     if not keys:
-        await say(ctx, "Tout est déjà validé pour cet épisode (dis-moi lequel refaire si besoin).")
+        filed = await posts_file_linked(ep, only)
+        await say(ctx, ("Déjà validé" + (f", rangé dans ClickUp (programmé) : {esc(', '.join(filed))}" if filed else
+                                         " pour cet épisode")) + ". Dis-moi lequel refaire si besoin.")
         return
     guest = ep.get("guest_name") or ep.video_id
     unsent = [k for k in keys if not (only or feedback or photos or reset) and st.items[k].get("files")
@@ -4003,6 +4022,13 @@ async def posts_refresh(ctx):
                 t = await run(cu.task, it["task"])
             except Exception:  # noqa: BLE001
                 continue
+            if (t.get("status") or {}).get("status", "").lower() in ("to generate", "generated"):
+                try:                                      # validated content linked to its task afterwards (planning
+                    await run(M.file, st.ep, st, k)       # change, calendar task found later): filed now
+                    log.info("posts refresh: filed %s into %s", k, it["task"])
+                except Exception:  # noqa: BLE001
+                    log.exception("posts refresh: file %s", k)
+                continue
             at = _posts.due(t)
             if at and at.isoformat() != it.get("at"):
                 it["at"] = at.isoformat()
@@ -4011,6 +4037,24 @@ async def posts_refresh(ctx):
                 changed = True
         if changed:
             st.save()
+
+
+async def posts_file_linked(ep, only: list[str] | None = None) -> list[str]:
+    """Validated posts whose ClickUp task still says « to generate » / « generated » (linked after the validation,
+    e.g. a story type switched in « Posts planning » onto content already validated): filed now → « scheduled »."""
+    M, out = maker(), []
+    st = _posts.PostState(ep)
+    for k, it in st.items.items():
+        if (only and k not in only) or it.get("status") != "ok" or not it.get("task") or _dash.post_locked(it):
+            continue
+        try:
+            t = await run(M.clickup().task, it["task"])
+            if (t.get("status") or {}).get("status", "").lower() in ("to generate", "generated"):
+                await run(M.file, ep, st, k)
+                out.append(post_name(ep, k))
+        except Exception:  # noqa: BLE001
+            log.exception("posts file linked %s", k)
+    return out
 
 
 async def posts_trial(ctx, ep):

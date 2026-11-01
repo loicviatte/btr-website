@@ -179,6 +179,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   show the platforms still open (`plan_missing`, from the ClickUp Instagram / TikTok / YouTube fields) and a tappable
   `/fait_<task id>` (`plan_mark_done`: those fields → Posted, status posted; refused for a post not yet due); the
   overview is capped under Telegram's 4096 chars; `run()` passes keyword arguments.
+- Validated content linked to its task AFTER the validation (01.11: « Posts planning » switched the Ask task to The
+  Chain, whose content was already validated → task stayed « to generate »): `posts_file_linked` files it (Drive,
+  description, images, « scheduled »); called by posts_make when there is nothing to make, and by the posts_refresh
+  sweep for any validated item whose task still says « to generate » / « generated ».
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model
