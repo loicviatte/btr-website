@@ -257,6 +257,26 @@ def clean_md(text: str) -> str:
     return t.strip()
 
 
+def pieces(text: str, size: int = 8000) -> list[str]:
+    """Text cut at line ends into pieces of at most `size` characters (a line longer than that is cut)."""
+    out, cur = [], ""
+    for line in text.split("\n"):
+        while len(line) > size:
+            if cur:
+                out.append(cur)
+                cur = ""
+            out.append(line[:size])
+            line = line[size:]
+        if cur and len(cur) + 1 + len(line) > size:
+            out.append(cur)
+            cur = line
+        else:
+            cur = f"{cur}\n{line}" if cur else line
+    if cur:
+        out.append(cur)
+    return out
+
+
 def episode_pages(st: State, docs: Docs, digest, episodes: list[dict], trans: dict, local=None,
                   limit: int = 20, save_dir: Path | None = None) -> list[str]:
     """One page per episode (oldest first): header + digest, the transcript in sub-pages. A page whose digest is
@@ -290,8 +310,8 @@ def episode_pages(st: State, docs: Docs, digest, episodes: list[dict], trans: di
             st.save()
         else:
             docs.update(page, head)
-        for j in range(0, len(body), 8000):                   # the digest in pieces, after the header
-            docs.update(page, "\n" + body[j:j + 8000], mode="append")
+        for piece in pieces(body):                             # the digest in pieces, after the header
+            docs.update(page, "\n" + piece, mode="append")
         if vid not in done:
             done.append(vid)
         st.save()

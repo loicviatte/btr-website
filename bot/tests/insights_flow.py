@@ -81,3 +81,7 @@ assert "Short one" in txt and "chute à 24:00" in txt and "line at" in txt
 txt2 = I.week_block(*I.week(now), now, snap, {}, yt_json, None, None, None, trans)
 assert "(1er relevé)" in txt2 and "pas encore connecté" in txt2
 print("OK week block")
+
+ps = I.pieces("a" * 5000 + "\n" + "b" * 5000 + "\n" + "c" * 9000, 8000)
+assert ps[0] == "a" * 5000 and ps[1] == "b" * 5000 and "".join(ps[2:]) == "c" * 9000 and all(len(x) <= 8000 for x in ps)
+print("OK pieces")

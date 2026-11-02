@@ -3683,8 +3683,8 @@ async def on_boot(app):
         except Exception:  # noqa: BLE001
             log.exception("ep msgs seed")
         reg.save()
-    if reg.data.get("insights_seed_1102") and not reg.data.get("insights_digests_1102"):   # digests were dropped
-        reg.data["insights_digests_1102"] = True
+    if reg.data.get("insights_seed_1102") and not reg.data.get("insights_digests_1102b"):  # digests were dropped
+        reg.data["insights_digests_1102b"] = True
         reg.save()
 
         async def _digests(ctx):
