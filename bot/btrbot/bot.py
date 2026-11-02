@@ -1175,6 +1175,11 @@ def tool_handlers(ctx, images: list) -> dict:
             "slides": [int(x) for x in slides or []], "part": part, "factor": float(factor) if factor else None,
             "previous": bool(previous), "move": move})
 
+    async def post_text_move(key, dy=None, reset=False):
+        if not dy and not reset:
+            return "dis-moi de combien (dy en px, < 0 = monte, > 0 = descend) ou reset=true"
+        return await post_change(str(key).lower().strip(), "text", {"dy": float(dy or 0), "reset": bool(reset)})
+
     async def planning_list(days=21, posted=False):
         await plan_refresh()
         return plan_list_text(int(days or 21), bool(posted))
@@ -1336,7 +1341,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
-            "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
+            "post_text_move": post_text_move, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
@@ -3572,6 +3577,23 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_chain, when=75, name="chain-raise-1102")
+    if not reg.data.get("chain_lower_1102"):               # Loïc 02.11: The Chain text a tiny bit lower (+30 px)
+        reg.data["chain_lower_1102"] = True
+        reg.save()
+
+        async def _chain_down(ctx):
+            ep = reg.episode("PjDZ8X_JWY0")
+            tok = topics.TOPIC.set("stories")
+            try:
+                if (_posts.PostState(ep).items.get("chain") or {}).get("files"):
+                    a = {"dy": 30}
+                    if post_guard(ep, "chain"):                # validated meanwhile: Loïc's « Oui » first
+                        await post_confirm(ctx, ep, "chain", "text", a)
+                    else:
+                        bg(ctx, *post_op(ctx, ep, "chain", "text", a))
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_chain_down, when=90, name="chain-lower-1102")
     if not reg.data.get("posts_file_linked_1101"):
         reg.data["posts_file_linked_1101"] = True
         reg.save()
@@ -3962,6 +3984,8 @@ def post_op(ctx, ep, k: str, op: str, a: dict):
         mv = a.get("move")
         return f"Cadrage {name}", posts_zoom(ctx, ep, k, a.get("slides") or None, a.get("part"), a.get("factor"),
                                              bool(a.get("previous")), tuple(mv) if mv else None)
+    if op == "text":
+        return f"Texte {name}", posts_text_move(ctx, ep, k, a.get("dy"), bool(a.get("reset")))
     if op == "feedback":
         fb = a.get("feedback") or ""
         return f"{name} (retour)", posts_make(ctx, ep, [k], feedback=fb, photos=bool(a.get("photos")), reset=bool(fb))
@@ -4760,6 +4784,30 @@ async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str
         (["plus à droite" if dx > 0 else "plus à gauche"] if dx else []) + (["plus bas" if dy > 0 else "plus haut"] if dy else [])
     what = "photo d'avant" if previous else (", ".join(bits) or "même photo, recadrée")
     await show_changed(ctx, ep, k, sids, what)
+
+
+async def posts_text_move(ctx, ep, k: str, dy=None, reset: bool = False):
+    """The story's text block moved up / down (item["text_dy"], + = down, added to the current one), same texts and
+    photos; the sticker zone follows (posts.zone)."""
+    st = _posts.PostState(ep)
+    it = st.items.get(k) or {}
+    if not it.get("files"):
+        await say(ctx, "Ce post n'est pas encore fait.")
+        return
+    kind = it.get("kind") or k
+    if kind not in _posts.TEXT_MOVE:
+        await say(ctx, f"Le texte de {esc(post_name(ep, k))} ne se déplace pas (stories The Chain, Poll, Rapid fire, Ask, Atlas).")
+        return
+    old = _posts.text_dy(kind, it.get("text_dy"))
+    new = 0 if reset else _posts.text_dy(kind, old + float(dy or 0))
+    it["text_dy"] = new
+    st.save()
+    await run(maker().render, ep, st, [k])
+    lo, hi = _posts.TEXT_MOVE[kind]
+    edge = " (butée atteinte)" if new in (lo, hi) and not reset else ""
+    what = "remis à sa place d'origine" if reset else \
+        f"{'descendu' if new > old else 'monté'} de {abs(new - old)} px{edge}, mêmes textes et mêmes photos"
+    await send_post_safe(ctx, ep, k, [f"Texte {what} ; la zone du sticker suit."])
 
 
 async def posts_ig_test(ctx, ep, k: str):
