@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import traceback
+import urllib.parse
 
 from telegram import InlineKeyboardButton as B
 from telegram import InlineKeyboardMarkup as K
@@ -3346,6 +3347,13 @@ async def connect_cmd(update: Update, ctx):
                    "fichiers qu'il crée lui-même (dossier « BTR Reels »).")
         msg.append("2. Tu arrives sur une page qui ne charge pas (127.0.0.1…) : c'est normal. Copie son adresse et "
                    "colle-la ici.")
+    if cfg.youtube_client[0]:
+        from . import insights as _in
+        an_ok = bool(sec.get("analytics_refresh"))
+        msg.append(f"\n<b>YouTube Analytics</b> (pour Simone : rétention, Shorts) {'✅ connecté' if an_ok else '❌'}")
+        msg.append(f"Ouvre <a href=\"{esc(_in.analytics_auth_url(cfg.youtube_client[0]))}\">ce lien Google</a> avec le "
+                   "compte qui gère la chaîne YouTube BTR (choisis la chaîne si Google demande), accepte, puis colle ici "
+                   "l'adresse 127.0.0.1… comme pour Drive.")
     msg.append(f"\n<b>ClickUp</b> {'✅ connecté' if cu_ok else '❌'}")
     msg.append("Sur app.clickup.com : ton avatar → Settings → Apps → API Token → Generate, copie le code « pk_… » et "
                "colle-le ici (j'efface ton message tout de suite).")
@@ -3474,7 +3482,12 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     except Exception:  # noqa: BLE001
         pass
     try:
-        if code:
+        if code and "yt-analytics" in urllib.parse.unquote(text):
+            from . import insights as _in
+            await run(_in.analytics_connect, sec, cfg.youtube_client[:2], code)
+            await say(ctx, "✅ YouTube Analytics connecté : la rétention et les Shorts arriveront dans BTR Data mardi soir "
+                           "(ou tout de suite avec /insights).")
+        elif code:
             await run(share.drive_connect, sec, cfg.youtube_client[:2], code)
             d = await run(share.Drive, sec, cfg.youtube_client[:2])
             root = await run(d.folder, share.FOLDER)
@@ -3640,6 +3653,10 @@ def start_polling(app):
         app.job_queue.run_repeating(del_tick, interval=10, first=15, name="del")
     if not app.job_queue.get_jobs_by_name("stats"):
         app.job_queue.run_repeating(stats_tick, interval=2 * 3600, first=600, name="stats")
+    if not app.job_queue.get_jobs_by_name("insights"):
+        from datetime import time as _time
+        from zoneinfo import ZoneInfo as _Z
+        app.job_queue.run_daily(insights_job, time=_time(18, 30, tzinfo=_Z("Europe/London")), days=(2,), name="insights")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
         app.job_queue.run_repeating(community_tick, interval=60, first=70, name="community")
@@ -3666,6 +3683,21 @@ async def on_boot(app):
         except Exception:  # noqa: BLE001
             log.exception("ep msgs seed")
         reg.save()
+    if not reg.data.get("insights_seed_1102"):              # BTR Data: episode pages + starting figures, once
+        reg.data["insights_seed_1102"] = True
+        reg.save()
+
+        async def _seed(ctx):
+            tok = topics.TOPIC.set("system")
+            try:
+                async def go():
+                    async with INSIGHTS_LOCK:
+                        msg = await run(insights_update, False, True)
+                        await say(ctx, f"📊 BTR Data (pour Simone) : {esc(msg)}.")
+                bg(ctx, "BTR Data", go(), limit=120 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_seed, when=180, name="insights-seed")
     if not reg.data.get("posts_rejected_1102"):            # photos already replaced = refused (Loïc 02.11)
         reg.data["posts_rejected_1102"] = True
         reg.save()
@@ -5799,6 +5831,134 @@ async def set_origin(update: Update, ctx):
         plan_forget(c.id, update.message.message_id, incoming=True)
 
 
+# ---------------------------------------------------------------- « BTR Data » for Simone (Loïc 02.11)
+INSIGHTS_LOCK = asyncio.Lock()
+
+
+def yt_meta(ids: list[str]) -> dict:
+    """video id → {title, seconds} (YouTube Data API, 50 at a time)."""
+    out = {}
+    ids = list(dict.fromkeys(i for i in ids if i))
+    for j in range(0, len(ids), 50):
+        r = pipe.yt.svc.videos().list(part="snippet,contentDetails", id=",".join(ids[j:j + 50])).execute()
+        for v in r.get("items", []):
+            m = re.match(r"P(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", v["contentDetails"].get("duration", ""))
+            secs = sum(int(x or 0) * k for x, k in zip(m.groups(), (3600, 60, 1))) if m else 0
+            out[v["id"]] = {"title": v["snippet"].get("title", ""), "seconds": secs}
+    return out
+
+
+def insights_analytics(start, end, now, eps: list[dict]) -> dict | None:
+    """YouTube Analytics for the week (None when not connected)."""
+    from datetime import timedelta
+    from . import insights as _in, share
+    try:
+        svc = _in.analytics(share.Secrets(cfg.data_dir), cfg.youtube_client[:2])
+    except share.NotConnected:
+        return None
+    day = lambda d: d.astimezone(_in.TZ).strftime("%Y-%m-%d")  # noqa: E731
+    week = _in.yt_videos(svc, day(start), day(end - timedelta(days=1)), 50)
+    ids = [e["id"] for e in eps]
+    life = {}
+    if ids:
+        rows = _in.yt_query(svc, startDate="2025-01-01", endDate=day(now), dimensions="video",
+                            metrics="views,averageViewDuration,averageViewPercentage", filters="video==" + ",".join(ids))
+        life = {r["video"]: r for r in rows}
+    latest = sorted(eps, key=lambda e: e.get("publishedAt") or "")[-3:]
+    meta = yt_meta(list(week) + ids)
+    ret = {}
+    for e in reversed(latest):
+        try:
+            ret[e["id"]] = _in.yt_retention(svc, e["id"], e["publishedAt"], day(now))
+        except Exception:  # noqa: BLE001
+            log.exception("retention %s", e["id"])
+    return {"week": week, "life": life, "meta": meta, "retention": ret}
+
+
+def insights_update(episodes_only: bool = False, baseline: bool = False) -> str:
+    """Writes « BTR Data » (blocking: run in a thread): new episode pages, then this week's stats block.
+    baseline=True: the figures are only noted (no block), so the next block shows what changed since."""
+    from datetime import datetime as _dt
+    from . import insights as _in, share, stats as _st
+    sec = share.Secrets(cfg.data_dir)
+    docs = _in.Docs(sec.get("clickup_token"))
+    st = _in.State(cfg.data_dir)
+    yt_json = _in.gh_file(cfg.github_token, "data/stats/youtube.json")
+    trans = _in.gh_file(cfg.github_token, "tools/episode-generator/trans.json")
+
+    def local(vid):
+        if not (cfg.data_dir / "episodes" / vid).exists():
+            return None
+        return [[c.start, c.text] for c in pipe.cues(reg.episode(vid))] or None
+    made = _in.episode_pages(st, docs, pipe.llm.episode_digest, yt_json.get("episodes") or [], trans, local)
+    msg = f"{len(made)} page(s) épisode écrite(s)" if made else "pages épisode à jour"
+    if episodes_only:
+        return msg
+    now = _dt.now(_in.TZ)
+    start, end = _in.week(now)
+    try:
+        base = _in.gh_file(cfg.github_token, "data/stats/base.json")
+    except Exception:  # noqa: BLE001
+        base = {}
+    ig = posts_ig = None
+    try:
+        followers, posts_ig = _in.instagram_media(sec, start)
+        ig = (followers, posts_ig)
+    except Exception as e:  # noqa: BLE001
+        log.warning("insights instagram: %s", e)
+    try:
+        tt = _st.tiktok(sec)
+    except Exception as e:  # noqa: BLE001
+        log.warning("insights tiktok: %s", e)
+        tt = None
+    try:
+        an = insights_analytics(start, end, now, yt_json.get("episodes") or [])
+    except Exception as e:  # noqa: BLE001
+        log.exception("insights analytics")
+        an = None
+        msg += f" · YouTube Analytics en erreur ({str(e)[:80]})"
+    snap = _in.snapshot(yt_json, base, ig, tt, now)
+    if baseline:
+        st.data["snapshots"].append(snap)
+        st.save()
+        return msg + " · chiffres de départ notés"
+    block = _in.week_block(start, end, now, snap, st.last(), yt_json, posts_ig, tt, an, trans)
+    docs.update(_in.PAGES["stats"], block, mode="prepend")
+    st.data["snapshots"].append(snap)
+    del st.data["snapshots"][:-80]
+    st.save()
+    return msg + " · stats de la semaine ajoutées" + ("" if an else " (sans YouTube Analytics)")
+
+
+async def insights_job(ctx):
+    """Tuesday 18:30 London: « BTR Data » up to date before Simone's review (her ClickUp trigger, Tuesday evening)."""
+    if INSIGHTS_LOCK.locked():
+        return
+    async with INSIGHTS_LOCK:
+        tok = topics.TOPIC.set("system")
+        try:
+            msg = await run(insights_update)
+            await say(ctx, f"📊 BTR Data mis à jour pour Simone : {esc(msg)}.")
+        except Exception as e:  # noqa: BLE001
+            log.exception("insights")
+            await say(ctx, f"⚠️ BTR Data : {esc(str(e)[-200:])}")
+        finally:
+            topics.TOPIC.reset(tok)
+
+
+async def insights_cmd(update: Update, ctx):
+    """/insights = BTR Data now (pages épisode + stats de la semaine); /insights episodes = only the episode pages."""
+    if not allowed(update):
+        return
+    only = bool(ctx.args) and ctx.args[0].lower().startswith("ep")
+
+    async def go():
+        async with INSIGHTS_LOCK:
+            msg = await run(insights_update, only)
+            await say(ctx, f"📊 BTR Data : {esc(msg)}.")
+    await update.message.reply_text(bg(ctx, "BTR Data", go(), limit=90 * 60))
+
+
 # ---------------------------------------------------------------- YouTube Community (Loïc 02.11)
 from . import community as _cm  # noqa: E402
 CM_LOCK = asyncio.Lock()
@@ -6226,6 +6386,7 @@ def main():
     app.add_handler(CommandHandler("reels", reels_cmd))
     app.add_handler(CommandHandler("teaser", teaser_cmd))
     app.add_handler(CommandHandler("fils_neufs", fresh_topics_cmd))
+    app.add_handler(CommandHandler("insights", insights_cmd))
     app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CommandHandler("igtest", igtest_cmd))

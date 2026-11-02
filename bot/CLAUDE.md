@@ -223,6 +223,20 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   preview in Stories (yc:ok / yc:redo); validated (`cm_validate`) → MARK block with the text, YouTube field Scheduled,
   status scheduled, thumbnail attached; yc:done → YouTube Posted + close_if_posted. « À valider » shows them (`cm_dash`,
   /oti2_yt_poll resends); tool youtube_community (kind, feedback, show). Test: `tests/community_flow.py`.
+- « BTR Data » for Simone (Loïc 02.11; ClickUp agent, weekly review Tuesday evening): `btrbot/insights.py` writes the
+  ClickUp doc BTR Data (DOC 2kypxhv3-5115, pages in insights.PAGES, API v3 `Docs`): « Épisodes » = one sub-page per
+  episode (`episode_pages`: Opus digest prompts.EPISODE_DIGEST + transcript sub-pages of 30k chars; transcripts from the
+  repo's tools/episode-generator/trans.json via `gh_file`, else the bot's SRT; made once, ids in
+  data/insights/state.json), « Stats hebdo » = a block prepended every Tuesday 18:30 London (`bot.insights_job`,
+  run_daily days=(2,)): followers per platform with the change since the previous snapshot, Instagram posts of the week
+  with views / reach / likes / comments / saves / shares (`instagram_media`), TikTok videos (stats.tiktok), YouTube
+  episodes from the repo's data/stats/youtube.json, and with YouTube Analytics (own Google grant, scope
+  yt-analytics.readonly, link in /connect, pasted 127.0.0.1 address told apart by its scope → `analytics_connect`):
+  average % watched / duration per episode, Shorts of the week, retention of the 3 latest episodes with the steepest
+  drops and what was said there (`insights_analytics`, `drops`, `said_at`). /insights (or /insights episodes) runs it
+  now; boot one-shot insights_seed_1102 = episode pages + starting figures (baseline, no block). Simone's instructions:
+  BTR Rulebook › « Agent instructions » (Tuesday 20:00 trigger, page in « Revues de Simone », predictions checked the
+  next week). Test: `tests/insights_flow.py`.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model

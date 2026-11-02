@@ -357,3 +357,28 @@ COMMUNITY_WHAT = {
             "the episode, or a quiz on what the guest answered), max 100 characters; 2 to 4 short options (max 60 "
             "characters each); for a quiz, set correct. text = 1 short sentence introducing it (max 150 characters).",
 }
+
+
+EPISODE_DIGEST = """Episode: "{title}" (published {date}). The transcript (with [mm:ss] markers) is above.
+Write the digest of this Break The Routine episode (DanceSport podcast hosted by Marius Iepure) for the team's analytics
+agent, who compares episodes to find recurring threads, missing topics and structure improvements. Markdown, English,
+factual, no praise, only what is in the transcript. Sections, in this order:
+## Guest
+One line: who they are for dancers.
+## Structure
+The segments in order with [mm:ss] (intro, main parts, rapid fire, The Chain question, audience question, outro…).
+## Questions Marius asks
+Every real question, in order, shortened, with [mm:ss].
+## Themes
+5 to 10 themes, one line each.
+## Stories told
+The anecdotes, one line each, with [mm:ss].
+## Rapid fire
+Questions and answers, if there is one.
+## Recurring BTR threads
+Topics or questions that feel like standard BTR material (for example Strictly, judging, money, injuries, partners,
+children in DanceSport): name each plainly with [mm:ss].
+## Strongest moments
+3 to 5 short EXACT quotes (verbatim) with [mm:ss] that work as clips.
+## Weak spots
+Where it drags, repeats or loses focus, with [mm:ss]."""
