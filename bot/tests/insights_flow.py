@@ -50,6 +50,11 @@ names = [p[0] for p in docs.pages]
 assert names[0] == "2026-07-01 · Kiera Brunton" and "Transcript (1/3)" in names and "Transcript" in names
 assert st.data["episodes"] == {"A": "p1", "B": "p5", "C": "p7"}, st.data["episodes"]
 assert I.episode_pages(st, docs, lambda *a: "x", eps, trans) == []                 # written once
+assert any(u[1] == "append" and "## Guest" in u[2] for u in docs.updates)          # the digest goes in after the header
+st.data["digested"].remove("B")                                                    # a digest that was lost: written again
+n = len(docs.pages)
+assert I.episode_pages(st, docs, lambda *a: "```md\n## Guest\ny\n```", eps, trans) == [eps[1]["title"]] and len(docs.pages) == n
+assert docs.updates[-1] == ("p5", "append", "\n## Guest\ny")
 print("OK episode pages")
 
 now = datetime(2026, 11, 3, 18, 30, tzinfo=L)

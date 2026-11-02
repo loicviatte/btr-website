@@ -3683,6 +3683,21 @@ async def on_boot(app):
         except Exception:  # noqa: BLE001
             log.exception("ep msgs seed")
         reg.save()
+    if reg.data.get("insights_seed_1102") and not reg.data.get("insights_digests_1102"):   # digests were dropped
+        reg.data["insights_digests_1102"] = True
+        reg.save()
+
+        async def _digests(ctx):
+            tok = topics.TOPIC.set("system")
+            try:
+                async def go():
+                    async with INSIGHTS_LOCK:
+                        msg = await run(insights_update, False, True)
+                        await say(ctx, f"📊 BTR Data (résumés des épisodes) : {esc(msg)}.")
+                bg(ctx, "BTR Data", go(), limit=120 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_digests, when=120, name="insights-digests")
     if not reg.data.get("insights_seed_1102"):              # BTR Data: episode pages + starting figures, once
         reg.data["insights_seed_1102"] = True
         reg.save()
@@ -5890,7 +5905,8 @@ def insights_update(episodes_only: bool = False, baseline: bool = False) -> str:
         if not (cfg.data_dir / "episodes" / vid).exists():
             return None
         return [[c.start, c.text] for c in pipe.cues(reg.episode(vid))] or None
-    made = _in.episode_pages(st, docs, pipe.llm.episode_digest, yt_json.get("episodes") or [], trans, local)
+    made = _in.episode_pages(st, docs, pipe.llm.episode_digest, yt_json.get("episodes") or [], trans, local,
+                             save_dir=cfg.data_dir / "insights" / "digests")
     msg = f"{len(made)} page(s) épisode écrite(s)" if made else "pages épisode à jour"
     if episodes_only:
         return msg

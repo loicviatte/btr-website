@@ -362,7 +362,8 @@ COMMUNITY_WHAT = {
 EPISODE_DIGEST = """Episode: "{title}" (published {date}). The transcript (with [mm:ss] markers) is above.
 Write the digest of this Break The Routine episode (DanceSport podcast hosted by Marius Iepure) for the team's analytics
 agent, who compares episodes to find recurring threads, missing topics and structure improvements. Markdown, English,
-factual, no praise, only what is in the transcript. Sections, in this order:
+factual, no praise, only what is in the transcript. Plain markdown only: no code block, no HTML, no horizontal rule,
+keep it under 1,800 words. Sections, in this order:
 ## Guest
 One line: who they are for dancers.
 ## Structure

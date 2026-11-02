@@ -249,28 +249,51 @@ def timed(lines: list) -> str:
     return "\n".join(f"[{mmss(s)}] {t}" for s, t in lines or [])
 
 
+def clean_md(text: str) -> str:
+    """The model's markdown as ClickUp keeps it: no code fence, no HTML / XML tag, no front-matter rule on top."""
+    t = re.sub(r"^```\w*\s*|```\s*$", "", (text or "").strip())
+    t = re.sub(r"</?[A-Za-z][\w-]*(\s[^>]*)?>", "", t)
+    t = re.sub(r"^(---+\s*\n)+", "", t.strip())
+    return t.strip()
+
+
 def episode_pages(st: State, docs: Docs, digest, episodes: list[dict], trans: dict, local=None,
-                  limit: int = 20) -> list[str]:
-    """One page per episode not written yet (oldest first): header + digest, then the transcript in sub-pages.
-    digest(title, date, transcript_text) → markdown; local(vid) → [[s, text]] from the bot's own SRT, or None."""
+                  limit: int = 20, save_dir: Path | None = None) -> list[str]:
+    """One page per episode (oldest first): header + digest, the transcript in sub-pages. A page whose digest is
+    missing (st.data["digested"]) gets it written again. digest(title, date, transcript_text) → markdown;
+    local(vid) → [[s, text]] from the bot's own SRT, or None."""
     made = []
+    done = st.data.setdefault("digested", [])
     for e in sorted(episodes, key=lambda e: e.get("publishedAt") or ""):
         vid = e["id"]
-        if vid in st.data["episodes"] or len(made) >= limit:
+        if (vid in st.data["episodes"] and vid in done) or len(made) >= limit:
             continue
         lines = trans.get(vid) or (local(vid) if local else None)
         if not lines:
             continue
         date = (e.get("publishedAt") or "")[:10]
         text = timed(lines)
-        body = digest(e.get("title", ""), date, text)
+        body = clean_md(digest(e.get("title", ""), date, text))
+        if save_dir:
+            save_dir.mkdir(parents=True, exist_ok=True)
+            (save_dir / f"{vid}.md").write_text(body)
+        log.info("insights digest %s: %d chars, starts %r", vid, len(body), body[:120])
         head = (f"**{e.get('title', '')}**\n\nSorti le {date} · https://youtu.be/{vid} · {e.get('views', '—')} vues au "
-                f"{datetime.now(TZ).strftime('%d.%m.%Y')}\n\n")
-        page = docs.create(f"{date} · {short_title(e.get('title', ''))}", head + body, PAGES["episodes"])
-        chunks = [text[i:i + CHUNK] for i in range(0, len(text), CHUNK)] or [""]
-        for i, c in enumerate(chunks, 1):
-            docs.create("Transcript" + (f" ({i}/{len(chunks)})" if len(chunks) > 1 else ""), c, page)
-        st.data["episodes"][vid] = page
+                f"{datetime.now(TZ).strftime('%d.%m.%Y')}\n")
+        page = st.data["episodes"].get(vid)
+        if not page:
+            page = docs.create(f"{date} · {short_title(e.get('title', ''))}", head, PAGES["episodes"])
+            chunks = [text[i:i + CHUNK] for i in range(0, len(text), CHUNK)] or [""]
+            for i, c in enumerate(chunks, 1):
+                docs.create("Transcript" + (f" ({i}/{len(chunks)})" if len(chunks) > 1 else ""), c, page)
+            st.data["episodes"][vid] = page
+            st.save()
+        else:
+            docs.update(page, head)
+        for j in range(0, len(body), 8000):                   # the digest in pieces, after the header
+            docs.update(page, "\n" + body[j:j + 8000], mode="append")
+        if vid not in done:
+            done.append(vid)
         st.save()
         made.append(e.get("title", vid))
     return made

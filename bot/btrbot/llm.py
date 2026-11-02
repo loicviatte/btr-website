@@ -118,7 +118,7 @@ class LLM:
 
     def episode_digest(self, title: str, date: str, transcript: str) -> str:
         return self._ask(self._with_transcript(transcript, prompts.EPISODE_DIGEST.format(title=title, date=date)),
-                         4000, task="BTR Data (épisodes)")
+                         9000, task="BTR Data (épisodes)")
 
     def community_post(self, kind: str, video_title: str, guest_name: str, part: str | None, transcript: str,
                        feedback: str = "") -> dict:
