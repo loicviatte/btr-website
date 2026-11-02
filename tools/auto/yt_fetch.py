@@ -151,13 +151,10 @@ def captions_drive(title, files, dest, meta):
     return False
 
 def save_stats(videos):
-    """Once a day: YouTube figures for About > Partners (tools/auto/btr_stats.py)."""
+    """Every run: YouTube figures for About > Partners (tools/auto/btr_stats.py; the page itself is refreshed every 6 h)."""
     import datetime
     path = os.path.join(ROOT, 'data', 'stats', 'youtube.json')
     today = datetime.date.today().isoformat()
-    try:
-        if json.load(open(path)).get('date') == today: return
-    except Exception: pass
     # full episodes = the videos in the site's Episodes list (design/Episodes.dc.html, `const list`, 5th value)
     lst = re.search(r'const list = \[\n(.*?)\n    \];', open(os.path.join(ROOT, 'design', 'Episodes.dc.html'), encoding='utf-8').read(), re.S)
     on_site = {vals[4] for vals in (re.findall(r"'((?:[^'\\]|\\.)*)'", l) for l in lst.group(1).split('\n')) if len(vals) == 7}

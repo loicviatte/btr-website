@@ -26,9 +26,10 @@ jobs:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
           YT_CHANNEL_ID: ${{ secrets.YT_CHANNEL_ID }}
         run: python3 tools/auto/yt_fetch.py
-      - name: Fill missing reel covers on the episode pages
+      - name: Fill missing reel covers on the episode pages, refresh the About figures every 6 h
         run: |
           python3 tools/auto/reel_covers.py
+          if [ $(( 10#$(date -u +%H) % 6 )) -eq 0 ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then python3 tools/auto/btr_auto.py stats; fi
           if ! git diff --quiet -- design; then npm ci --no-audit --no-fund && npm run compile; fi
       - name: Save what was found
         run: |
