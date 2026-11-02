@@ -1132,9 +1132,9 @@ def tool_handlers(ctx, images: list) -> dict:
             out.append(bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}", posts_make(ctx, ep, keys)))
         return " ; ".join(out)
 
-    async def post_change(key, op, a):
+    async def post_change(key, op, a, ep=None):
         """Run the change now, or ask « Tu veux vraiment le modifier ? » when the post is scheduled / published."""
-        ep = posts_ep_of(key)
+        ep = ep or posts_ep_of(key)
         if post_guard(ep, key):
             return await post_confirm(ctx, ep, key, op, a)
         return bg(ctx, *post_op(ctx, ep, key, op, a))
@@ -1145,6 +1145,29 @@ def tool_handlers(ctx, images: list) -> dict:
     async def post_photos(key, slides=None, part=None, at=None, who=None, size=None):
         return await post_change(str(key).lower().strip(), "photos", {"slides": [int(x) for x in slides or []], "part": part,
                                                                      "at": at, "who": who, "size": size})
+
+    async def post_photo_choices(key, slides=None, part=None, who=None, want=None, link=None):
+        key = str(key).lower().strip()
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
+        ep = reg.episode(m.group(1)) if m else posts_ep_of(key)
+        if key not in _posts.PostState(ep).items:
+            return f"pas de « {key} » pour {ep.get('guest_name') or ep.video_id}"
+        return bg(ctx, f"Sélection de photos · {post_name(ep, key)}",
+                  posts_choices(ctx, ep, key, [int(x) for x in slides or []], part, who, want or ""))
+
+    async def post_photo_pick(key, choice, slide=None, part=None):
+        key = str(key).lower().strip()
+        found = None                                   # the latest selection sent for this post (any episode)
+        for st in _posts.all_states(cfg.data_dir):
+            if key not in st.items:
+                continue
+            ok = set(post_sids(st, key, [int(slide)], part)) if slide else None
+            for sid, ch in (st.data.get("choices") or {}).items():
+                if sid.startswith(key + ":") and (ok is None or sid in ok) and (found is None or ch.get("ts", 0) > found[0]):
+                    found = (ch.get("ts", 0), st.ep, sid)
+        if not found:
+            return "pas de sélection envoyée pour cette slide : propose d'abord post_photo_choices"
+        return await post_change(key, "pick", {"sid": found[2], "n": int(choice)}, found[1])
 
     async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
         move = [float(shift_x or 0), float(shift_y or 0)] if (shift_x or shift_y) else None
@@ -1313,6 +1336,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
+            "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
@@ -3806,7 +3830,8 @@ async def send_post_safe(ctx, ep, k: str, warn: list[str] | None = None):
 
 
 def post_buttons(vid: str, k: str, kind: str, b: bool) -> K:
-    rows = [[B("✅ Valider", callback_data=f"pst:ok:{vid}:{k}"), B("📷 Autres photos", callback_data=f"pst:ph:{vid}:{k}")],
+    rows = [[B("✅ Valider", callback_data=f"pst:ok:{vid}:{k}"), B("📷 Autres photos", callback_data=f"pst:ph:{vid}:{k}"),
+             B("🎞️ Sélection", callback_data=f"pst:sel:{vid}:{k}")],
             [B("✍️ Autres textes", callback_data=f"pst:tx:{vid}:{k}")]]
     if kind in _posts.B_OK:
         rows[1].append(B("🔀 Avec sticker" if b else "🔀 Version b (lien)", callback_data=f"pst:b:{vid}:{k}"))
@@ -3910,6 +3935,8 @@ def post_op(ctx, ep, k: str, op: str, a: dict):
         if not sl and not any(a.get(x) for x in ("part", "at", "who", "size")):
             return f"Photos {name}", posts_make(ctx, ep, [k], photos=True)
         return f"Photos {name}", posts_photos(ctx, ep, k, sl or [0], a.get("part"), a.get("at"), a.get("who"), a.get("size"))
+    if op == "pick":
+        return f"Photo n° {a.get('n')} · {name}", posts_pick(ctx, ep, k, a["sid"], int(a["n"]))
     if op == "zoom":
         mv = a.get("move")
         return f"Cadrage {name}", posts_zoom(ctx, ep, k, a.get("slides") or None, a.get("part"), a.get("factor"),
@@ -4086,12 +4113,14 @@ async def on_post_button(ctx, q, d: str):
     if not it:
         await say(ctx, "Ce post n'existe plus.")
         return
-    guard = post_guard(ep, k) if act in ("ok", "ph", "tx", "b", "ps") else None
+    guard = post_guard(ep, k) if act in ("ok", "ph", "tx", "b", "ps", "pk") else None
     if guard == "posted" and act == "ok":
         await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié.")
         return
     if guard and act != "ok" and not (act == "ph" and it["kind"] in _posts.CAROUSELS):   # ph on a carousel = slide picker
-        if act == "ps":
+        if act == "pk":
+            await post_confirm(ctx, ep, k, "pick", {"sid": f"{k}:{parts[4]}", "n": int(parts[5])})
+        elif act == "ps":
             slide = int(parts[4]) if len(parts) > 4 else 0
             await post_confirm(ctx, ep, k, "photos", {"slides": [slide] if slide else [],
                                                       "part": parts[5] if len(parts) > 5 else None})
@@ -4124,6 +4153,22 @@ async def on_post_button(ctx, q, d: str):
             await say(ctx, bg(ctx, f"Photos {post_name(ep, k)}", posts_make(ctx, ep, [k], photos=True)))
         else:
             await say(ctx, bg(ctx, f"Photo slide {slide} · {post_name(ep, k)}", posts_photos(ctx, ep, k, [slide], part)))
+    elif act == "sel":                                   # « Sélection »: which photo, then 8-10 candidates to pick from
+        await choices_picker(ctx, ep, k)
+    elif act in ("ss", "sp"):
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+        if act == "ss":
+            slide, part = int(parts[4]), (parts[5] if len(parts) > 5 else None)
+            job = posts_choices(ctx, ep, k, [slide], part)
+        else:
+            job = posts_choices(ctx, ep, k, [], sid=f"{k}:{parts[4]}")
+        await say(ctx, bg(ctx, f"Sélection de photos · {post_name(ep, k)}", job))
+    elif act == "pk":
+        await say(ctx, bg(ctx, f"Photo n° {parts[5]} · {post_name(ep, k)}",
+                          posts_pick(ctx, ep, k, f"{k}:{parts[4]}", int(parts[5]))))
     elif act == "tx":
         await say(ctx, bg(ctx, f"Textes {post_name(ep, k)}", posts_make(ctx, ep, [k], reset=True)))
     elif act == "b":
@@ -4569,6 +4614,95 @@ async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = No
     warn = await run(M.shots, ep, st, [k], None, set(sids), want)
     await run(M.render, ep, st, [k])
     await show_changed(ctx, ep, k, sids, "nouvelle photo", warn)
+
+
+CHOICE_PART = {"q": "Marius (haut)", "a": "guest (bas)", "face": "la photo", "band": "bandeau", "bg": "fond flou",
+               "hands": "la photo"}
+
+
+async def choices_picker(ctx, ep, k: str):
+    """« 🎞️ Sélection »: which photo of the post the selection is for (a one-photo story goes straight to it)."""
+    st = _posts.PostState(ep)
+    kind = st.items[k]["kind"]
+    vid = ep.video_id
+    if kind in _posts.CAROUSELS:
+        n = len(st.items[k].get("files") or [])
+        if kind == "moment":
+            btns = [B(f"{i} {'↑' if p == 'h' else '↓'}", callback_data=f"pst:ss:{vid}:{k}:{i}:{p}")
+                    for i in range(1, n + 1) for p in ("h", "b")]
+        else:
+            btns = [B(str(i), callback_data=f"pst:ss:{vid}:{k}:{i}") for i in range(1, n + 1)]
+        await say(ctx, "Sélection de photos pour quelle slide ? (↑ = photo du haut, ↓ = du bas)",
+                  reply_markup=K([btns[j:j + 4] for j in range(0, len(btns), 4)]))
+        return
+    pids = [x.split(":", 1)[1] for x in post_sids(st, k, None, None) if not x.endswith(":prev")]
+    if len(pids) == 1:
+        await say(ctx, bg(ctx, f"Sélection de photos · {post_name(ep, k)}", posts_choices(ctx, ep, k, [], sid=f"{k}:{pids[0]}")))
+        return
+    if not pids:
+        await say(ctx, "Pas de photo de cet épisode sur ce post.")
+        return
+    await say(ctx, "Sélection pour quelle photo ?", reply_markup=K([[
+        B(CHOICE_PART.get(p, p), callback_data=f"pst:sp:{vid}:{k}:{p}") for p in pids]]))
+
+
+async def posts_choices(ctx, ep, k: str, slides: list[int], part: str | None = None, who: str | None = None,
+                        want: str = "", sid: str | None = None):
+    """8-10 candidate photos for ONE slide (moments all over the episode, same kind of shot, smiles first), sent as a
+    numbered album with one button per number; nothing changes until Loïc picks one (`posts_pick`)."""
+    from telegram import InputMediaPhoto as P
+    st = _posts.PostState(ep)
+    it = st.items.get(k) or {}
+    if not it.get("files"):
+        await say(ctx, "Ce post n'est pas encore fait.")
+        return
+    kind = it["kind"]
+    sids = [sid] if sid else [x for x in post_sids(st, k, slides, part) if not x.endswith(":prev")]
+    if len(sids) != 1:
+        if kind == "moment" and slides and len(slides) == 1:
+            s = slides[0]
+            await say(ctx, f"Slide {s} : la photo du haut ou du bas ?", reply_markup=K([[
+                B("↑ haut", callback_data=f"pst:ss:{ep.video_id}:{k}:{s}:h"),
+                B("↓ bas", callback_data=f"pst:ss:{ep.video_id}:{k}:{s}:b")]]))
+        else:
+            await choices_picker(ctx, ep, k)
+        return
+    sid = sids[0]
+    pid = sid.split(":", 1)[1]
+    out = await run(maker().choices, ep, st, sid, who, 10, want or "")
+    if not out:
+        await say(ctx, "Je n'ai trouvé aucune photo de ce type dans l'épisode.")
+        return
+    nt = len((st.data.get("content", {}).get(k) or {}).get("items") or []) or 6
+    if kind in _posts.CAROUSELS:
+        slide = _posts.sid_slide(kind, pid, nt)
+        where = f"slide {slide}" + ((" (haut)" if int(pid[1:]) % 2 == 0 else " (bas)") if kind == "moment" else "")
+    else:
+        slide, where = 1, CHOICE_PART.get(pid, pid)
+    media = [P(Path(s["label"]).read_bytes(), caption=f"{s['n']} · {_posts.tc(s['t'])}" + (" · sourire" if s.get("smile") else ""))
+             for s in out[:10]]
+    await tg(ctx.bot.send_media_group, cfg.chat_id, media)
+    btns = [B(str(s["n"]), callback_data=f"pst:pk:{ep.video_id}:{k}:{pid}:{s['n']}") for s in out]
+    smiles = sum(1 for s in out if s.get("smile"))
+    who_txt = {"guest": "le guest", "marius": "Marius", "both": "les deux", "wide": "plan large"}.get(out[0]["who"], out[0]["who"])
+    await say(ctx, f"🎞️ {esc(post_name(ep, k))} · {esc(where)} : {len(out)} photos ({esc(who_txt)}), de tout l'épisode"
+                   + (f", {smiles} avec le sourire" if smiles else "") + ". Laquelle je pose ? (ou écris « la 4 »)",
+              reply_markup=K([btns[j:j + 5] for j in range(0, len(btns), 5)]))
+    MEMORY.add("assistant", f"[sélection de {len(out)} photos envoyée : {post_name(ep, k)} {where} ; « la 4 » → "
+                            f"post_photo_pick key={k} slide={slide}" + (f" part={'haut' if int(pid[1:]) % 2 == 0 else 'bas'}"
+                                                                         if kind == "moment" else "") + " choice=4]")
+
+
+async def posts_pick(ctx, ep, k: str, sid: str, num: int):
+    """Photo n° num of the selection on its slide; texts and the other slides untouched; the changed slide sent again."""
+    st = _posts.PostState(ep)
+    try:
+        maker().use_choice(st, sid, num)
+    except ValueError as e:
+        await say(ctx, f"⚠️ {esc(e)}")
+        return
+    await run(maker().render, ep, st, [k])
+    await show_changed(ctx, ep, k, [sid], f"photo n° {num} posée sur la")
 
 
 async def posts_zoom(ctx, ep, k: str, slides: list[int] | None = None, part: str | None = None,
@@ -5431,7 +5565,7 @@ topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
     post_confirm on_unlock_button post_ask_date post_set_date
     atlas_done tt_photo_draft posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
-    show_changed posts_ig_test posts_show""")
+    choices_picker posts_choices posts_pick show_changed posts_ig_test posts_show""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for

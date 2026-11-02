@@ -233,6 +233,11 @@ Return ONLY JSON, after your searches: {{"fixes": [{{"from": "words exactly as i
 "source": "context" or a URL}}]}}"""
 
 
+SMILES = """These are numbered close-ups of the same person's face, taken from a podcast video, for an Instagram photo.
+"smile" = the numbers where the person smiles or laughs naturally (warm, genuine expression), eyes open (not a blink,
+not mid-word with a twisted mouth). "best" = up to 5 numbers, the most flattering and lively expressions, best first.{want}
+Return ONLY JSON: {{"smile": [numbers], "best": [numbers]}}"""
+
 MOUTH_OPEN = """These are numbered close-ups of the same person's face, taken from a video.
 List ONLY the numbers where the mouth is OPEN: lips apart, talking, teeth or inside of the mouth visible (a wide smile
 showing teeth counts as open). A closed mouth or lips together (even smiling) is not open.

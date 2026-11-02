@@ -411,6 +411,127 @@ class Maker:
         if hist:
             hist[:] = [h for h in hist if h.get("t") is None or abs(h["t"] - t) > posts.REJECT_GAP]
 
+    # ------------------------------------------------------------ photo selection (Loïc 02.11)
+    def choices(self, ep, st: posts.PostState, sid: str, who: str | None = None, n: int = 10,
+                want: str = "") -> list[dict]:
+        """8-10 candidate photos for one slide, from all over the episode (one per stretch of the episode), same kind
+        of shot (guest / marius / both / wide) as the slide, smiling faces first (Haiku on a face sheet), grabbed in 4K,
+        numbered by time. Kept in st.data["choices"][sid] until Loïc picks one (`use_choice`)."""
+        from . import render
+        k, pid = sid.split(":", 1)
+        kind = st.items[k]["kind"]
+        shots = st.data.setdefault("shots", {})
+        cur = shots.get(sid) or {}
+        nd = next((x for x in posts.needs(kind, (st.data.get("content") or {}).get(k) or {}) if x["id"] == pid), {})
+        if who not in ("guest", "marius", "both", "wide", "noface"):
+            who = cur.get("who") or nd.get("who") or "guest"
+        if who == "prev":
+            raise RuntimeError("la photo du guest précédent vient de son épisode : pas de sélection pour celle-là")
+        fr = self._scan(ep)
+        if not fr:
+            raise RuntimeError("pas d'images de l'épisode")
+        times = {t for i, (t, _) in enumerate(fr) if i % 5 in (0, 2)}      # every ~4-6 s over the whole episode
+        cands = self._classify(ep, fr, times)
+        used = [s["t"] for x, s in shots.items() if x != sid and s.get("t") is not None]
+        avoid = list((st.data.get("rejected") or {}).get(sid) or []) + ([cur["t"]] if cur.get("t") is not None else [])
+        pool = [c for c in cands if c["kind"] == who and all(abs(c["t"] - u) >= 3 for u in used)
+                and all(abs(c["t"] - r) > posts.REJECT_GAP for r in avoid)]
+        if not pool:
+            raise RuntimeError(f"pas de plan « {who} » disponible dans l'épisode")
+        dur = max(t for t, _ in fr) + 1
+        bins = 2 * n                                       # the best frame of each stretch: moments all over the episode
+        pre = []
+        for b in range(bins):
+            lo, hi = dur * b / bins, dur * (b + 1) / bins
+            inb = [c for c in pool if lo <= c["t"] < hi]
+            if inb:
+                pre.append(max(inb, key=posts.score))
+        best, smile = [], set()
+        if who in ("guest", "marius"):                     # (a wide shot is too small on the sheet to read a smile)
+            try:
+                sheet = render.mouth_sheet([Path(c["file"]) for c in pre], pre, ep.file("posts_smiles.jpg"), cols=10)
+                r = self.pipe.llm.smiles(sheet, want)
+                best = [pre[i - 1]["t"] for i in r["best"] if 1 <= i <= len(pre)]
+                smile = {pre[i - 1]["t"] for i in r["smile"] if 1 <= i <= len(pre)}
+            except Exception:  # noqa: BLE001
+                log.exception("smiles")
+        order = sorted(pre, key=lambda c: (best.index(c["t"]) if c["t"] in best else 99, c["t"] not in smile,
+                                           -posts.score(c)))
+        cdir = ep.dir / "posts" / "choices"
+        cdir.mkdir(parents=True, exist_ok=True)
+        keep = {s.get("file") for s in shots.values()} | {h.get("file") for hs in (st.data.get("history") or {}).values()
+                                                          for h in hs}
+        for old in cdir.glob(f"{sid.replace(':', '_')}_*.jpg"):    # the previous selection for this slide
+            if str(old) not in keep:
+                old.unlink(missing_ok=True)
+        out, url = [], None
+        for c in order:
+            if len(out) >= n:
+                break
+            f = cdir / f"{sid.replace(':', '_')}_{int(c['t'])}.jpg"
+            try:
+                url = url or frames.full_res_url(ep.video_id, self.cfg.ytdlp_cookies)
+                frames.grab(url, c["t"], f)
+            except Exception:  # noqa: BLE001
+                frames.grab(str(ep.file("scan.mp4")), c["t"], f)
+            shot = {"file": str(f), "t": c["t"], "size": list(Image.open(f).size), "who": who,
+                    "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+            try:
+                self.refine(shot)
+                if not self.right_person(shot):
+                    f.unlink(missing_ok=True)
+                    continue
+            except Exception:  # noqa: BLE001
+                log.exception("choice refine")
+            shot["smile"] = c["t"] in smile
+            out.append(shot)
+        out.sort(key=lambda s: s["t"])
+        for i, s in enumerate(out, 1):
+            s["n"] = i
+            s["label"] = str(self._label(Path(s["file"]), cdir / f"{Path(s['file']).stem}_n.jpg", i, s["t"]))
+        st.data.setdefault("choices", {})[sid] = {"ts": posts.stamp(), "who": who, "items": out}
+        st.data["choices_last"] = sid
+        st.save()
+        return out
+
+    @staticmethod
+    def _label(src: Path, out: Path, num: int, t: float) -> Path:
+        """Telegram copy of a candidate: 1600 px, big number + timecode in the top left corner."""
+        from PIL import ImageDraw, ImageFont
+        im = Image.open(src).convert("RGB")
+        im.thumbnail((1600, 1600))
+        d = ImageDraw.Draw(im)
+        try:
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 64)
+        except OSError:
+            font = ImageFont.load_default()
+        txt = f"{num} · {posts.tc(t)}"
+        x0, y0, x1, y1 = d.textbbox((30, 22), txt, font=font)
+        d.rectangle([0, 0, x1 + 30, y1 + 22], fill=(0, 0, 0))
+        d.text((30, 22), txt, fill=(254, 203, 122), font=font)
+        im.save(out, quality=88)
+        return out
+
+    @staticmethod
+    def use_choice(st: posts.PostState, sid: str, num: int) -> dict:
+        """Loïc's pick from the selection goes on the slide (the photo before kept for « reprends la photo d'avant »)."""
+        items = ((st.data.get("choices") or {}).get(sid) or {}).get("items") or []
+        c = next((x for x in items if x.get("n") == num), None)
+        if not c:
+            raise ValueError(f"pas de photo n° {num} dans la sélection (1 à {len(items)})" if items else
+                             "pas de sélection pour cette slide : demande d'abord une sélection")
+        if not Path(c["file"]).exists():
+            raise ValueError(f"la photo n° {num} n'est plus là : refais une sélection")
+        shots = st.data.setdefault("shots", {})
+        old = shots.get(sid)
+        if old and old.get("t") != c["t"]:
+            hist = st.data.setdefault("history", {}).setdefault(sid, [])
+            hist.append({k_: v for k_, v in old.items() if k_ != "ext"})
+            del hist[:-6]
+        shots[sid] = {x: c[x] for x in ("file", "t", "size", "who", "face") if x in c}
+        st.save()
+        return shots[sid]
+
     def right_person(self, shot: dict) -> bool:
         """On the 4K photo, the face is Marius when Marius is wanted, and not Marius when the guest is wanted."""
         import cv2

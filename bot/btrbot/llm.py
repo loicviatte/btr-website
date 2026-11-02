@@ -152,6 +152,17 @@ class LLM:
         ], max_tokens=400, tier="vision_cheap", task="reels (bouche)")
         return [int(i) for i in r.get("open", []) if str(i).isdigit()]
 
+    def smiles(self, sheet: Path, want: str = "") -> dict:
+        """{"smile": [numbers], "best": [numbers]} on a numbered face sheet (photo selection for carousels / stories)."""
+        img = base64.standard_b64encode(sheet.read_bytes()).decode()
+        extra = f"\nThe producer also asked (French): « {want} ». Put the faces that match it first in \"best\"." if want else ""
+        r = self._json([
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
+            {"type": "text", "text": prompts.SMILES.format(want=extra)},
+        ], max_tokens=300, tier="vision_cheap", task="posts (sourires)")
+        num = lambda xs: [int(i) for i in xs or [] if str(i).isdigit()]  # noqa: E731
+        return {"smile": num(r.get("smile")), "best": num(r.get("best"))}
+
     def reel_cover_pick(self, sheet: Path, ref: Path | None = None, want: str = "") -> list[int]:
         content = []
         if ref and Path(ref).exists():

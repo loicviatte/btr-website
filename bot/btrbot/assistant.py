@@ -194,6 +194,25 @@ TOOLS = [
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
                       "at": {"type": "string"}, "who": {"type": "string"},
                       "size": {"type": "string", "enum": ["smaller", "bigger"]}}, "required": ["key"]}},
+    {"name": "post_photo_choices", "description": "Envoyer une SÉLECTION de 8 à 10 photos candidates numérotées (album, "
+                                                 "avec timecode) pour UNE slide, prises à des moments variés de tout "
+                                                 "l'épisode, même cadrage / même personne que la slide, sourires d'abord : "
+                                                 "« envoie-moi une sélection de photos pour la slide 1 du topics », « des "
+                                                 "choix pour la story poll ». Ne change rien : Loïc choisit ensuite "
+                                                 "(post_photo_pick). key / slides (une seule) / part comme post_photos ; "
+                                                 "who = guest | marius | both | wide pour un autre type de plan ; want = "
+                                                 "ce qu'il cherche en plus (« elle rit », « regard caméra ») ; link = lien "
+                                                 "YouTube si un autre épisode.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
+                      "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
+                      "who": {"type": "string"}, "want": {"type": "string"}, "link": {"type": "string"}},
+                      "required": ["key"]}},
+    {"name": "post_photo_pick", "description": "Poser la photo n° choice de la DERNIÈRE sélection envoyée (post_photo_choices) "
+                                              "sur sa slide : « la 4 », « slide 1 : la 4 », « prends la 7 ». Ne touche ni "
+                                              "aux textes ni aux autres slides, renvoie l'aperçu. slide / part = seulement "
+                                              "si plusieurs sélections sont en cours pour ce post.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "choice": {"type": "integer"},
+                      "slide": {"type": "integer"}, "part": {"type": "string"}}, "required": ["key", "choice"]}},
     {"name": "post_zoom", "description": "GARDER la même photo et changer seulement son cadrage : « moins zoomé », "
                                         "« dézoome », « recule », « plus serré », ou « reprends la photo d'avant ». "
                                         "factor < 1 = plus large (0.8 = un peu, 0.65 = beaucoup ; le décor autour est "
