@@ -339,3 +339,21 @@ can be found in the audio. The moment ends where the sentence ends, never mid-th
   {{"start": "mm:ss", "end": "mm:ss", "first_words": "exact first words", "last_words": "exact last words",
     "line": "the whole sentence, verbatim", "why": "1 short French line: why it teases"}}
 ]}}"""
+
+
+COMMUNITY = """Episode: "{video_title}" with {guest_name}.{part_line} The transcript (with [mm:ss] markers) is above.
+Write ONE YouTube Community post for the Break The Routine channel (DanceSport podcast hosted by Marius Iepure), in English.
+Rules: no link and no URL anywhere, no hashtags, at most one emoji, no em dash. A quote must be the guest's exact words
+(cut, never add or change words) and goes in “ ”. Never spoil the answer of a story; make people curious.
+{what}
+{feedback}Return ONLY JSON: {{"text": "...", "question": "..." or null, "options": ["..."] or null, "correct": null or the
+0-based index of the right option (quiz), "quote": "the exact quote used, or null"}}"""
+
+COMMUNITY_WHAT = {
+    "tomorrow": "Kind: « New episode tomorrow », posted the day before the episode comes out. 1 to 3 short sentences "
+                "(max 300 characters): who the guest is for dancers, one teasing line or short exact quote, then that "
+                "the episode is out tomorrow on the channel. No question/options.",
+    "poll": "Kind: poll about this week's episode. A question DanceSport people want to vote on (a stance or debate from "
+            "the episode, or a quiz on what the guest answered), max 100 characters; 2 to 4 short options (max 60 "
+            "characters each); for a quiz, set correct. text = 1 short sentence introducing it (max 150 characters).",
+}

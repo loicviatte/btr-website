@@ -212,6 +212,17 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   again. Files, Drive, ClickUp untouched. Boot seed ep_msgs_seed_1102 = ids already stored (thumb_msgs, reel msg /
   cover_msg, post msg). /fils_neufs (confirm rst:y) = delete + recreate the three topics empty once (backlog). Test:
   `tests/ep_clean.py`.
+- YouTube Community (Loïc 02.11; no API to publish): `btrbot/community.py` (task kinds tomorrow / poll / atlas from
+  « YouTube Community · New episode tomorrow / Poll / World Atlas · Ep … », state community.json, `no_link`, `atlas_entry`
+  from btr-media pipeline/countries.json by guest, `block` = text to paste, `check` = YouTube poll limits) + bot
+  `community_tick` (60 s: a validated post due → `cm_send(final)` text <pre> + images + « ✅ Posté sur YouTube »,
+  >12 h late = warned, never sent; every 10 min: tasks « to generate » due within 3 days → `cm_make` once their episode
+  is known (`cm_episode`, release_at ±3 days) and what they need exists: tomorrow = the episode's thumb_youtube.jpg,
+  atlas = the guest's country + Instagram caption in btr-media (link in bio → « on the channel »), poll / tomorrow =
+  Opus (prompts.COMMUNITY, quotes checked with said_exactly + limits, one retry)). Draft → ClickUp « generated »,
+  preview in Stories (yc:ok / yc:redo); validated (`cm_validate`) → MARK block with the text, YouTube field Scheduled,
+  status scheduled, thumbnail attached; yc:done → YouTube Posted + close_if_posted. « À valider » shows them (`cm_dash`,
+  /oti2_yt_poll resends); tool youtube_community (kind, feedback, show). Test: `tests/community_flow.py`.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model

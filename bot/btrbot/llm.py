@@ -116,6 +116,13 @@ class LLM:
             6000, task="reels (moments)")
         return r.get("candidates", [])
 
+    def community_post(self, kind: str, video_title: str, guest_name: str, part: str | None, transcript: str,
+                       feedback: str = "") -> dict:
+        return self._json(self._with_transcript(transcript, prompts.COMMUNITY.format(
+            video_title=video_title, guest_name=guest_name or "the guest", part_line=f" This is Part {part}." if part else "",
+            what=prompts.COMMUNITY_WHAT[kind], feedback=f"Producer's feedback to apply: {feedback}\n" if feedback else "")),
+            2000, task="YouTube Community")
+
     def teaser_moments(self, video_title: str, guest_name: str, part: str | None, transcript: str, n: int = 5,
                        feedback: str = "") -> list[dict]:
         r = self._json(self._with_transcript(transcript, prompts.TEASER_MOMENTS.format(

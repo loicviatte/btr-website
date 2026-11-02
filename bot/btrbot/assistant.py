@@ -277,6 +277,16 @@ TOOLS = [
                                          "n'est pas le dernier travaillé (lien ou id YouTube).",
      "input_schema": {"type": "object", "properties": {"keys": {"type": "array", "items": {"type": "string"}},
                                                        "link": {"type": "string"}}}},
+    {"name": "youtube_community", "description": "Posts YOUTUBE COMMUNITY de l'épisode (tâches ClickUp « YouTube Community "
+                                                 "· New episode tomorrow / Poll / World Atlas »). Le bot les écrit tout seul 3 "
+                                                 "jours avant ; ici : kind = tomorrow | poll | atlas ; feedback = retour de Loïc "
+                                                 "sur le texte (« plus court », « autre question ») → réécrit et renvoyé pour "
+                                                 "validation ; show=true = renvoyer tel quel. guest / link si ce n'est pas "
+                                                 "l'épisode en cours.",
+     "input_schema": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["tomorrow", "poll", "atlas"]},
+                                                       "feedback": {"type": "string"}, "guest": {"type": "string"},
+                                                       "link": {"type": "string"}, "show": {"type": "boolean"}},
+                      "required": ["kind"]}},
     {"name": "teaser_make", "description": "TEASER de l'épisode : 4-5 moments clés courts montés ensemble comme des reels "
                                            "(sous-titres v3) + écran de fin « Episode out now », envoyé dans le fil Reels. "
                                            "feedback = le retour de Loïc sur le teaser déjà monté (« remplace le moment 3 », "

@@ -1341,6 +1341,30 @@ def tool_handlers(ctx, images: list) -> dict:
                        f"Le reste : {_json.dumps(extra, ensure_ascii=False, default=str)}")
         return "\n\n".join(out)[:8000]
 
+    async def youtube_community(kind=None, feedback=None, guest=None, link=None, show=False):
+        if kind not in _cm.KINDS:
+            return "kind = tomorrow, poll ou atlas"
+        ep = text_ep(guest, link)
+        st = _cm.State(ep)
+        it = st.items.get(kind) or {}
+        if show:
+            asyncio.create_task(within_stories(cm_send(ctx, ep, kind)))
+            return "je renvoie le post tel quel dans Stories & carrousels"
+        t = None
+        try:
+            if it.get("task"):
+                t = await run(maker().clickup().task, it["task"])
+            else:
+                t = next((x for x in ep_calendar(ep) if _cm.task_kind(x.get("name", "")) == kind), None)
+        except Exception:  # noqa: BLE001
+            t = None
+        if not t:
+            return "pas de tâche « YouTube Community » de ce type pour cet épisode dans ClickUp"
+        if it.get("status") == "posted":
+            return "déjà publié : je n'y touche pas"
+        return bg(ctx, "YouTube Community", within_stories(cm_make(ctx, ep, t, kind, feedback or ""))) + \
+            " (dans Stories & carrousels)"
+
     async def teaser_t(link=None, feedback=None, same=False):
         vid = None
         if link:
@@ -1390,6 +1414,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "transcript_search": transcript_search, "post_texts": post_texts,
             "teaser_make": teaser_t, "teaser_show": teaser_show_t,
+            "youtube_community": youtube_community,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
@@ -3127,6 +3152,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
+    if q.data.startswith("yc:"):
+        await on_cm_button(ctx, q, q.data)
+        return
     if q.data.startswith("rst:"):
         await on_fresh_button(ctx, q, q.data)
         return
@@ -3614,6 +3642,7 @@ def start_polling(app):
         app.job_queue.run_repeating(stats_tick, interval=2 * 3600, first=600, name="stats")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
+        app.job_queue.run_repeating(community_tick, interval=60, first=70, name="community")
         app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")
 
 
@@ -5166,6 +5195,7 @@ def dash_content(ep):
     if any(k in _posts.LABEL for k in tasks):            # the calendar decides: the trial's extra stories are hidden
         pst = {k: v for k, v in pst.items() if v.get("kind", k) in tasks}
     text, waiting = _dash.render(ep, code, title, rs, titles, pst, tasks)
+    text = cm_dash(ep, code, text)
     if ep_all_posted(ep):
         n = len((reg.data.get("ep_msgs") or {}).get(ep.video_id) or [])
         text += (f"\n\n🧹 <b>Tout est publié.</b> Vider les fils Reels, Miniatures et Stories de cet épisode "
@@ -5433,6 +5463,13 @@ async def on_dash_cmd(update: Update, ctx):
         await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
     except Exception:  # noqa: BLE001
         pass
+    if what.startswith("yt_") and what[3:] in _cm.KINDS:
+        tok = topics.TOPIC.set("stories")
+        try:
+            await cm_send(ctx, reg.episode(vid), what[3:])
+        finally:
+            topics.TOPIC.reset(tok)
+        return
     if what == "nettoyer":
         ep = reg.episode(vid)
         if not ep_all_posted(ep):
@@ -5762,7 +5799,301 @@ async def set_origin(update: Update, ctx):
         plan_forget(c.id, update.message.message_id, incoming=True)
 
 
+# ---------------------------------------------------------------- YouTube Community (Loïc 02.11)
+from . import community as _cm  # noqa: E402
+CM_LOCK = asyncio.Lock()
+CM_SCAN = {"at": 0.0}
+
+
+def cm_episode(t: dict):
+    """The bot's episode a « YouTube Community · … · Ep Nov 3 » task belongs to (closest release date)."""
+    from datetime import datetime as _dt
+    from .pipeline import part_number
+    best = None
+    for d in (cfg.data_dir / "episodes").iterdir():
+        if not d.is_dir():
+            continue
+        ep = reg.episode(d.name)
+        guest = ep.get("guest_name") or ""
+        if not guest:
+            continue
+        try:
+            ep_date = _dt.fromisoformat(ep.get("release_at") or "")
+        except ValueError:
+            ep_date = None
+        part = part_number(ep)
+        if _share.matches_episode(t, _share.episode_label(guest, part), guest, part, ep_date):
+            sd = _share.slot_date(t.get("name", "") + " " + str(_share._field(t, _share.F_EPISODE) or ""),
+                                  ep_date.year) if ep_date else None
+            gap = abs((sd - ep_date).days) if sd and ep_date else 50
+            if best is None or gap < best[0]:
+                best = (gap, ep)
+    return best[1] if best else None
+
+
+def cm_fetch(path: str):
+    import requests
+    r = requests.get(_pm.MEDIA + path, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
+def cm_name(ep, kind: str) -> str:
+    return f"YouTube Community · {_cm.KINDS[kind]} · {ep.get('guest_name') or ep.video_id}"
+
+
+async def cm_make(ctx, ep, t: dict, kind: str, feedback: str = "") -> bool:
+    """Writes the post (draft) and sends it for validation. False = not possible yet (no thumbnail, no Atlas…)."""
+    import time as _t
+    from . import srt as _srt
+    from .pipeline import part_number, said_exactly
+    st = _cm.State(ep)
+    it = st.items.setdefault(kind, {})
+    due = _posts.due(t)
+    it.update(task=t["id"], name=t.get("name", ""), at=due.isoformat() if due else None, kind=kind)
+    warn = []
+    if kind == "atlas":
+        countries, caps = await run(cm_fetch, "pipeline/countries.json"), await run(cm_fetch, "pipeline/captions.json")
+        e = _cm.atlas_entry(countries, ep.get("guest_name") or "")
+        cap = (caps.get(e[1].get("name")) if e else None) or {}
+        cap = cap.get("instagram") if isinstance(cap, dict) else cap
+        if not e or not cap:
+            st.save()
+            return False
+        slug, c = e
+        it.update(text=_cm.no_link(cap), question=None, options=None, correct=None, country=c.get("display") or c.get("name"),
+                  images=_cm.atlas_images(_pm.MEDIA, slug, c.get("no", 0)))
+    else:
+        img = ep.file("render/thumb_youtube.jpg")
+        if kind == "tomorrow" and not img.exists():
+            st.save()
+            return False
+        cues = await run(pipe.cues, ep)
+        if not cues:
+            st.save()
+            return False
+        said = _srt.plain_text(cues)
+        timed = _srt.timed_text(cues, 20)
+        fb = feedback
+        res = {}
+        for _ in range(2):
+            res = await run(pipe.llm.community_post, kind, pipe.reel_title(ep), ep.get("guest_name", ""), part_number(ep),
+                            timed, fb)
+            quotes = re.findall(r"“([^”]+)”", res.get("text") or "") + ([res["quote"]] if res.get("quote") else [])
+            bad = [q for q in quotes if not said_exactly(q, said)]
+            cand = {"text": _cm.no_link(res.get("text") or ""), "question": res.get("question") if kind == "poll" else None,
+                    "options": [str(o)[:_cm.MAX_OPT] for o in res.get("options") or []] if kind == "poll" else None,
+                    "correct": res.get("correct") if isinstance(res.get("correct"), int) else None}
+            errs = _cm.check(cand) + [f"citation pas exacte : « {q} »" for q in bad]
+            if not errs:
+                break
+            fb = (feedback + "\n" if feedback else "") + "Fix these problems: " + "; ".join(errs)
+        it.update(cand, images=[str(img)] if kind == "tomorrow" else [])
+        warn = errs
+    it.update(status="draft", made=_t.time(), warn=warn, sent=False)
+    st.save()
+    try:                                                    # ClickUp: written, waiting for Loïc
+        cu = maker().clickup()
+        await run(cu.update, t["id"], status="generated")
+    except Exception:  # noqa: BLE001
+        log.exception("community generated")
+    await cm_send(ctx, ep, kind)
+    return True
+
+
+async def cm_send(ctx, ep, kind: str, final: bool = False):
+    """The post as Loïc will copy it: images, then the text (tap to copy) with its buttons."""
+    from telegram import InputMediaPhoto as P
+    st = _cm.State(ep)
+    it = st.items.get(kind)
+    if not it:
+        await say(ctx, "Pas encore de post YouTube Community de ce type pour cet épisode.")
+        return
+    imgs = [Path(x).read_bytes() if not str(x).startswith("http") else x for x in it.get("images") or []
+            if str(x).startswith("http") or Path(x).exists()]
+    try:
+        if len(imgs) == 1:
+            await tg(ctx.bot.send_photo, cfg.chat_id, imgs[0])
+        elif imgs:
+            await tg(ctx.bot.send_media_group, cfg.chat_id, [P(x) for x in imgs[:10]])
+    except Exception:  # noqa: BLE001
+        log.exception("community images")
+    when = _posts.label_time(datetime.fromisoformat(it["at"])) if it.get("at") else "pas de date"
+    head = ("▶️ <b>À poster maintenant sur YouTube Community</b>" if final else "▶️ <b>YouTube Community</b>")
+    extra = f" · {esc(it['country'])}" if it.get("country") else ""
+    warn = ("\n⚠️ " + "\n⚠️ ".join(esc(w) for w in it.get("warn") or [])) if it.get("warn") and not final else ""
+    tip = ("\n<i>Sondage : dans YouTube, « Créer un post » → Sondage, puis colle la question et les réponses.</i>"
+           if it.get("question") else "")
+    text = (f"{head} · {esc(_cm.KINDS[kind])} · {esc(ep.get('guest_name') or ep.video_id)}{extra} · {esc(when)}\n"
+            f"<pre>{esc(_cm.block(it))}</pre>{tip}{warn}")
+    vid = ep.video_id
+    if final:
+        kb = K([[B("✅ Posté sur YouTube", callback_data=f"yc:done:{vid}:{kind}")]])
+    elif it.get("status") == "draft":
+        kb = K([[B("✅ Valider", callback_data=f"yc:ok:{vid}:{kind}"), B("✍️ Autre texte", callback_data=f"yc:redo:{vid}:{kind}")]])
+    else:
+        kb = None
+    m = await say(ctx, text, reply_markup=kb)
+    it["msg"] = [m.chat_id, m.message_id]
+    st.save()
+
+
+async def cm_validate(ctx, ep, kind: str):
+    st = _cm.State(ep)
+    it = st.items.get(kind) or {}
+    if not it.get("task"):
+        return
+    cu = maker().clickup()
+    t = await run(cu.task, it["task"])
+    keep = (t.get("markdown_description") or t.get("text_content") or "").split(_share.MARK)[0].rstrip()
+    links = [x for x in it.get("images") or [] if str(x).startswith("http")]
+    body = [keep, "", _share.MARK, "", f"**YouTube Community validé le {_share.today_str()}** · épisode "
+            f"https://youtu.be/{ep.video_id}", "", "**Texte à coller** (pas de lien) :", "", _cm.block(it)]
+    if links:
+        body += ["", "Images (dans l'ordre) :"] + [f"- {u}" for u in links]
+    due = _posts.due(t)
+    await run(cu.update, it["task"], markdown_content="\n".join(body), status="scheduled" if due else "ready")
+    try:
+        await run(cu.set_field, it["task"], _share.F_YT, _share.YT_SCHEDULED)
+        for x in it.get("images") or []:
+            if not str(x).startswith("http") and Path(x).exists():
+                await run(cu.attach, it["task"], Path(x))
+    except Exception:  # noqa: BLE001
+        log.exception("community clickup")
+    it.update(status="ok", at=due.isoformat() if due else it.get("at"))
+    st.save()
+    await say(ctx, f"📅 {esc(cm_name(ep, kind))} validé · {esc(_posts.label_time(due) if due else 'sans date')} : je "
+                   "t'envoie le texte et l'image à ce moment-là.")
+
+
+async def on_cm_button(ctx, q, data: str):
+    _, act, vid, kind = data.split(":", 3)
+    ep = reg.episode(vid)
+    try:
+        await q.edit_message_reply_markup(None)
+    except Exception:  # noqa: BLE001
+        pass
+    if act == "ok":
+        await cm_validate(ctx, ep, kind)
+    elif act == "redo":
+        t = {"id": (_cm.State(ep).items.get(kind) or {}).get("task")}
+        try:
+            t = await run(maker().clickup().task, t["id"])
+        except Exception:  # noqa: BLE001
+            pass
+        bg(ctx, "YouTube Community", cm_make(ctx, ep, t, kind, "Write a clearly different version."))
+    elif act == "done":
+        st = _cm.State(ep)
+        it = st.items.get(kind) or {}
+        it["status"] = "posted"
+        st.save()
+        try:
+            cu = maker().clickup()
+            await run(cu.set_field, it["task"], _share.F_YT, _share.YT_POSTED)
+            await run(_share.close_if_posted, cu, it["task"])
+        except Exception:  # noqa: BLE001
+            log.exception("community posted")
+        await say(ctx, f"🟢 {esc(cm_name(ep, kind))} : noté publié (ClickUp YouTube → Posted).")
+
+
+async def community_tick(ctx):
+    """Every minute: a due post is sent to Loïc ready to copy. Every 10 min: the calendar's « YouTube Community » tasks
+    of the next 3 days still « to generate » are written (as soon as what they need exists)."""
+    import time as _t
+    from datetime import timedelta
+    if CM_LOCK.locked():
+        return
+    async with CM_LOCK:
+        now = _posts.now()
+        for f in (cfg.data_dir / "episodes").glob("*/community.json"):
+            ep = reg.episode(f.parent.name)
+            st = _cm.State(ep)
+            for kind, it in st.items.items():
+                if it.get("status") != "ok" or it.get("sent") or not it.get("at"):
+                    continue
+                at = datetime.fromisoformat(it["at"])
+                if at > now:
+                    continue
+                it["sent"] = True
+                st.save()
+                if now - at > timedelta(hours=12):
+                    await say(ctx, f"⚠️ {esc(cm_name(ep, kind))} : prévu {esc(_posts.label_time(at))}, plus de 12 h de "
+                                   "retard. Je ne te le renvoie pas ; dis-moi s'il faut le replanifier.")
+                    continue
+                await cm_send(ctx, ep, kind, final=True)
+        if _t.time() - CM_SCAN["at"] < 600:
+            return
+        CM_SCAN["at"] = _t.time()
+        tasks = CU_CACHE["tasks"]
+        if not tasks or _t.time() - CU_CACHE["at"] > 600:
+            try:
+                tasks = await run(maker().clickup().tasks)
+                CU_CACHE.update(tasks=tasks, at=_t.time())
+            except Exception:  # noqa: BLE001
+                return
+        for t in tasks:
+            kind = _cm.task_kind(t.get("name", ""))
+            due = _posts.due(t)
+            if not kind or not due or ((t.get("status") or {}).get("status") or "").lower() != "to generate":
+                continue
+            if not (now - timedelta(hours=2) <= due <= now + timedelta(days=3)):
+                continue
+            ep = cm_episode(t)
+            if ep is None:
+                continue
+            it = _cm.State(ep).items.get(kind) or {}
+            if it.get("task") == t["id"] and it.get("status") in ("draft", "ok", "posted"):
+                continue
+            try:
+                await cm_make(ctx, ep, t, kind)
+            except Exception:  # noqa: BLE001
+                log.exception("community make %s", t.get("name"))
+
+
+def cm_dash(ep, code: str, text: str) -> str:
+    """« À valider »: the episode's YouTube Community posts (calendar tasks + the bot's drafts)."""
+    tasks = [t for t in ep_calendar(ep) if _cm.task_kind(t.get("name", ""))]
+    if not tasks:
+        return text
+    st = _cm.State(ep)
+    lines, waiting = ["\n<b>▶️ YouTube Community</b>"], 0
+    for t in sorted(tasks, key=lambda t: int(t.get("due_date") or 9e15)):
+        kind = _cm.task_kind(t["name"])
+        it = st.items.get(kind) or {}
+        tstat = ((t.get("status") or {}).get("status") or "").lower()
+        due = _posts.due(t)
+        name = _cm.KINDS[kind]
+        if tstat in _dash.DONE or it.get("status") == "posted":
+            lines.append(f"🟢 {esc(name)} — publié")
+        elif it.get("status") == "ok":
+            lines.append(f"📅 {esc(name)} — {esc(_posts.label_time(due))}  /{code}_yt_{kind}")
+        elif it.get("status") == "draft":
+            lines.append(f"⏳ {esc(name)} — à valider  /{code}_yt_{kind}")
+            waiting += 1
+        else:
+            need = {"tomorrow": "dès que les miniatures sont faites", "atlas": "dès que le carrousel Atlas existe"}.get(kind, "")
+            lines.append(f"⬜ {esc(name)} — {esc(_posts.label_time(due))}, écrit 3 jours avant" + (f" ({need})" if need else ""))
+    block = "\n".join(lines)
+    foot = "\n\n<i>Tape une commande"
+    text = text.replace(foot, "\n" + block + foot, 1) if foot in text else text + "\n" + block
+    if waiting:
+        m = re.search(r"(\d+) à valider", text)
+        if m:
+            text = text.replace(m.group(0), f"{int(m.group(1)) + waiting} à valider", 1)
+        else:
+            text = text.replace(f"{_dash.OK} Rien à valider", f"{_dash.WAIT} <b>{waiting} à valider</b>", 1)
+    return text
+
+
 # ---------------------------------------------------------------- teaser (Loïc 01.11)
+async def within_stories(coro):
+    tok = topics.TOPIC.set("stories")
+    try:
+        return await coro
+    finally:
+        topics.TOPIC.reset(tok)
+
+
 def teaser_state(ep) -> dict:
     import json as _json
     try:
@@ -5857,6 +6188,7 @@ async def on_teaser_button(ctx, q, data: str):
         bg(ctx, "Teaser", teaser_make(ctx, ep, "Pick completely different moments from the previous ones."))
 
 
+topics.assign(globals(), "stories", """cm_make cm_send cm_validate on_cm_button community_tick""")
 topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
