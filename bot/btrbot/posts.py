@@ -84,6 +84,9 @@ B_OK = ("poll", "rapid", "chain", "atlas")   # kinds with a « b » version (lin
 # Stories whose text block Loïc can move up / down (« monte le texte »): item["text_dy"] px, + = down; the sticker zone
 # above / below it follows. Range = the block stays under the Instagram top bar and above the footer.
 TEXT_MOVE = {"chain": (-480, 260), "poll": (-680, 180), "rapid": (-690, 150), "ask": (-640, 160), "atlas": (-200, 500)}
+# Bottom line only (the .foot paragraph, « Her plan B… », Loïc 02.11: part="bas"): item["foot_dy"] px, + = down; the
+# sticker zone's bottom follows it (except Atlas, whose zone is above the text).
+FOOT_MOVE = (-400, 100)
 
 
 def text_dy(kind: str, dy) -> int:
@@ -91,13 +94,20 @@ def text_dy(kind: str, dy) -> int:
     return int(max(lo, min(hi, round(float(dy or 0)))))
 
 
-def zone(kind: str, b: bool = False, dy: int = 0) -> tuple[int, int] | None:
+def foot_dy(kind: str, dy) -> int:
+    lo, hi = FOOT_MOVE if kind in TEXT_MOVE else (0, 0)
+    return int(max(lo, min(hi, round(float(dy or 0)))))
+
+
+def zone(kind: str, b: bool = False, dy: int = 0, fdy: int = 0) -> tuple[int, int] | None:
     """Free zone for the sticker, after the text block moved by dy (text above the zone: its top follows; Atlas: the
-    text is above too)."""
+    text is above too) and the bottom line by fdy (its bottom follows)."""
     z = ZONES.get("link" if b else kind)
-    if not z or b or not dy:
+    if not z or b or not (dy or fdy):
         return z
-    return (max(260, min(z[1] - 120, z[0] + dy)), z[1])
+    top = max(260, min(z[1] - 120, z[0] + dy))
+    bot = z[1] if kind == "atlas" else min(1700, z[1] + fdy)
+    return (top, max(top + 120, bot))
 # 3-episode story cycle (stories workflow) when the calendar has no task for an episode
 CYCLE = [["teaser", "poll", "chain", "quote"], ["teaser", "rapid", "qa", "ask"], ["teaser", "poll", "link", "ask"]]
 
@@ -328,7 +338,7 @@ def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], 
 
 
 # ---------------------------------------------------------------- previews
-def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path, dy: int = 0) -> Path:
+def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path, dy: int = 0, fdy: int = 0) -> Path:
     """Clean story on the left, the Instagram zones in dotted lines on the right (stories workflow)."""
     im = Image.open(clean_jpg).convert("RGB")
     W, H = im.size
@@ -343,7 +353,7 @@ def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path, dy: int = 0) -
         d.text((24, y0 + 8), label, fill=color)
     dash(0, 250, (255, 255, 255, 255), "barre + profil")
     dash(1700, H, (255, 255, 255, 255), "champ message")
-    zn = zone(kind, b, dy)
+    zn = zone(kind, b, dy, fdy)
     if zn:
         dash(zn[0], zn[1], (254, 203, 122, 255), "sticker " + ("lien" if b else STICKER.get(kind, "")))
     sheet = Image.new("RGB", (W * 2 + 40, H), (8, 4, 3))
@@ -468,7 +478,7 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
         return out
     base = {"name": f"story-{kind}{'-b' if b else ''}", "H": 1920, "kind": kind, "b": b, "first": first,
             "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio.",
-            "dy": text_dy(kind, ctx.get("dy"))}
+            "dy": text_dy(kind, ctx.get("dy")), "fdy": foot_dy(kind, ctx.get("fdy"))}
     full = (0, 0, 1080, 1920)
     if kind == "teaser":
         base.update(p1=ph("bg", full, css="filter:blur(14px) brightness(.8);transform:scale(1.06)"),

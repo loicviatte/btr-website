@@ -235,9 +235,13 @@ TOOLS = [
                                              "de her plan », « descends le texte », « plus de place pour le sticker ». "
                                              "dy en px sur la story 1080×1920 : < 0 = monte (-60 = un peu, -120 = net, "
                                              "-200 = beaucoup), > 0 = descend ; ça s'ajoute au réglage actuel. "
-                                             "reset=true = remettre à la place d'origine. key = chain, poll, rapid, ask, atlas.",
+                                             "reset=true = remettre à la place d'origine. key = chain, poll, rapid, ask, atlas. "
+                                             "part=bas = SEULEMENT la ligne du bas (« Her plan B… link in bio. », le pied "
+                                             "sous le sticker), le bloc au-dessus ne bouge pas ; part=haut (ou rien) = "
+                                             "le bloc du haut seul. Les deux peuvent se combiner en deux appels.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "dy": {"type": "number"},
-                      "reset": {"type": "boolean"}}, "required": ["key"]}},
+                      "reset": {"type": "boolean"}, "part": {"type": "string", "enum": ["haut", "bas"]}},
+                      "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
                                             "quoi que ce soit (seuls les carrousels / stories se changent ici).",
