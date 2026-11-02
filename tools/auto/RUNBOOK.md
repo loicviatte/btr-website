@@ -71,6 +71,9 @@ Format: see the docstring at the top of `tools/auto/btr_auto.py`. Rules:
   exact title and artist on the web (auto captions mangle names: "Mekka" was "Manteca", "Gamella" was Kamo Mphela) and
   write them as Spotify shows them. If the guest names no clear song, leave `playlist` out and say so to Loïc.
   `apply` puts it in the episode sidebar and in the home page list; Loïc adds it to the Spotify playlist himself.
+- `polaroid` (if a signed polaroid of this guest is in `tools/hof/`): crop it first with
+  `python3 tools/auto/polaroid_crop.py <in.jpg> /tmp/p.jpg` (straightens it, no background shows), then
+  `python3 tools/auto/btr_auto.py thumb /tmp/p.jpg` gives the asset id.
 - `atlasCards`: leave it out. The site shows a "coming soon" card for the new country; the Instagram carousel task
   (step 6) does the researched, fact-checked slides, and `atlas-sync` copies them to the site.
 - Part 2: `"addPartTo": "<existing slug>"`, `parts` = only the new part; give `chain`/`atlas` found in this part.
