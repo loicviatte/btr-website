@@ -9,7 +9,7 @@ export default function Code() {
   useEffect(() => { setQ(new URLSearchParams(window.location.search)); }, []);
   const code = q?.get('code') || '';
   const err = q?.get('error_description') || q?.get('error') || '';
-  const text = code ? `tiktok ${code}` : '';
+  const text = code ? `${q?.get('state') === 'stats' ? 'tiktokstats' : 'tiktok'} ${code}` : '';
   return (
     <main style={{ background: '#080403', color: '#fff', minHeight: '100vh', boxSizing: 'border-box', padding: '72px 20px', display: 'flex', justifyContent: 'center' }}>
       <div style={{ maxWidth: 620, width: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>

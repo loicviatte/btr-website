@@ -3239,6 +3239,31 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
     sec = share.Secrets(cfg.data_dir)
     code = share.code_from(text)
     token = re.search(r"\bpk_[A-Za-z0-9_]{20,}\b", text)
+    m_ts = re.match(r"^\s*tiktokstats\s+(\S{16,})(?:\s+([A-Za-z0-9_-]{16,}))?\s*$", text, re.I)
+    if m_ts:                                               # TikTok SANDBOX app, stats only (btrbot/stats.py)
+        for m in MEMORY.everything():
+            if re.match(r"^\s*tiktokstats\s+\S", m.get("content", ""), re.I):
+                m["content"] = "tiktokstats [effacé]"
+        reg.save()
+        try:
+            await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        from . import stats as _st
+        if m_ts.group(2):
+            sec.set(tts_client_key=m_ts.group(1), tts_client_secret=m_ts.group(2))
+            await say(ctx, f"✅ Sandbox TikTok (stats) enregistrée, message effacé. <a href=\"{esc(_st.tt_auth_url(m_ts.group(1)))}\">"
+                           "Ouvre ce lien</a>, accepte avec le compte BTR, puis colle ici le message « tiktokstats … » "
+                           "affiché par la page BTR.")
+        else:
+            try:
+                u = await run(_st.tt_connect, sec, m_ts.group(1))
+                await say(ctx, f"✅ Stats TikTok connectées : {int(u.get('follower_count') or 0)} abonnés, "
+                               f"{int(u.get('video_count') or 0)} vidéos. Le site les reprend à la prochaine relève (toutes les 2 h).")
+                APP["app"].job_queue.run_once(stats_tick, 5)
+            except Exception as e:  # noqa: BLE001
+                await say(ctx, f"⚠️ Connexion des stats TikTok refusée : {esc(str(e)[-250:])}")
+        return True
     m_tt = re.match(r"^\s*tiktok\s+(\S{16,})(?:\s+([A-Za-z0-9_-]{16,}))?\s*$", text, re.I)
     if m_tt:
         for m in MEMORY.everything():
@@ -3443,6 +3468,20 @@ async def on_photo(update: Update, ctx):
         await guarded(ctx, "Miniatures", make_thumbs(ctx, ep))
 
 
+async def stats_tick(ctx):
+    """Every 2 h: Instagram + TikTok audience figures → data/stats/social.json in the repo (the site's About page)."""
+    from . import share as _sh, stats as _st
+    try:
+        data = await run(_st.collect, _sh.Secrets(cfg.data_dir))
+        if data.get("instagram") or data.get("tiktok"):
+            await run(_st.push, cfg.github_token, data)
+        for k in ("instagram_error", "tiktok_error"):
+            if data.get(k):
+                log.warning("stats %s: %s", k, data[k])
+    except Exception as e:  # noqa: BLE001
+        log.warning("stats_tick failed: %s", e)
+
+
 def start_polling(app):
     if not app.job_queue.get_jobs_by_name("poll"):
         app.job_queue.run_repeating(poll_youtube, interval=cfg.poll_minutes * 60, first=15, name="poll")
@@ -3453,6 +3492,8 @@ def start_polling(app):
     if not app.job_queue.get_jobs_by_name("dash"):
         app.job_queue.run_repeating(dash_tick, interval=30, first=20, name="dash")
         app.job_queue.run_repeating(del_tick, interval=10, first=15, name="del")
+    if not app.job_queue.get_jobs_by_name("stats"):
+        app.job_queue.run_repeating(stats_tick, interval=2 * 3600, first=600, name="stats")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
         app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")

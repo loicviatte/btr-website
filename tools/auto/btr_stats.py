@@ -2,6 +2,7 @@
 
   data/stats/base.json       figures of 26 Oct 2026 + Spotify (by hand, no API) + frozen Instagram views of old reels
   data/stats/youtube.json    written by the GitHub Action once a day (subscribers, channel views, views per full episode)
+  data/stats/social.json    written by the Telegram bot every 2 h from the official Instagram / TikTok APIs (preferred)
   data/stats/metricool.json  written by the scheduled Claude task once a day from Metricool (Instagram followers and
                              reel views, TikTok followers and video views), raw rows as Metricool returns them
 
@@ -31,7 +32,7 @@ def num(x):
 
 
 def figures():
-    base, yt, mc = load('base.json'), load('youtube.json'), load('metricool.json')
+    base, yt, mc, so = load('base.json'), load('youtube.json'), load('metricool.json'), load('social.json')
     dates = [base.get('asOf', '')]
 
     # Instagram: followers + (frozen views of reels older than Metricool's window + current views of newer reels)
@@ -45,6 +46,16 @@ def figures():
             ig['views'] = views
             dates.append(mc.get('date', ''))
 
+    # Instagram from the official API (the Telegram bot, data/stats/social.json): every reel's lifetime views
+    soi = so.get('instagram') or {}
+    if num(soi.get('followers')) > 0:
+        ig['followers'] = num(soi['followers'])
+        dates.append(so.get('date', ''))
+    if soi.get('reels'):
+        v = sum(num(r[-1]) for r in soi['reels'])
+        if v >= ig['views'] * 0.95:
+            ig['views'] = v
+
     # TikTok: Metricool when it returns real numbers
     tk = dict(base['tiktok'])
     if num(mc.get('tiktokFollowers')) > 0:
@@ -52,6 +63,14 @@ def figures():
     tv = sum(num(r[-1]) for r in mc.get('tiktokVideos') or [])
     if tv >= base['tiktok']['views'] * 0.95:
         tk['views'] = tv
+
+    sot = so.get('tiktok') or {}       # official API (bot, sandbox app): wins over Metricool
+    if num(sot.get('followers')) > 0:
+        tk['followers'] = num(sot['followers'])
+    if sot.get('videos'):
+        v = sum(num(r[-1]) for r in sot['videos'])
+        if v >= tk['views'] * 0.95:
+            tk['views'] = v
 
     # YouTube: from the GitHub Action (YouTube Data API)
     y = dict(base['youtube'])

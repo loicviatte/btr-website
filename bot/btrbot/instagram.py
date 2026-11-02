@@ -14,7 +14,7 @@ import requests
 from .share import NotConnected, Secrets
 
 GRAPH = "https://graph.facebook.com/v23.0"
-SCOPES = "instagram_basic,instagram_content_publish,pages_read_engagement"
+SCOPES = "instagram_basic,instagram_content_publish,pages_read_engagement,instagram_manage_insights"
 
 
 def _check(r: requests.Response) -> dict:
