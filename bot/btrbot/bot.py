@@ -1124,35 +1124,33 @@ def tool_handlers(ctx, images: list) -> dict:
             vid = m.group(1) if m else None
         ep = await posts_episode(vid)
         keys = [k for k in (only or []) if k in _posts.LABEL] or None
-        return bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}", posts_make(ctx, ep, keys))
+        out = []
+        for k in [k for k in keys or [] if post_guard(ep, k)]:        # validated / published: Loïc confirms first
+            out.append(await post_confirm(ctx, ep, k, "make", {}))
+            keys.remove(k)
+        if keys is None or keys:
+            out.append(bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}", posts_make(ctx, ep, keys)))
+        return " ; ".join(out)
+
+    async def post_change(key, op, a):
+        """Run the change now, or ask « Tu veux vraiment le modifier ? » when the post is scheduled / published."""
+        ep = posts_ep_of(key)
+        if post_guard(ep, key):
+            return await post_confirm(ctx, ep, key, op, a)
+        return bg(ctx, *post_op(ctx, ep, key, op, a))
 
     async def post_feedback(key, feedback="", photos=False):
-        key = str(key).lower().strip()
-        ep = posts_ep_of(key)
-        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
-            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
-        return bg(ctx, f"{post_name(ep, key)} (retour)", posts_make(ctx, ep, [key], feedback=feedback or "",
-                                                                   photos=bool(photos), reset=bool(feedback)))
+        return await post_change(str(key).lower().strip(), "feedback", {"feedback": feedback or "", "photos": bool(photos)})
 
     async def post_photos(key, slides=None, part=None, at=None, who=None, size=None):
-        key = str(key).lower().strip()
-        ep = posts_ep_of(key)
-        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
-            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
-        sl = [int(x) for x in slides or []]
-        if not sl and not part and not size and not at and not who:
-            return bg(ctx, f"Photos {post_name(ep, key)}", posts_make(ctx, ep, [key], photos=True))
-        return bg(ctx, f"Photos {post_name(ep, key)}", posts_photos(ctx, ep, key, sl or [0], part, at, who, size))
+        return await post_change(str(key).lower().strip(), "photos", {"slides": [int(x) for x in slides or []], "part": part,
+                                                                     "at": at, "who": who, "size": size})
 
     async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
-        key = str(key).lower().strip()
-        ep = posts_ep_of(key)
-        if _dash.post_locked(_posts.PostState(ep).items.get(key) or {}):
-            return f"{post_name(ep, key)} est déjà publié : verrouillé, plus de modification possible (dis-le à Loïc)"
-        f = float(factor) if factor else None
-        move = (float(shift_x or 0), float(shift_y or 0)) if (shift_x or shift_y) else None
-        return bg(ctx, f"Cadrage {post_name(ep, key)}", posts_zoom(ctx, ep, key, [int(x) for x in slides or []] or None,
-                                                                 part, f, bool(previous), move))
+        move = [float(shift_x or 0), float(shift_y or 0)] if (shift_x or shift_y) else None
+        return await post_change(str(key).lower().strip(), "zoom", {
+            "slides": [int(x) for x in slides or []], "part": part, "factor": float(factor) if factor else None,
+            "previous": bool(previous), "move": move})
 
     async def planning_list(days=21, posted=False):
         await plan_refresh()
@@ -3042,6 +3040,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("pst:"):
         await on_post_button(ctx, q, q.data)
         return
+    if q.data.startswith("punl:"):
+        await on_unlock_button(ctx, q, q.data)
+        return
     if q.data.startswith("dash:"):
         await on_dash_button(ctx, q.data)
         return
@@ -3848,17 +3849,210 @@ async def post_validate(ctx, ep, k: str):
     if not it or not it.get("files"):
         await say(ctx, "Rien à valider pour ce post.")
         return
+    redo = "reopened" in it
+    if redo:                                  # changed after it was scheduled / posted: never back on a date already gone
+        t0 = await run(maker()._task, it)
+        d0 = _posts.due(t0) if t0 else None
+        if not d0 or d0 <= _posts.now() + timedelta(minutes=30):
+            it["need_date"] = True            # posts_tick leaves it alone until a new date is set
+            st.save()
     try:
         it = await run(maker().file, ep, st, k)
     except _pm.share.NotConnected as e:
         await say(ctx, f"⚠️ {esc(e)} : /connect d'abord.")
         return
+    if redo:
+        it.pop("reopened", None)
+        if it.get("need_date"):
+            it["at"] = it["tt_at"] = None
+            st.save()
+            await post_ask_date(ctx, ep, k)
+            return
+        st.save()
     at = _posts.due(await run(maker()._task, it)) if it.get("task") else None
     how = ("Instagram : je le publie moi-même" if it["kind"] in _posts.CAROUSELS + _posts.AUTO_STORIES
            else "je t'envoie l'image + le sticker à poser")
     tt = " · TikTok : brouillon dans ta boîte TikTok (tu ajoutes la musique et publies)" if it["kind"] in _posts.CAROUSELS else ""
     await say(ctx, f"✅ {esc(post_name(ep, k))} rangé (Drive + ClickUp « ready »). {_posts.label_time(at)} (Londres) : "
                    f"{how}{tt}." + ("" if it.get("task") else " ⚠️ Pas de tâche ClickUp : pas de date, je ne publie rien."))
+
+
+# ---------------------------------------------------------------- a validated / published post changed again (Loïc 02.11)
+def post_guard(ep, k: str) -> str | None:
+    """« posted » / « ok » (validated, maybe scheduled): a change on this post needs Loïc's « Oui » first."""
+    it = _posts.PostState(ep).items.get(k) or {}
+    if not it:
+        return None
+    if _dash.post_locked(it) or ((ep_tasks(ep).get(k) or {}).get("status") or "").lower() == "posted":
+        return "posted"
+    return "ok" if it.get("status") == "ok" else None
+
+
+def post_op(ctx, ep, k: str, op: str, a: dict):
+    """The change Loïc asked for → (label, coroutine), the same whether it runs now or after his « Oui »."""
+    name = post_name(ep, k)
+    if op == "photos":
+        sl = [int(x) for x in a.get("slides") or []]
+        if not sl and not any(a.get(x) for x in ("part", "at", "who", "size")):
+            return f"Photos {name}", posts_make(ctx, ep, [k], photos=True)
+        return f"Photos {name}", posts_photos(ctx, ep, k, sl or [0], a.get("part"), a.get("at"), a.get("who"), a.get("size"))
+    if op == "zoom":
+        mv = a.get("move")
+        return f"Cadrage {name}", posts_zoom(ctx, ep, k, a.get("slides") or None, a.get("part"), a.get("factor"),
+                                             bool(a.get("previous")), tuple(mv) if mv else None)
+    if op == "feedback":
+        fb = a.get("feedback") or ""
+        return f"{name} (retour)", posts_make(ctx, ep, [k], feedback=fb, photos=bool(a.get("photos")), reset=bool(fb))
+    if op == "b":
+        st = _posts.PostState(ep)
+        st.items[k]["b"] = not st.items[k].get("b")
+        st.save()
+        return f"Version {'b' if st.items[k]['b'] else 'sticker'} {name}", posts_make(ctx, ep, [k])
+    return f"Textes {name}", posts_make(ctx, ep, [k], reset=True)            # « texts » / « make »: made again
+
+
+async def post_confirm(ctx, ep, k: str, op: str, a: dict) -> str:
+    """« Ce post est programmé le … / déjà publié sur Instagram (lien). Tu veux vraiment le modifier ? » Oui / Non;
+    the change asked for waits in reg.data["post_unlock"] with its exact parameters."""
+    import secrets as _sec
+    import time as _t
+    state = post_guard(ep, k)
+    it = _posts.PostState(ep).items.get(k) or {}
+    pend = reg.data.setdefault("post_unlock", {})
+    for old in [x for x, v in pend.items() if _t.time() - v.get("ts", 0) > 7 * 86400]:
+        pend.pop(old)
+    tok = _sec.token_hex(4)
+    pend[tok] = {"vid": ep.video_id, "key": k, "op": op, "args": a, "ts": _t.time()}
+    reg.save()
+    name = post_name(ep, k)
+    if state == "posted":
+        lk = (it.get("ig") or {}).get("link")
+        where = "déjà publié sur Instagram" + (f" ({lk})" if lk else "")
+        note = ("\nJe ne supprime pas le post en ligne : supprime-le toi-même sur Instagram. Une fois revalidé, "
+                "je le republie à la nouvelle date.")
+    else:
+        at = await post_when(it)
+        where = f"programmé le {_posts.label_time(at)}" if at else "déjà validé"
+        note = "\nSi tu dis oui, sa programmation est annulée et il repasse en aperçu à valider."
+    await say(ctx, f"⚠️ {esc(name)} est {esc(where)}. Tu veux vraiment le modifier ?{note}",
+              reply_markup=K([[B("Oui", callback_data=f"punl:y:{tok}"), B("Non", callback_data=f"punl:n:{tok}")]]))
+    MEMORY.add("assistant", f"[{name} est {where} : confirmation Oui / Non demandée avant la modification]")
+    return (f"{name} est {where} : je demande confirmation à Loïc (boutons Oui / Non envoyés dans le fil). "
+            "Ne refais rien : la modif part toute seule s'il répond Oui.")
+
+
+async def post_reopen(ep, k: str) -> None:
+    """Back to « preview to validate »: published / scheduled state removed locally (Instagram container and TikTok
+    draft forgotten, old link kept in ig_old), ClickUp task → « generated », Instagram / TikTok fields → To do."""
+    from . import share
+    st = _posts.PostState(ep)
+    it = st.items[k]
+    ig = it.pop("ig", None) or {}
+    if ig.get("link"):
+        it["ig_old"] = list(dict.fromkeys((it.get("ig_old") or []) + [ig["link"]]))
+    for x in ("tt", "late_warned", "need_date", "tt_at"):
+        it.pop(x, None)
+    it["reopened"] = it.pop("at", None)
+    it["status"] = "draft"
+    st.save()
+    tid = it.get("task")
+    if not tid:
+        return
+    cu = maker().clickup()
+    t = await run(cu.task, tid)
+    await run(lambda: cu.update(tid, status="generated"))
+    for f, todo in ((share.F_IG, share.IG_TODO), (share.F_TT, share.TT_TODO)):
+        if share.option_name(t, f).lower() in ("scheduled", "posted"):
+            try:
+                await run(cu.set_field, tid, f, todo)
+            except Exception:  # noqa: BLE001
+                log.exception("post reopen field")
+    for c in CU_CACHE["tasks"]:                          # « À valider » / the guard see it at once
+        if c.get("id") == tid:
+            c["status"] = {**(c.get("status") or {}), "status": "generated"}
+
+
+async def on_unlock_button(ctx, q, d: str):
+    _, ans, rest = d.split(":", 2)
+    try:
+        await q.edit_message_reply_markup(None)
+    except Exception:  # noqa: BLE001
+        pass
+    if ans == "d":                                       # punl:d:<vid>:<key>:<timestamp> = the date proposed
+        vid, k, ts = rest.split(":")
+        await post_set_date(ctx, reg.episode(vid), k, datetime.fromtimestamp(int(ts), _posts.TZ))
+        return
+    p = reg.data.setdefault("post_unlock", {}).pop(rest, None)
+    reg.save()
+    if not p:
+        await say(ctx, "Déjà traité.")
+        return
+    ep = reg.episode(p["vid"])
+    k = p["key"]
+    if ans != "y":
+        await say(ctx, f"OK, je n'y touche pas : {esc(post_name(ep, k))} garde son statut et sa date.")
+        return
+    was = post_guard(ep, k)
+    await post_reopen(ep, k)
+    label, coro = post_op(ctx, ep, k, p["op"], p.get("args") or {})
+    await say(ctx, f"🔓 {esc(post_name(ep, k))} repasse en aperçu à valider (programmation annulée, ClickUp « generated »)."
+              + (" Le post en ligne reste tant que tu ne le supprimes pas ; revalidé, il sera republié." if was == "posted" else "")
+              + "\n" + esc(bg(ctx, label, coro)))
+
+
+def post_next_slot(it: dict, base: datetime | None) -> datetime:
+    """Next free day from tomorrow (no other carousel, or no other story of that kind, that day in the calendar), at
+    the old time of day."""
+    now = _posts.now().astimezone(_posts.TZ)
+    b = (base or now.replace(hour=10, minute=0)).astimezone(_posts.TZ)
+    car = it["kind"] in _posts.CAROUSELS
+    busy = set()
+    for t in CU_CACHE["tasks"]:
+        kk, at = _posts.task_kind(t.get("name", "")), _posts.due(t)
+        if kk and at and t.get("id") != it.get("task") and ((kk in _posts.CAROUSELS) if car else kk == it["kind"]):
+            busy.add(at.astimezone(_posts.TZ).date())
+    day = now + timedelta(days=1)
+    while day.date() in busy and day - now < timedelta(days=30):
+        day += timedelta(days=1)
+    return day.replace(hour=b.hour, minute=b.minute, second=0, microsecond=0)
+
+
+async def post_ask_date(ctx, ep, k: str):
+    """Revalidated after a change, its old date is gone: a new one is asked (next free slot offered)."""
+    st = _posts.PostState(ep)
+    it = st.items[k]
+    try:
+        await plan_refresh()
+    except Exception:  # noqa: BLE001
+        pass
+    t = await run(maker()._task, it)
+    slot = post_next_slot(it, _posts.due(t) if t else None)
+    name = post_name(ep, k)
+    await say(ctx, f"✅ {esc(name)} revalidé (Drive + ClickUp). Son ancienne date est passée : quand le publier ?\n"
+                   f"Prochain créneau libre : {_posts.label_time(slot)} (Londres). Ou écris-moi la date (« 5.11 10h »).",
+              reply_markup=K([[B(f"📅 {_posts.label_time(slot)}",
+                                 callback_data=f"punl:d:{ep.video_id}:{k}:{int(slot.timestamp())}")]]))
+    MEMORY.add("assistant", f"[{name} revalidé sans date (ancienne date passée) : la date que Loïc donne → "
+                            f"planning_change task_id={it.get('task')} when=…]")
+
+
+async def post_set_date(ctx, ep, k: str, at: datetime):
+    st = _posts.PostState(ep)
+    it = st.items.get(k)
+    if not it:
+        await say(ctx, "Ce post n'existe plus.")
+        return
+    if at <= _posts.now():
+        await say(ctx, "Cette date est déjà passée : donne-m'en une autre (« 5.11 10h »).")
+        return
+    if it.get("task"):
+        out = await plan_change(ctx, it["task"], None, at.astimezone(_posts.TZ).strftime("%d.%m.%Y %H:%M"), make=False)
+    else:
+        it.update(at=at.isoformat())
+        it.pop("need_date", None)
+        st.save()
+        out = "fait"
+    await say(ctx, f"📅 {esc(post_name(ep, k))} : {esc(out)}.")
 
 
 async def on_post_button(ctx, q, d: str):
@@ -3878,9 +4072,17 @@ async def on_post_button(ctx, q, d: str):
     if not it:
         await say(ctx, "Ce post n'existe plus.")
         return
-    if act in ("ok", "ph", "tx", "b", "ps") and (_dash.post_locked(it) or
-                                                 ((ep_tasks(ep).get(k) or {}).get("status") or "").lower() == "posted"):
-        await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié : plus de modification possible.")
+    guard = post_guard(ep, k) if act in ("ok", "ph", "tx", "b", "ps") else None
+    if guard == "posted" and act == "ok":
+        await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié.")
+        return
+    if guard and act != "ok" and not (act == "ph" and it["kind"] in _posts.CAROUSELS):   # ph on a carousel = slide picker
+        if act == "ps":
+            slide = int(parts[4]) if len(parts) > 4 else 0
+            await post_confirm(ctx, ep, k, "photos", {"slides": [slide] if slide else [],
+                                                      "part": parts[5] if len(parts) > 5 else None})
+        else:
+            await post_confirm(ctx, ep, k, {"ph": "photos", "tx": "texts", "b": "b"}[act], {})
         return
     if act == "ok":
         await say(ctx, bg(ctx, f"Rangement {post_name(ep, k)}", post_validate(ctx, ep, k)))
@@ -3958,7 +4160,7 @@ async def posts_tick(ctx):
         for st in _posts.all_states(cfg.data_dir):
             ep = st.ep
             for k, it in st.items.items():
-                if it.get("status") != "ok" or not it.get("at"):
+                if it.get("status") != "ok" or not it.get("at") or it.get("need_date"):
                     continue
                 kind = it["kind"]
                 at = datetime.fromisoformat(it["at"])
@@ -4225,6 +4427,11 @@ async def posts_refresh(ctx):
                     log.exception("posts refresh: file %s", k)
                 continue
             at = _posts.due(t)
+            if it.get("need_date"):                       # changed after its date: waits for a date still to come
+                if not at or at <= _posts.now():
+                    continue
+                it.pop("need_date")
+                changed = True
             tt = _posts.tiktok_time(t, at) if at and it["kind"] in _posts.CAROUSELS else None
             if at and (at.isoformat() != it.get("at") or (tt.isoformat() if tt else None) != it.get("tt_at")):
                 it["at"] = at.isoformat()
@@ -4954,6 +5161,11 @@ async def plan_change(ctx, tid: str, new_kind: str | None = None, when: str | No
         it = st.items.get(kind)
         if it and it.get("status") == "ok" and at:
             it["at"] = at.isoformat()
+            if it["kind"] in _posts.CAROUSELS:
+                tt = _posts.tiktok_time(t, at)
+                it["tt_at"] = tt.isoformat() if tt else None
+            if at > _posts.now():
+                it.pop("need_date", None)                    # revalidated after a change: its new date
             st.save()
     return f"fait : {done}"
 
@@ -5203,6 +5415,7 @@ topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button pr
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
+    post_confirm on_unlock_button post_ask_date post_set_date
     atlas_done tt_photo_draft posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
     show_changed posts_ig_test posts_show""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts

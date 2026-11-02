@@ -188,6 +188,14 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Chain, whose content was already validated → task stayed « to generate »): `posts_file_linked` files it (Drive,
   description, images, « scheduled »); called by posts_make when there is nothing to make, and by the posts_refresh
   sweep for any validated item whose task still says « to generate » / « generated ».
+- Changing a validated / scheduled / published carousel or story (Loïc 02.11): no more « verrouillé ». post_photos /
+  post_zoom / post_feedback / posts_make([key]) and the preview buttons go through `post_guard`; if guarded,
+  `post_confirm` asks « programmé le … / déjà publié sur Instagram (lien). Tu veux vraiment le modifier ? » Oui / Non
+  (punl:y|n:<token>, the exact change kept in reg.data["post_unlock"], `post_op`). Oui = `post_reopen` (status draft,
+  ig / tt state dropped, old link in ig_old, ClickUp « generated », IG / TikTok fields Scheduled|Posted → To do), then
+  the change runs. Revalidated with its old date gone: need_date (posts_tick skips it, posts_refresh / plan_change clear
+  it with a future date), `post_ask_date` offers the next free day (punl:d:…) or a typed date (planning_change). The
+  bot never deletes the live Instagram post. Reels: still locked once published. Test: `tests/post_unlock.py`.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model
