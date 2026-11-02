@@ -3815,7 +3815,7 @@ async def post_validate(ctx, ep, k: str):
     at = _posts.due(await run(maker()._task, it)) if it.get("task") else None
     how = ("Instagram : je le publie moi-même" if it["kind"] in _posts.CAROUSELS + _posts.AUTO_STORIES
            else "je t'envoie l'image + le sticker à poser")
-    tt = " · TikTok : je t'envoie les images + la légende" if it["kind"] in _posts.CAROUSELS else ""
+    tt = " · TikTok : brouillon dans ta boîte TikTok (tu ajoutes la musique et publies)" if it["kind"] in _posts.CAROUSELS else ""
     await say(ctx, f"✅ {esc(post_name(ep, k))} rangé (Drive + ClickUp « ready »). {_posts.label_time(at)} (Londres) : "
                    f"{how}{tt}." + ("" if it.get("task") else " ⚠️ Pas de tâche ClickUp : pas de date, je ne publie rien."))
 
@@ -4000,14 +4000,55 @@ async def posts_tick(ctx):
                     await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur Instagram",
                                                                           callback_data=f"pst:igd:{ep.video_id}:{k}")]]))
                 tt_at = it.get("tt_at")
-                if kind in _posts.CAROUSELS and tt_at and now >= datetime.fromisoformat(tt_at) and not it.setdefault("tt", {}).get("sent"):
-                    it["tt"]["sent"] = True
+                tt = it.setdefault("tt", {})
+                if (kind in _posts.CAROUSELS and tt_at and now >= datetime.fromisoformat(tt_at) - TT_EARLY
+                        and not tt.get("sent") and not tt.get("done")):
+                    tt["sent"] = True
                     st.save()
-                    await send_files(ctx, it.get("files") or [], f"🎵 <b>À poster maintenant sur TikTok</b> (photos) : {esc(name)}"
-                                     f"\n<pre>{esc((it.get('captions') or {}).get('tiktok', ''))}</pre>")
-                    await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur TikTok",
-                                                                          callback_data=f"pst:ttd:{ep.video_id}:{k}")]]))
+                    srcs = [d["id"] for d in it.get("drive") or []]
+                    tt.update(await tt_photo_draft(ctx, name, srcs, it.get("files") or [],
+                                                   (it.get("captions") or {}).get("tiktok", ""),
+                                                   f"pst:ttd:{ep.video_id}:{k}"))
+                    st.save()
         await atlas_tick(ctx, connected, sec)
+
+
+from datetime import timedelta  # noqa: E402
+TT_EARLY = timedelta(minutes=10)    # the draft is in the TikTok inbox a little before its time
+
+
+async def tt_photo_draft(ctx, name: str, srcs: list, files: list, cap: str, done_cb: str, music: str = "") -> dict:
+    """Carousel → TikTok inbox as a draft (Loïc 02.11: he adds the music and posts it himself; never a direct post,
+    no ClickUp change): images = the validated Drive files (or btr-media) in slide order, pulled by TikTok through the
+    site (`tiktok.photo_url`). Telegram gets the TikTok caption to copy; the images too if the draft failed."""
+    from . import share, tiktok
+    pid, err = "", ""
+    try:
+        if not srcs:
+            raise RuntimeError("pas d'images rangées sur le Drive")
+        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
+        pid = await run(api.photo_draft, [tiktok.photo_url(s) for s in srcs], cap)
+        for _ in range(9):                                # TikTok downloads the images: ~1 min at most
+            await asyncio.sleep(10)
+            s = await run(api.status, pid)
+            if s.get("status") == "FAILED":
+                raise RuntimeError(s.get("fail_reason") or "FAILED")
+            if s.get("status") in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
+                break
+    except share.NotConnected:
+        err = "TikTok pas connecté (/connect)"
+    except Exception as e:  # noqa: BLE001
+        log.exception("tiktok photo draft")
+        err = str(e)[-200:]
+    mus = f"\n🎵 Musique : <b>{esc(music)}</b>" if music else ""
+    if err:
+        await send_files(ctx, files, f"⚠️ Brouillon TikTok impossible pour {esc(name)} (<code>{esc(err)}</code>). "
+                                     f"Les images sont ci-dessus : poste-les sur TikTok toi-même.{mus}\n<pre>{esc(cap)}</pre>")
+    else:
+        await say(ctx, f"📥 {esc(name)} est dans ta boîte TikTok en brouillon : ajoute la musique et publie.{mus}"
+                       f"\n<pre>{esc(cap)}</pre>")
+    await say(ctx, "Quand c'est publié :", reply_markup=K([[B("✅ Posté sur TikTok", callback_data=done_cb)]]))
+    return {"draft": pid, "draft_at": _posts.now().isoformat()} if not err else {"draft_error": err}
 
 
 ATLAS = {"at": 0.0, "tasks": []}
@@ -4038,7 +4079,7 @@ async def atlas_tick(ctx, connected: bool, sec):
             continue
         tt = _posts.tiktok_time(t, at)
         ig_due = at - now <= timedelta(minutes=20) and now - at <= timedelta(hours=12)
-        tt_due = tt is not None and now >= tt and now - tt <= timedelta(hours=12)
+        tt_due = tt is not None and now >= tt - TT_EARLY and now - tt <= timedelta(hours=12)
         if not ig_due and not tt_due:
             continue
         a = _pm.atlas_task(t)
@@ -4079,14 +4120,12 @@ async def atlas_tick(ctx, connected: bool, sec):
                                  f"\n<pre>{esc(caps.get('instagram', ''))}</pre>")
                 await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur Instagram",
                                                                       callback_data=f"pst:igd:atlas:{t['id']}")]]))
-        if tt_due and not s.get("tt_sent"):
+        if tt_due and not s.get("tt_sent") and not s.get("tt_done"):
             s["tt_sent"] = True
             reg.save()
-            await send_files(ctx, a["images"], f"🎵 <b>À poster maintenant sur TikTok</b> (photos) : {esc(name)}"
-                             + (f"\n🎵 Musique : {esc(a['music'])}" if a.get("music") else "")
-                             + f"\n<pre>{esc(caps.get('tiktok', ''))}</pre>")
-            await say(ctx, "Quand c'est fait :", reply_markup=K([[B("✅ Posté sur TikTok",
-                                                                  callback_data=f"pst:ttd:atlas:{t['id']}")]]))
+            s.update(await tt_photo_draft(ctx, name, list(a["images"]), a["images"], caps.get("tiktok", ""),
+                                          f"pst:ttd:atlas:{t['id']}", a.get("music") or ""))
+            reg.save()
 
 
 async def atlas_done(ctx, tid: str, act: str):
@@ -4123,11 +4162,19 @@ async def posts_refresh(ctx):
     for st in _posts.all_states(cfg.data_dir):
         changed = False
         for k, it in st.items.items():
-            if it.get("status") != "ok" or not it.get("task") or (it.get("ig") or {}).get("done"):
+            ig_done = (it.get("ig") or {}).get("done")
+            tt_open = it["kind"] in _posts.CAROUSELS and not (it.get("tt") or {}).get("sent")
+            if it.get("status") != "ok" or not it.get("task") or (ig_done and not tt_open):
                 continue
             try:
                 t = await run(cu.task, it["task"])
             except Exception:  # noqa: BLE001
+                continue
+            if ig_done:                                   # Instagram out: only the TikTok draft time still follows ClickUp
+                tt = _posts.tiktok_time(t, datetime.fromisoformat(it["at"])) if it.get("at") else None
+                if (tt.isoformat() if tt else None) != it.get("tt_at"):
+                    it["tt_at"] = tt.isoformat() if tt else None
+                    changed = True
                 continue
             if (t.get("status") or {}).get("status", "").lower() in ("to generate", "generated"):
                 try:                                      # validated content linked to its task afterwards (planning
@@ -4137,9 +4184,9 @@ async def posts_refresh(ctx):
                     log.exception("posts refresh: file %s", k)
                 continue
             at = _posts.due(t)
-            if at and at.isoformat() != it.get("at"):
+            tt = _posts.tiktok_time(t, at) if at and it["kind"] in _posts.CAROUSELS else None
+            if at and (at.isoformat() != it.get("at") or (tt.isoformat() if tt else None) != it.get("tt_at")):
                 it["at"] = at.isoformat()
-                tt = _posts.tiktok_time(t, at) if it["kind"] in _posts.CAROUSELS else None
                 it["tt_at"] = tt.isoformat() if tt else None
                 changed = True
         if changed:
@@ -4412,6 +4459,13 @@ async def posts_status(ctx) -> str:
             state = {"draft": "aperçu envoyé, à valider", "ok": "validé", "posted": "publié"}.get(it.get("status"), "pas fait")
             if ig.get("done"):
                 state = "publié sur Instagram"
+            tt = it.get("tt") or {}
+            if tt.get("done"):
+                state += ", publié sur TikTok"
+            elif tt.get("draft"):
+                state += ", TikTok : brouillon envoyé"
+            elif tt.get("draft_error"):
+                state += ", TikTok : brouillon refusé, images envoyées à Loïc"
             line = f"- {post_name(ep, k)} [{k}] : {state}"
             if it.get("status") in ("ok", "posted"):
                 at = await post_when(it)
@@ -5108,7 +5162,7 @@ topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button pr
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
-    atlas_done posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
+    atlas_done tt_photo_draft posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
     show_changed posts_ig_test posts_show""")
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback

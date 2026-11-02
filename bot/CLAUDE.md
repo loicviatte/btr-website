@@ -131,7 +131,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   gauche », same photo, uncovered set generated the same way); pairs (The Chain, Q/A) take the SMALLER face's size (`posts.pair_zoom`); text feedback keeps the photos whose moment didn't move: side-by-side stories match face size and eye line (`posts.pair_place`, the photo may move up to 30 % past its frame
   edge, `place(free_y=)`, so the heads are level even when the 16:9 photo exactly fills the frame). `posts_tick` (60 s): at the
   task's time, carousels + Question/answer + Quote stories by the Instagram API (container 20 min before, Drive direct
-  links), sticker stories / TikTok / no API = files + ready-to-copy text sent to Loïc with « ✅ Posté » buttons; >12 h
+  links), sticker stories / no API = files + ready-to-copy text sent to Loïc with « ✅ Posté » buttons; carousels
+  (episode + World Atlas) on TikTok (Loïc 02.11: he adds the music and posts himself) = `bot.tt_photo_draft` 10 min
+  before tt_at (ClickUp « HH:MM TikTok » line, else the Instagram time; TikTok field « Not planned » = none):
+  `TikTok.photo_draft` (MEDIA_UPLOAD photo, Drive images in slide order pulled through the verified site,
+  `tiktok.photo_url` → site route /api/tt-photo), caption to copy in Telegram, images only if it failed; it["tt"]["draft"],
+  never a direct post nor a ClickUp change (Loïc taps « ✅ Posté sur TikTok »); >12 h
   late = never posted, Loïc told once; `posts_refresh` (10 min) follows ClickUp dates. World Atlas catch-ups
   (`atlas_tick`, images + captions from btr-media): approved / ready = posted by the API at their time, then Loïc gets
   the music to add in the app (Modifier → Ajouter de la musique works after posting, tested 01.11); episode carousels

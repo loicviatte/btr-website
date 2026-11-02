@@ -23,6 +23,17 @@ REDIRECT = "https://www.breaktheroutinepodcast.com/tiktok/callback"
 SCOPES = "user.info.basic,video.publish,video.upload"
 PRIVACY_FR = {"PUBLIC_TO_EVERYONE": "Tout le monde", "MUTUAL_FOLLOW_FRIENDS": "Amis",
               "FOLLOWER_OF_CREATOR": "Abonnés", "SELF_ONLY": "Moi uniquement"}
+# TikTok only pulls photos from a domain verified for the app (breaktheroutinepodcast.com, public/tiktok….txt): the
+# site's route app/api/tt-photo streams the Drive file (?id=) or the btr-media image (?m=path) from there.
+PHOTO_PROXY = "https://www.breaktheroutinepodcast.com/api/tt-photo"
+MEDIA = "https://raw.githubusercontent.com/loicviatte/btr-media/main/"
+
+
+def photo_url(src: str) -> str:
+    """Drive file id or btr-media URL → the same image served by the verified domain."""
+    if src.startswith(MEDIA):
+        return f"{PHOTO_PROXY}?m={urllib.parse.quote(src[len(MEDIA):])}"
+    return f"{PHOTO_PROXY}?id={urllib.parse.quote(src)}"
 
 
 def _check(r: requests.Response) -> dict:
@@ -117,6 +128,17 @@ class TikTok:
             "source_info": {"source": "FILE_UPLOAD", "video_size": size, "chunk_size": chunk,
                             "total_chunk_count": count}}))["data"]
         self._upload(d["upload_url"], video, size, chunk, count)
+        return d["publish_id"]
+
+    def photo_draft(self, urls: list[str], caption: str) -> str:
+        """Photo carousel as a draft (post_mode MEDIA_UPLOAD, scope video.upload): TikTok pulls the images
+        (PULL_FROM_URL, only from the verified domain → `photo_url`) and they land in the account's inbox, where
+        Loïc adds the music and posts. Order of `urls` = order of the slides."""
+        title = (caption.strip().splitlines() or [""])[0]
+        d = _check(requests.post(f"{API}/post/publish/content/init/", headers=self._h(), timeout=60, json={
+            "post_info": {"title": title[:90], "description": caption[:4000]},
+            "source_info": {"source": "PULL_FROM_URL", "photo_cover_index": 0, "photo_images": urls[:35]},
+            "post_mode": "MEDIA_UPLOAD", "media_type": "PHOTO"}))["data"]
         return d["publish_id"]
 
     def post(self, video: Path, title: str, settings: dict, cover_ms: int = 0) -> str:

@@ -110,14 +110,16 @@ def due(task: dict | None) -> datetime | None:
 
 
 def tiktok_time(task: dict, ig_at: datetime | None) -> datetime | None:
-    """« Time: 10:00 Instagram · 12:00 TikTok » → that day at 12:00; else 2 h after Instagram (carousels only)."""
-    if not ig_at:
+    """« Time: 10:00 Instagram · 12:00 TikTok » → that day at 12:00; else the Instagram time (carousels only, Loïc
+    02.11). None when the task's TikTok field says « Not planned »."""
+    from .share import F_TT, option_name
+    if not ig_at or option_name(task, F_TT).lower().startswith("not"):
         return None
     m = re.search(r"(\d{1,2})[:h](\d{2})\s*TikTok", task.get("text_content") or task.get("markdown_description")
                   or task.get("description") or "", re.I)
     if m:
         return ig_at.replace(hour=int(m.group(1)), minute=int(m.group(2)))
-    return ig_at + timedelta(hours=2)
+    return ig_at
 
 
 def episode_items(tasks: list[dict], matches) -> dict:
