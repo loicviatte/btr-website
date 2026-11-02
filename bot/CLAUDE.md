@@ -196,6 +196,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   the change runs. Revalidated with its old date gone: need_date (posts_tick skips it, posts_refresh / plan_change clear
   it with a future date), `post_ask_date` offers the next free day (punl:d:…) or a typed date (planning_change). The
   bot never deletes the live Instagram post. Reels: still locked once published. Test: `tests/post_unlock.py`.
+- Refused photos (Loïc 02.11: « il m'envoie les mêmes en boucle »): a photo replaced by « Autres photos » / post_photos /
+  posts_make(photos) is refused for good: `Maker.reject` notes its time in st.data["rejected"][sid], deletes its files
+  (photo + generated set) and drops it from the « photo d'avant » history; `posts.pick(avoid=)` never offers a frame
+  within REJECT_GAP (8 s, same camera shot) of a refused one for that slide. A smaller / bigger face keeps the moment;
+  a moment Loïc names (at) wins over his old refusals; nothing left = a warning. Boot one-shot posts_rejected_1102
+  turns the existing histories into refusals. Test: `tests/posts_flow.py` (« refused photos »).
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model

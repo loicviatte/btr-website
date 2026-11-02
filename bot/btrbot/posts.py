@@ -524,10 +524,14 @@ def score(c: dict) -> float:
     return c.get("sharp", 0) * (0.6 + c.get("fh", 0)) - 40 * max(0.0, c.get("cy", 0.4) - 0.45)
 
 
-def pick(cands: list[dict], need: dict, used: list[float]) -> list[dict]:
+REJECT_GAP = 8.0          # s around a refused photo: the same camera shot, never offered again
+
+
+def pick(cands: list[dict], need: dict, used: list[float], avoid: list[float] | None = None) -> list[dict]:
     """Candidates for one shot, best first: in the window when the moment is known (the guest's own sentence for the
-    key moment), never a frame already used (3 s apart)."""
-    pool = [c for c in cands if c["kind"] == need["who"] and all(abs(c["t"] - u) >= 3 for u in used)]
+    key moment), never a frame already used (3 s apart), never near a photo Loïc refused (REJECT_GAP)."""
+    pool = [c for c in cands if c["kind"] == need["who"] and all(abs(c["t"] - u) >= 3 for u in used)
+            and all(abs(c["t"] - r) > REJECT_GAP for r in avoid or [])]
     fh = need.get("fh")
     if fh:                                    # a given face size (« plus petite », or matched to the other face)
         near_t = need.get("t")

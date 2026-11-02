@@ -3502,6 +3502,20 @@ def start_polling(app):
 
 async def on_boot(app):
     APP["app"] = app
+    if not reg.data.get("posts_rejected_1102"):            # photos already replaced = refused (Loïc 02.11)
+        reg.data["posts_rejected_1102"] = True
+        reg.save()
+        for st in _posts.all_states(cfg.data_dir):
+            try:
+                shots = st.data.get("shots") or {}
+                for sid, hist in (st.data.get("history") or {}).items():
+                    cur = (shots.get(sid) or {}).get("t")
+                    for h in list(hist):
+                        if h.get("t") is not None and (cur is None or abs(h["t"] - cur) > _posts.REJECT_GAP):
+                            _pm.Maker.reject(st, sid, h)
+                st.save()
+            except Exception:  # noqa: BLE001
+                log.exception("rejected migration")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()

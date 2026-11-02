@@ -314,15 +314,27 @@ class Maker:
                     nd["fh"] = pf["fh"]
         changing = {r["sid"] for r in reqs}
         used = [s["t"] for sid, s in shots.items() if s.get("t") is not None and sid not in changing]
-        for sid in changing:                                  # « autres photos »: never the same photo again
-            if sid in shots and shots[sid].get("t") is not None and (want.get(sid) or {}).get("t") is None:
-                used.append(shots[sid]["t"])
+        rejected = st.data.setdefault("rejected", {})         # Loïc 02.11: a photo turned down never comes back
+        for sid in changing:
+            old_shot = shots.get(sid) or {}
+            if old_shot.get("t") is None or old_shot.get("who") == "prev":
+                continue
+            if (want.get(sid) or {}).get("size"):            # same moment, smaller / bigger face: only this frame goes
+                used.append(old_shot["t"])
+            else:
+                self.reject(st, sid, old_shot)
         chosen = {}
         eyes_q = []
         for nd in reqs:
             if nd["who"] == "prev":
                 continue
-            ranked = posts.pick(cands, nd, used)
+            avoid = rejected.get(nd["sid"]) or []
+            wt = (want.get(nd["sid"]) or {}).get("t")
+            if wt is not None:                                # a moment Loïc names himself wins over his old refusals
+                avoid = [r for r in avoid if abs(r - wt) > posts.REJECT_GAP]
+            ranked = posts.pick(cands, nd, used, avoid)
+            if not ranked and avoid:
+                warn.append(f"{nd['key']}: plus d'autre photo de ce type, toutes les autres ont été refusées")
             if not ranked:
                 warn.append(f"{nd['key']}: pas de plan « {nd['who']} » trouvé")
                 continue
@@ -370,7 +382,7 @@ class Maker:
                         continue
                 except Exception:  # noqa: BLE001
                     log.exception("refine face")
-                if sid in shots:                              # kept so Loïc can go back to it (« reprends la photo d'avant »)
+                if sid in shots and shots[sid].get("t") not in (rejected.get(sid) or []):   # (« reprends la photo d'avant »)
                     hist = st.data.setdefault("history", {}).setdefault(sid, [])
                     hist.append({k_: v for k_, v in shots[sid].items() if k_ != "ext"})
                     del hist[:-6]
@@ -380,6 +392,24 @@ class Maker:
             st.items[k]["warn"] = [w for w in warn if w.startswith(k + ":")]
         st.save()
         return warn
+
+    @staticmethod
+    def reject(st: posts.PostState, sid: str, shot: dict) -> None:
+        """A photo Loïc turned down (« autres photos »): its moment is never offered again for this slide (± REJECT_GAP s,
+        the same camera shot), its files are deleted and it leaves the « photo d'avant » history."""
+        t = shot.get("t")
+        rej = st.data.setdefault("rejected", {}).setdefault(sid, [])
+        if t is not None and all(abs(t - x) > 0.5 for x in rej):
+            rej.append(t)
+        for f in [shot.get("file")] + list((shot.get("ext") or {}).values()):
+            if f:
+                try:
+                    Path(f).unlink(missing_ok=True)
+                except OSError:
+                    pass
+        hist = (st.data.get("history") or {}).get(sid)
+        if hist:
+            hist[:] = [h for h in hist if h.get("t") is None or abs(h["t"] - t) > posts.REJECT_GAP]
 
     def right_person(self, shot: dict) -> bool:
         """On the 4K photo, the face is Marius when Marius is wanted, and not Marius when the guest is wanted."""

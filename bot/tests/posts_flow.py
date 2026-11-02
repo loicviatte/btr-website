@@ -229,6 +229,24 @@ assert after["moment:m3"] != before["moment:m3"] and abs(after["moment:m3"] - 10
 assert all(after[k] == before[k] for k in before if k != "moment:m3")
 print("OK one slide")
 
+# ---- « autres photos » again and again: a refused photo never comes back, its file is deleted (Loïc 02.11) -------
+seen = [after["moment:m3"]]
+files = [st2.data["shots"]["moment:m3"]["file"]]
+for _ in range(6):
+    M.shots(ep2, st2, ["moment"], None, {"moment:m3"}, {})
+    t = st2.data["shots"]["moment:m3"]["t"]
+    assert all(abs(t - x) > posts.REJECT_GAP for x in seen), (t, seen)
+    seen.append(t)
+    files.append(st2.data["shots"]["moment:m3"]["file"])
+assert all(not Path(f).exists() for f in files[:-1]) and Path(files[-1]).exists()
+assert len(st2.data["rejected"]["moment:m3"]) == 7
+assert all(st2.data["shots"][k]["t"] == after[k] for k in after if k != "moment:m3")      # the other slides stay
+# smaller face on the same moment: that frame goes, the moment is not refused
+n_rej = len(st2.data["rejected"]["moment:m3"])
+M.shots(ep2, st2, ["moment"], None, {"moment:m3"}, {"moment:m3": {"size": "smaller"}})
+assert len(st2.data["rejected"]["moment:m3"]) == n_rej
+print("OK refused photos")
+
 # ---- pulled back: the smaller face sets the size, the set around the bigger one is generated ------------
 from btrbot import imaging  # noqa: E402
 tmp = Path(tempfile.mkdtemp())
