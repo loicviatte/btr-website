@@ -3683,6 +3683,21 @@ async def on_boot(app):
         except Exception:  # noqa: BLE001
             log.exception("ep msgs seed")
         reg.save()
+    if reg.data.get("insights_digests_1102b") and not reg.data.get("insights_recent_1102"):   # Oti P2 (out 27.10)
+        reg.data["insights_recent_1102"] = True
+        reg.save()
+
+        async def _recent(ctx):
+            tok = topics.TOPIC.set("system")
+            try:
+                async def go():
+                    async with INSIGHTS_LOCK:
+                        msg = await run(insights_update, True)
+                        await say(ctx, f"📊 BTR Data : {esc(msg)}.")
+                bg(ctx, "BTR Data", go(), limit=60 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_recent, when=90, name="insights-recent")
     if reg.data.get("insights_seed_1102") and not reg.data.get("insights_digests_1102b"):  # digests were dropped
         reg.data["insights_digests_1102b"] = True
         reg.save()
@@ -5890,6 +5905,31 @@ def insights_analytics(start, end, now, eps: list[dict]) -> dict | None:
     return {"week": week, "life": life, "meta": meta, "retention": ret}
 
 
+def insights_recent(known: set) -> list[dict]:
+    """Episodes the bot handled, already out on YouTube, that the repo's youtube.json doesn't list yet (it waits 7 days):
+    [{id, title, publishedAt, views}]."""
+    from datetime import datetime as _dt, timezone as _tz
+    now, out = _dt.now(_tz.utc), []
+    for d in (cfg.data_dir / "episodes").iterdir():
+        if not d.is_dir() or d.name in known:
+            continue
+        ep = reg.episode(d.name)
+        try:
+            rel = _dt.fromisoformat(ep.get("release_at") or "")
+        except ValueError:
+            continue
+        if rel <= now and ep.get("guest_name") and ep.stage in ("published", "chapters_proposed", "done"):
+            out.append({"id": d.name, "title": ep.get("public_title") or ep.get("title") or "", "publishedAt": rel.isoformat()})
+    if out:
+        r = pipe.yt.svc.videos().list(part="snippet,statistics", id=",".join(e["id"] for e in out[:50])).execute()
+        info = {v["id"]: v for v in r.get("items", [])}
+        for e in out:
+            v = info.get(e["id"]) or {}
+            e["title"] = (v.get("snippet") or {}).get("title") or e["title"]
+            e["views"] = int((v.get("statistics") or {}).get("viewCount") or 0)
+    return out
+
+
 def insights_update(episodes_only: bool = False, baseline: bool = False) -> str:
     """Writes « BTR Data » (blocking: run in a thread): new episode pages, then this week's stats block.
     baseline=True: the figures are only noted (no block), so the next block shows what changed since."""
@@ -5900,6 +5940,11 @@ def insights_update(episodes_only: bool = False, baseline: bool = False) -> str:
     st = _in.State(cfg.data_dir)
     yt_json = _in.gh_file(cfg.github_token, "data/stats/youtube.json")
     trans = _in.gh_file(cfg.github_token, "tools/episode-generator/trans.json")
+    try:                                   # youtube.json only lists episodes out for 7+ days: the bot's recent ones too
+        yt_json["episodes"] = (yt_json.get("episodes") or []) + insights_recent(
+            {e["id"] for e in yt_json.get("episodes") or []})
+    except Exception:  # noqa: BLE001
+        log.exception("insights recent episodes")
 
     def local(vid):
         if not (cfg.data_dir / "episodes" / vid).exists():
