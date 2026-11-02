@@ -202,6 +202,16 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   within REJECT_GAP (8 s, same camera shot) of a refused one for that slide. A smaller / bigger face keeps the moment;
   a moment Loïc names (at) wins over his old refusals; nothing left = a warning. Boot one-shot posts_rejected_1102
   turns the existing histories into refusals. Test: `tests/posts_flow.py` (« refused photos »).
+- Fresh state per episode (Loïc 02.11): every message of the work topics Reels / Miniatures / Stories (the bot's in
+  `_routed_post`, Loïc's in `set_origin`) is noted under its episode in reg.data["ep_msgs"][vid] (`ep_note`): the episode
+  comes from `topics.EP`, set by `topics.within` from the wrapped function's Episode argument; else the topic's last
+  episode (reg.data["topic_ep"], `ep_guess`). When every calendar task of the episode (all platforms, `ep_calendar`,
+  Atlas catch-ups excluded) is posted and ep.stage == done (`ep_all_posted`), its « À valider » message ends with
+  « 🧹 Tout est publié … /oti2_nettoyer » → `ep_cleanup` deletes those messages + its dash message (deleteMessages by
+  100, else one by one), ep["cleaned_at"]; `dash_episodes(cleaned=False)` leaves it out of the dash unless worked on
+  again. Files, Drive, ClickUp untouched. Boot seed ep_msgs_seed_1102 = ids already stored (thumb_msgs, reel msg /
+  cover_msg, post msg). /fils_neufs (confirm rst:y) = delete + recreate the three topics empty once (backlog). Test:
+  `tests/ep_clean.py`.
 - Questions about texts (Loïc 01.11): tools `transcript_search` (query → matching SRT passages with timecodes and
   context, or at=« 34:12 »; guest « Oti P2 » / link, else the episode of the posts / reels in progress; `srt.search`) and
   `post_texts` (the exact texts of a carousel / story: content + captions + sticker). topic_context_base tells the model

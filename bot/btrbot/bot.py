@@ -69,6 +69,10 @@ async def _routed_post(self, endpoint, data, *a, **k):
     try:
         th = data.get("message_thread_id")
         key = TOPICS.key_of(th) if th and str(data.get("chat_id")) == str(TOPICS.group) else None
+        if key in EP_TOPICS and endpoint.lower().startswith("send") and endpoint.lower() != "sendchataction":
+            for m in (res if isinstance(res, list) else [res]):
+                if isinstance(m, dict) and m.get("message_id"):
+                    ep_note(data["chat_id"], m["message_id"], key)
         if (key in ("dash", "planning") and (to_owner or key == "planning") and endpoint.lower().startswith("send")
                 and endpoint.lower() != "sendchataction" and not DASH_KEEP.get()):
             for m in (res if isinstance(res, list) else [res]):
@@ -101,6 +105,44 @@ async def del_tick(ctx):
             await ctx.bot.delete_message(chat, mid)
         except Exception:  # noqa: BLE001
             pass
+
+
+EP_TOPICS = ("reels", "thumbs", "stories")     # the work topics, cleaned episode by episode (Loïc 02.11)
+
+
+def ep_guess(topic: str) -> str | None:
+    """The episode a message of this topic belongs to when nothing says it: the one that topic worked on last."""
+    last = (reg.data.get("topic_ep") or {}).get(topic)
+    if last:
+        return last
+    if topic == "reels":
+        return reg.data.get("reels_vid") or reg.active
+    if topic == "stories":
+        best = None
+        for st in _posts.all_states(cfg.data_dir):
+            t = max([it.get("made", 0) for it in st.items.values()] or [0])
+            if best is None or t > best[0]:
+                best = (t, st.ep.video_id)
+        return best[1] if best else reg.active
+    return reg.active
+
+
+def ep_note(chat, mid, topic: str, vid: str | None = None) -> None:
+    """Message `mid` of a work topic belongs to an episode (the one being worked on, else the topic's last one): it
+    goes when that episode is cleaned (/xxx_nettoyer)."""
+    try:
+        explicit = vid or topics.EP.get()
+        vid = explicit or ep_guess(topic)
+        if not vid:
+            return
+        if explicit:
+            reg.data.setdefault("topic_ep", {})[topic] = explicit
+        lst = reg.data.setdefault("ep_msgs", {}).setdefault(vid, [])
+        lst.append([chat, mid])
+        del lst[:-3000]
+        reg.save()
+    except Exception:  # noqa: BLE001
+        log.exception("ep note")
 
 
 PLAN_TTL = 90          # s after the bot's last answer: the « Instagram planning » conversation disappears (overview stays)
@@ -2955,6 +2997,48 @@ def reels_context() -> str:
     return "\n".join(lines)
 
 
+async def fresh_topics_cmd(update: Update, ctx):
+    """/fils_neufs: Reels, Miniatures and Stories deleted and made again, empty (once, for what came before the
+    per-episode cleaning). Confirmed by a button."""
+    if not allowed(update):
+        return
+    kb = K([[B("🧹 Oui, repartir de zéro", callback_data="rst:y"), B("Non", callback_data="rst:n")]])
+    await update.message.reply_text(
+        "Je supprime les fils 🎬 Reels, 🖼️ Miniatures et 📚 Stories avec TOUS leurs messages (tous épisodes), puis je les "
+        "recrée vides. Fichiers, Drive, ClickUp, À valider et Posts planning ne bougent pas. Les aperçus en attente de "
+        "validation se renvoient avec leur /commande dans À valider. On y va ?", reply_markup=kb)
+
+
+async def on_fresh_button(ctx, q, data: str):
+    try:
+        await q.edit_message_reply_markup(None)
+    except Exception:  # noqa: BLE001
+        pass
+    if data != "rst:y" or not TOPICS.group:
+        return
+    gone = []
+    for key in EP_TOPICS:
+        th = TOPICS.threads.get(key)
+        if not th:
+            continue
+        try:
+            await ctx.bot.delete_forum_topic(TOPICS.group, th)
+            gone.append(topics.NAMES[key])
+        except Exception as e:  # noqa: BLE001
+            log.warning("delete topic %s: %s", key, e)
+            continue
+        TOPICS.threads.pop(key, None)
+        TOPICS.save()
+    await ensure_dash_topic(ctx.application)
+    reg.data["ep_msgs"], reg.data["topic_ep"] = {}, {}
+    reg.save()
+    tok = topics.TOPIC.set("system")
+    try:
+        await say(ctx, "🧹 Fils recréés à neuf : " + esc(", ".join(gone) or "aucun (droit « Gérer les sujets » ?)") + ".")
+    finally:
+        topics.TOPIC.reset(tok)
+
+
 async def teaser_cmd(update: Update, ctx):
     if not allowed(update):
         return
@@ -3042,6 +3126,9 @@ async def on_button(update: Update, ctx):
         return
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+        return
+    if q.data.startswith("rst:"):
+        await on_fresh_button(ctx, q, q.data)
         return
     if q.data.startswith("tz:"):
         await on_teaser_button(ctx, q, q.data)
@@ -3532,6 +3619,24 @@ def start_polling(app):
 
 async def on_boot(app):
     APP["app"] = app
+    if not reg.data.get("ep_msgs_seed_1102"):              # ids already stored before the episode tagging
+        reg.data["ep_msgs_seed_1102"] = True
+        try:
+            for d in (cfg.data_dir / "episodes").iterdir():
+                if not d.is_dir():
+                    continue
+                e = reg.episode(d.name)
+                ids = [[TOPICS.group, m] for m in (e.get("thumb_msgs") or {}).values() if TOPICS.group and m]
+                if e.file("reels.json").exists():
+                    for it in (Reels.of(e).data.get("items") or {}).values():
+                        ids += [it[k] for k in ("msg", "cover_msg") if isinstance(it.get(k), list)]
+                if e.file("posts.json").exists():
+                    ids += [it["msg"] for it in _posts.PostState(e).items.values() if isinstance(it.get("msg"), list)]
+                if ids:
+                    reg.data.setdefault("ep_msgs", {}).setdefault(e.video_id, []).extend(ids)
+        except Exception:  # noqa: BLE001
+            log.exception("ep msgs seed")
+        reg.save()
     if not reg.data.get("posts_rejected_1102"):            # photos already replaced = refused (Loïc 02.11)
         reg.data["posts_rejected_1102"] = True
         reg.save()
@@ -4997,8 +5102,9 @@ from . import dashboard as _dash  # noqa: E402
 DASH_LOCK = asyncio.Lock()
 
 
-def dash_episodes() -> list:
-    """Episodes worth a message: reels or posts touched in the last 3 weeks, and the episode in progress."""
+def dash_episodes(cleaned: bool = True) -> list:
+    """Episodes worth a message: reels or posts touched in the last 3 weeks, and the episode in progress.
+    cleaned=False: without the episodes cleaned since (« nettoyer »), unless something was done on them after."""
     import time as _t
     out = {}
     for f in list((cfg.data_dir / "episodes").glob("*/reels.json")) + list((cfg.data_dir / "episodes").glob("*/posts.json")):
@@ -5006,7 +5112,10 @@ def dash_episodes() -> list:
             out[f.parent.name] = max(out.get(f.parent.name, 0), f.stat().st_mtime)
     if reg.active:
         out.setdefault(reg.active, _t.time())
-    return [reg.episode(v) for v, _ in sorted(out.items(), key=lambda kv: kv[1])]
+    eps = [(reg.episode(v), t) for v, t in sorted(out.items(), key=lambda kv: kv[1])]
+    if not cleaned:
+        eps = [(e, t) for e, t in eps if not e.get("cleaned_at") or t > float(e["cleaned_at"]) + 60]
+    return [e for e, _ in eps]
 
 
 CU_CACHE = {"at": 0.0, "tasks": []}
@@ -5057,7 +5166,71 @@ def dash_content(ep):
     if any(k in _posts.LABEL for k in tasks):            # the calendar decides: the trial's extra stories are hidden
         pst = {k: v for k, v in pst.items() if v.get("kind", k) in tasks}
     text, waiting = _dash.render(ep, code, title, rs, titles, pst, tasks)
+    if ep_all_posted(ep):
+        n = len((reg.data.get("ep_msgs") or {}).get(ep.video_id) or [])
+        text += (f"\n\n🧹 <b>Tout est publié.</b> Vider les fils Reels, Miniatures et Stories de cet épisode "
+                 f"({n} message{'s' if n > 1 else ''}) : /{code}_nettoyer")
     return text, None
+
+
+def ep_calendar(ep) -> list[dict]:
+    """Every calendar task of the episode (all platforms), from the ClickUp cache."""
+    from datetime import datetime as _dt
+    from .pipeline import part_number
+    guest, part = ep.get("guest_name") or "", part_number(ep)
+    if not guest:
+        return []
+    try:
+        ep_date = _dt.fromisoformat(ep.get("release_at") or "")
+    except ValueError:
+        ep_date = None
+    label = _share.episode_label(guest, part)
+    return [t for t in CU_CACHE["tasks"] if _dash.ig_kind(t.get("name", "")) not in (None, "atlas")
+            and _share.matches_episode(t, label, guest, part, ep_date)]
+
+
+def ep_all_posted(ep) -> bool:
+    """Every post of the episode is out: its miniatures / chapters done and all its calendar tasks « posted »."""
+    tasks = ep_calendar(ep)
+    return (ep.stage == "done" and bool(tasks)
+            and all(((t.get("status") or {}).get("status") or "").lower() in _dash.DONE for t in tasks))
+
+
+async def ep_cleanup(ctx, ep) -> int:
+    """The episode's messages in Reels / Miniatures / Stories are deleted (and its « À valider » message): a fresh
+    start for the next episode. Its files, Drive and ClickUp stay. Returns how many were deleted."""
+    import time as _t
+    msgs = list((reg.data.get("ep_msgs") or {}).get(ep.video_id) or [])
+    by_chat: dict = {}
+    for chat, mid in msgs:
+        by_chat.setdefault(chat, set()).add(int(mid))
+    cur = (reg.data.get("dash") or {}).get(ep.video_id) or {}
+    if cur.get("mid") and TOPICS.group:
+        by_chat.setdefault(TOPICS.group, set()).add(int(cur["mid"]))
+    done = 0
+    for chat, ids in by_chat.items():
+        ids = sorted(ids)
+        for j in range(0, len(ids), 100):
+            part = ids[j:j + 100]
+            try:
+                await ctx.bot.delete_messages(chat, part)
+                done += len(part)
+            except Exception:  # noqa: BLE001
+                for mid in part:                              # one by one: the ones Telegram refuses are skipped
+                    try:
+                        await ctx.bot.delete_message(chat, mid)
+                        done += 1
+                    except Exception:  # noqa: BLE001
+                        pass
+    (reg.data.get("ep_msgs") or {}).pop(ep.video_id, None)
+    (reg.data.get("dash") or {}).pop(ep.video_id, None)
+    for k, v in list((reg.data.get("topic_ep") or {}).items()):
+        if v == ep.video_id:
+            reg.data["topic_ep"].pop(k)
+    ep["cleaned_at"] = _t.time()
+    ep.save()
+    reg.save()
+    return done
 
 
 async def dash_tick(ctx):
@@ -5074,7 +5247,7 @@ async def dash_tick(ctx):
                 pass
             CU_CACHE["at"] = _t.time()
         store = reg.data.setdefault("dash", {})
-        for ep in dash_episodes():
+        for ep in dash_episodes(cleaned=False):
             if not ep.get("release_at") and ep.get("guest_name"):     # to match the « Ep Nov 3 » tasks
                 try:
                     from . import share
@@ -5260,6 +5433,15 @@ async def on_dash_cmd(update: Update, ctx):
         await ctx.bot.delete_message(update.effective_chat.id, update.message.message_id)
     except Exception:  # noqa: BLE001
         pass
+    if what == "nettoyer":
+        ep = reg.episode(vid)
+        if not ep_all_posted(ep):
+            await say(ctx, "Tout n'est pas encore publié pour cet épisode : je ne nettoie pas.")
+            return
+        n = await ep_cleanup(ctx, ep)
+        await say(ctx, f"🧹 {esc(ep.get('guest_name') or vid)} : {n} messages supprimés des fils. Fichiers, Drive et "
+                       "ClickUp restent.")
+        return
     ep = reg.episode(vid)
     if what.startswith("reel") and what[4:].isdigit():
         await on_dash_button(ctx, f"dash:r:{vid}:{int(what[4:])}")
@@ -5574,6 +5756,8 @@ async def set_origin(update: Update, ctx):
     topics.TOPIC.set(TOPICS.key_of(th))
     if TOPICS.key_of(th) == "dash" and update.message is not None:      # « À valider » keeps only the overview
         dash_forget(c.id, update.message.message_id)
+    elif TOPICS.key_of(th) in EP_TOPICS and getattr(update, "message", None) is not None:       # Loïc's own messages go with the episode
+        ep_note(c.id, update.message.message_id, TOPICS.key_of(th))
     elif TOPICS.key_of(th) == "planning" and update.message is not None:    # the conversation goes once answered
         plan_forget(c.id, update.message.message_id, incoming=True)
 
@@ -5709,6 +5893,7 @@ def main():
     app.add_handler(CommandHandler("couts", couts_cmd))
     app.add_handler(CommandHandler("reels", reels_cmd))
     app.add_handler(CommandHandler("teaser", teaser_cmd))
+    app.add_handler(CommandHandler("fils_neufs", fresh_topics_cmd))
     app.add_handler(CommandHandler("connect", connect_cmd))
     app.add_handler(CommandHandler("shorts", shorts_cmd))
     app.add_handler(CommandHandler("igtest", igtest_cmd))

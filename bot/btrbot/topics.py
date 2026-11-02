@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 TOPIC: contextvars.ContextVar = contextvars.ContextVar("btr_topic", default=None)
+EP: contextvars.ContextVar = contextvars.ContextVar("btr_episode", default=None)   # video id the messages belong to
 # key → topic name (General = "system", no thread id); order = creation order
 NAMES = {"reels": "🎬 Reels & covers", "thumbs": "🖼️ Miniatures épisode", "stories": "📚 Stories & carrousels",
          "dash": "✅ À valider", "planning": "🗓️ Posts planning"}
@@ -72,6 +73,15 @@ class Topics:
         return data
 
 
+def episode_of(a, k) -> str | None:
+    """The episode among a function's arguments (an object with a video_id), if any."""
+    for x in list(a) + list(k.values()):
+        vid = getattr(x, "video_id", None)
+        if isinstance(vid, str) and vid:
+            return vid
+    return None
+
+
 def within(topic: str, fn):
     """fn (async) runs with TOPIC = topic: everything it sends, and the jobs it starts, go to that topic."""
     if not inspect.iscoroutinefunction(fn) or getattr(fn, "_btr_topic", None):
@@ -80,11 +90,15 @@ def within(topic: str, fn):
     @functools.wraps(fn)
     async def w(*a, **k):
         tok = TOPIC.set(topic)
+        vid = episode_of(a, k)                     # what it sends belongs to that episode (cleaned with it)
+        tok_ep = EP.set(vid) if vid else None
         try:
             return await fn(*a, **k)
         finally:
             try:
                 TOPIC.reset(tok)
+                if tok_ep is not None:
+                    EP.reset(tok_ep)
             except ValueError:            # finished in another context (wait_for task): nothing to restore
                 pass
     w._btr_topic = topic
