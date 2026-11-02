@@ -78,9 +78,26 @@ CAROUSELS = ("moment", "topics")
 AUTO_STORIES = ("qa", "quote")        # no sticker: the API posts them; the others need Loïc's sticker in the app
 STICKER = {"teaser": "partage du reel teaser + sticker lien", "poll": "sondage", "rapid": "quiz", "chain": "quiz",
            "link": "lien", "ask": "question", "atlas": "quiz"}
-ZONES = {"poll": (1190, 1370), "rapid": (1220, 1530), "chain": (1240, 1550), "ask": (1270, 1550), "atlas": (800, 1110),
+ZONES = {"poll": (1190, 1370), "rapid": (1220, 1530), "chain": (1116, 1550), "ask": (1270, 1550), "atlas": (800, 1110),
          "link": (1500, 1620), "teaser": (1500, 1620)}
 B_OK = ("poll", "rapid", "chain", "atlas")   # kinds with a « b » version (link at the bottom, no poll / quiz)
+# Stories whose text block Loïc can move up / down (« monte le texte »): item["text_dy"] px, + = down; the sticker zone
+# above / below it follows. Range = the block stays under the Instagram top bar and above the footer.
+TEXT_MOVE = {"chain": (-480, 260), "poll": (-680, 180), "rapid": (-690, 150), "ask": (-640, 160), "atlas": (-200, 500)}
+
+
+def text_dy(kind: str, dy) -> int:
+    lo, hi = TEXT_MOVE.get(kind, (0, 0))
+    return int(max(lo, min(hi, round(float(dy or 0)))))
+
+
+def zone(kind: str, b: bool = False, dy: int = 0) -> tuple[int, int] | None:
+    """Free zone for the sticker, after the text block moved by dy (text above the zone: its top follows; Atlas: the
+    text is above too)."""
+    z = ZONES.get("link" if b else kind)
+    if not z or b or not dy:
+        return z
+    return (max(260, min(z[1] - 120, z[0] + dy)), z[1])
 # 3-episode story cycle (stories workflow) when the calendar has no task for an episode
 CYCLE = [["teaser", "poll", "chain", "quote"], ["teaser", "rapid", "qa", "ask"], ["teaser", "poll", "link", "ask"]]
 
@@ -311,7 +328,7 @@ def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], 
 
 
 # ---------------------------------------------------------------- previews
-def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path) -> Path:
+def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path, dy: int = 0) -> Path:
     """Clean story on the left, the Instagram zones in dotted lines on the right (stories workflow)."""
     im = Image.open(clean_jpg).convert("RGB")
     W, H = im.size
@@ -326,9 +343,9 @@ def zones_preview(clean_jpg: Path, kind: str, b: bool, out: Path) -> Path:
         d.text((24, y0 + 8), label, fill=color)
     dash(0, 250, (255, 255, 255, 255), "barre + profil")
     dash(1700, H, (255, 255, 255, 255), "champ message")
-    zone = ZONES.get("link" if b else kind)
-    if zone:
-        dash(zone[0], zone[1], (254, 203, 122, 255), "sticker " + ("lien" if b else STICKER.get(kind, "")))
+    zn = zone(kind, b, dy)
+    if zn:
+        dash(zn[0], zn[1], (254, 203, 122, 255), "sticker " + ("lien" if b else STICKER.get(kind, "")))
     sheet = Image.new("RGB", (W * 2 + 40, H), (8, 4, 3))
     sheet.paste(im, (0, 0))
     sheet.paste(z, (W + 40, 0))
@@ -450,7 +467,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
                     "counter": f"{n:02d} / {n:02d}", "toc": [{"watch": it.get("watch", ""), "title": it.get("title", "")} for it in items]})
         return out
     base = {"name": f"story-{kind}{'-b' if b else ''}", "H": 1920, "kind": kind, "b": b, "first": first,
-            "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio."}
+            "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio.",
+            "dy": text_dy(kind, ctx.get("dy"))}
     full = (0, 0, 1080, 1920)
     if kind == "teaser":
         base.update(p1=ph("bg", full, css="filter:blur(14px) brightness(.8);transform:scale(1.06)"),
@@ -464,7 +482,7 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     elif kind == "chain":
         p1, p2 = pair_place([uri("prev"), uri("face")], [(shots.get(k) or {}).get("face") for k in ("prev", "face")],
                             [tuple((shots.get(k) or {}).get("size") or (3840, 2160)) for k in ("prev", "face")],
-                            [(0, 0, 538, 1920), (542, 0, 538, 1920)], 0.33,
+                            [(0, 0, 538, 1920), (542, 0, 538, 1920)], 0.26,   # was 0.33: text raised 02.11
                             shots=[shots.get("prev"), shots.get("face")], sids=["prev", "face"])
         base.update(p1=p1, p2=p2,
                     prev_upper=str(c.get("prev_guest") or "THE LAST GUEST").upper(), question=c.get("question", ""))

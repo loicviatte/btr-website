@@ -177,7 +177,8 @@ TOOLS = [
     {"name": "post_feedback", "description": "Retour de Loïc sur les TEXTES d'UN carrousel ou d'UNE story déjà en aperçu (« dans le "
                                             "topics, change le titre 3 », « la story poll : question trop longue », "
                                             "« autre photo pour la citation »). key = moment, topics, poll, … ; "
-                                            "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle.",
+                                            "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle. "
+                                            "Monter / descendre le texte d'une story = post_text_move, pas cet outil.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "feedback": {"type": "string"},
                       "photos": {"type": "boolean"}}, "required": ["key"]}},
     {"name": "post_photos", "description": "Prendre une AUTRE PHOTO (autre moment de la vidéo) pour certaines slides d'un carrousel (ou d'une story) sans "
@@ -228,6 +229,15 @@ TOOLS = [
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
                       "factor": {"type": "number"}, "previous": {"type": "boolean"},
                       "shift_x": {"type": "number"}, "shift_y": {"type": "number"}}, "required": ["key"]}},
+    {"name": "post_text_move", "description": "Déplacer le BLOC DE TEXTE d'une story (The Chain, Poll, Rapid fire, Ask the "
+                                             "next guest, Atlas) vers le haut ou le bas, mêmes textes et mêmes photos, "
+                                             "la zone du sticker suit : « monte le texte », « remonte le bloc au-dessus "
+                                             "de her plan », « descends le texte », « plus de place pour le sticker ». "
+                                             "dy en px sur la story 1080×1920 : < 0 = monte (-60 = un peu, -120 = net, "
+                                             "-200 = beaucoup), > 0 = descend ; ça s'ajoute au réglage actuel. "
+                                             "reset=true = remettre à la place d'origine. key = chain, poll, rapid, ask, atlas.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "dy": {"type": "number"},
+                      "reset": {"type": "boolean"}}, "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
                                             "quoi que ce soit (seuls les carrousels / stories se changent ici).",

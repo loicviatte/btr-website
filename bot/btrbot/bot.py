@@ -3551,6 +3551,27 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_teaser, when=60, name="teaser-try-1101")
+    if not reg.data.get("chain_raise_1102"):               # The Chain text raised for the quiz sticker (Loïc 02.11)
+        reg.data["chain_raise_1102"] = True
+        reg.save()
+
+        async def _chain(ctx):
+            ep = reg.episode("PjDZ8X_JWY0")
+
+            async def go():
+                st = _posts.PostState(ep)
+                if (st.items.get("chain") or {}).get("status") != "draft":
+                    return
+                await run(maker().render, ep, st, ["chain"])
+                await say(ctx, "📚 Story The Chain refaite avec le texte remonté : zone du quiz ~40 % plus haute. "
+                               "« monte / descends le texte » marche maintenant directement.")
+                await send_post_safe(ctx, ep, "chain")
+            tok = topics.TOPIC.set("stories")
+            try:
+                bg(ctx, "Story The Chain · Oti Mabuse", go())
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_chain, when=75, name="chain-raise-1102")
     if not reg.data.get("posts_file_linked_1101"):
         reg.data["posts_file_linked_1101"] = True
         reg.save()

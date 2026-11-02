@@ -161,14 +161,14 @@ html,body{margin:0;background:#080403}
   <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.35) 0%,rgba(8,4,3,0) 13%,rgba(8,4,3,0) {{ g0 }} 100%)"></div>
   {{ logo(logo_x, 250, 140, 89) }}
   {% if kind == "poll" %}
-    <div class="col" data-fit="block" data-max-bottom="{{ 1180 if not b else 1440 }}" style="left:80px;top:960px;width:920px;gap:{{ 30 if not b else 40 }}px">
+    <div class="col" data-fit="block" data-max-bottom="{{ (1180 if not b else 1440) + (dy or 0) }}" style="left:80px;top:{{ 960 + (dy or 0) }}px;width:920px;gap:{{ 30 if not b else 40 }}px">
       <p class="h c" style="font-size:50px;line-height:1.12">{{ line|safe }}</p>
       {% if not b %}<p class="h c lg" style="font-size:40px;line-height:1.12">{{ question }}</p>
       {% else %}<p class="h c" style="font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> {{ tap }}</p>{% endif %}
     </div>
     {% if not b %}<p class="foot">{{ footer }}</p>{% endif %}
   {% elif kind == "rapid" %}
-    <div class="col" data-fit="block" data-max-bottom="{{ 1210 if not b else 1440 }}" style="left:80px;top:965px;width:920px;gap:24px">
+    <div class="col" data-fit="block" data-max-bottom="{{ (1210 if not b else 1440) + (dy or 0) }}" style="left:80px;top:{{ 965 + (dy or 0) }}px;width:920px;gap:24px">
       <p class="lab c">RAPID FIRE{% if rapid_count %} · {{ rapid_count }} QUESTIONS{% endif %}</p>
       <p class="h c" style="font-size:46px;line-height:1.12">{{ q(question) }}</p>
       {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:38px;line-height:1.12">Guess {{ first }}’s answer.</p>
@@ -182,7 +182,7 @@ html,body{margin:0;background:#080403}
       <p class="r" style="margin-top:24px;font-size:26px;line-height:1.12;color:rgba(255,255,255,.8)">{{ sub }}</p>
     </div>
   {% else %}{# ask #}
-    <div class="col" data-fit="block" data-max-bottom="1260" style="left:80px;top:920px;width:920px;gap:22px">
+    <div class="col" data-fit="block" data-max-bottom="{{ 1260 + (dy or 0) }}" style="left:80px;top:{{ 920 + (dy or 0) }}px;width:920px;gap:22px">
       <p class="lab c">ASK THE NEXT GUEST</p>
       <p class="h c" style="font-size:52px;line-height:1.12">The next guest is a mystery.</p>
       <p class="r c" style="margin-top:6px;font-size:28px;line-height:1.32">Ask them anything. Marius picks one question from the audience for every episode and reads your name on air.</p>
@@ -191,12 +191,15 @@ html,body{margin:0;background:#080403}
   {% endif %}
 
 {% elif kind == "chain" %}
+  {# Text block raised 124 px (Loïc 02.11: room for the quiz sticker, zone 1116-1550 = +40 %); faces raised with it
+     (eye line 0.26 in posts.pages). dy = Loïc's « monte / descends le texte » (item["text_dy"], posts.text_dy). #}
+  {% set dy = dy or 0 %}
   {{ photo(p1) }}{{ photo(p2) }}
   <div class="abs" style="left:538px;top:0;width:4px;height:1920px;background:#fecb7a"></div>
-  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.35) 0%,rgba(8,4,3,0) 13%,rgba(8,4,3,0) 38%,rgba(8,4,3,.62) 48%,rgba(8,4,3,.74) 70%,rgba(8,4,3,.82) 100%)"></div>
-  <p class="abs h lg" data-fit="w" style="left:40px;top:870px;width:480px;font-size:22px;line-height:1">{{ prev_upper }} ASKED</p>
-  <p class="abs h lg" data-fit="w" style="left:570px;top:870px;width:450px;text-align:right;font-size:22px;line-height:1">{{ first_upper }} ANSWERED</p>
-  <div class="col" data-fit="block" data-max-bottom="{{ 1230 if not b else 1440 }}" style="left:80px;top:960px;width:920px;gap:22px">
+  <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.35) 0px,rgba(8,4,3,0) 250px,rgba(8,4,3,0) {{ 606 + dy }}px,rgba(8,4,3,.62) {{ 798 + dy }}px,rgba(8,4,3,.74) 1344px,rgba(8,4,3,.82) 1920px)"></div>
+  <p class="abs h lg" data-fit="w" style="left:40px;top:{{ 746 + dy }}px;width:480px;font-size:22px;line-height:1">{{ prev_upper }} ASKED</p>
+  <p class="abs h lg" data-fit="w" style="left:570px;top:{{ 746 + dy }}px;width:450px;text-align:right;font-size:22px;line-height:1">{{ first_upper }} ANSWERED</p>
+  <div class="col" data-fit="block" data-max-bottom="{{ (1106 if not b else 1440) + dy }}" style="left:80px;top:{{ 836 + dy }}px;width:920px;gap:22px">
     <p class="lab c">THE CHAIN</p>
     <p class="h c" style="font-size:40px;line-height:1.12">{{ q(question) }}</p>
     {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:36px;line-height:1.12">Guess {{ first }}’s answer.</p>
@@ -233,7 +236,7 @@ html,body{margin:0;background:#080403}
   {{ photo(p1) }}
   <div class="v" style="background:linear-gradient(180deg,rgba(8,4,3,.8) 0%,rgba(8,4,3,.75) 32%,rgba(8,4,3,.55) 45%,rgba(8,4,3,.35) 75%,rgba(8,4,3,.6) 100%)"></div>
   {{ logo(64, 250, 140, 89) }}
-  <div class="col" data-fit="block" data-max-bottom="790" style="left:80px;top:470px;width:920px;gap:24px">
+  <div class="col" data-fit="block" data-max-bottom="{{ 790 + (dy or 0) }}" style="left:80px;top:{{ 470 + (dy or 0) }}px;width:920px;gap:24px">
     <p class="lab c">WORLD ATLAS</p>
     <p class="h c" style="font-size:52px;line-height:1.12">{{ first }} opened the atlas.<br>Where did {{ pronoun }} land?</p>
     {% if not b %}<p class="h c lg" style="font-size:38px;line-height:1.12">Take a guess.</p>

@@ -664,6 +664,8 @@ class Maker:
             c = st.data.get("content", {}).get(k) or {}
             sh = {sid.split(":", 1)[1]: v for sid, v in st.data.get("shots", {}).items() if sid.startswith(k + ":")}
             b = bool(it.get("b")) and kind in posts.B_OK
+            dy = posts.text_dy(kind, it.get("text_dy"))          # Loïc's « monte / descends le texte »
+            ctx["dy"] = dy
             pg = posts.pages(kind, c, sh, ctx, b)
             if self.fill_gaps(pg, sh):                       # a photo pulled back: the set around it generated
                 st.save()
@@ -675,7 +677,7 @@ class Maker:
             it["files"] = [r["file"] for r in res]
             it["overflow"] = [o for r in res for o in r["overflow"]]
             if kind not in posts.CAROUSELS:
-                it["preview"] = str(posts.zones_preview(Path(res[0]["file"]), kind, b, work / "preview.jpg"))
+                it["preview"] = str(posts.zones_preview(Path(res[0]["file"]), kind, b, work / "preview.jpg", dy))
                 it["sticker"] = self.sticker(kind, c, b, ep)
             else:
                 handle = share.guest_handle(guest)
