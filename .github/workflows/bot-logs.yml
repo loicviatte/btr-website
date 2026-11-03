@@ -1,19 +1,11 @@
-# Read-only look at the bot on its server (Actions → Bot logs → Run workflow): recent errors and the state of the
-# carousels / stories. Prints no secret (.env and data/secrets.json are never read).
 name: Bot logs
 on:
   push:
-    branches: [bot-logs]          # push anything to this branch to get a fresh look
-  workflow_dispatch:
-    inputs:
-      grep:
-        description: "extra pattern to look for in the journal"
-        required: false
-        default: "ERROR|WARNING|Traceback"
+    branches: [bot-logs]
 jobs:
   logs:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     env:
       HOST: ${{ secrets.BOT_SERVER_HOST }}
     steps:
@@ -28,20 +20,21 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Journal (last 6 h)
-        env:
-          PAT: ${{ github.event.inputs.grep || 'ERROR|WARNING|Traceback' }}
+      - name: Journal
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat" \
-            | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
-            | grep -v 'getUpdates\|Running job\|executed successfully' | grep -E -A14 "$PAT" | tail -300
-      - name: Posts state
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-90min' --no-pager -o cat" \
+            | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI; s#sk-ant-[A-Za-z0-9_-]+#<hidden>#g' \
+            | grep -v 'getUpdates\|Running job\|executed successfully\|HTTP Request' | grep -iE -B3 -A20 "agent|dev|claude code|Traceback|ERROR|WARNING" | tail -250
+      - name: Claude CLI
         run: |
-          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in */posts.json; do echo "== $f"; python3 -c "
-          import json,sys
-          d=json.load(open(sys.argv[1]))
-          print(\"content keys:\", list(d.get(\"content\",{})))
-          for k,it in d.get(\"items\",{}).items():
-              print(k, it.get(\"status\"), \"files\", len(it.get(\"files\") or []), \"skip\", it.get(\"skip\"), \"task\", it.get(\"task\"), \"at\", it.get(\"at\"), \"drive\", bool(it.get(\"drive\")), \"attached\", bool(it.get(\"attached\")), \"filed\", it.get(\"filed\"), \"warn\", it.get(\"warn\"))
-          print(\"shots:\", sorted(d.get(\"shots\",{})))
-          " "$f"; done'
+          ssh root@"$HOST" 'which claude; claude --version 2>&1 | head -3; df -h / | tail -1; free -m | head -2; ls -la /root/.claude 2>/dev/null | head; cat /opt/btr-bot/data/agent.json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print({k:v for k,v in d.items() if k!=\"token\"})" 2>&1 | head -5'
+      - name: Thumbnail files
+        run: |
+          mkdir -p out
+          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes/qAk-Mqe6xoQ && ls -la && find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "*.json" \) -newermt "-1 day" | head -60'
+          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes/qAk-Mqe6xoQ && tar czf - $(find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "design*.json" -o -name "state.json" \) | head -80)' > out/thumbs.tgz
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thumbs
+          path: out/
