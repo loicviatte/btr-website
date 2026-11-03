@@ -201,7 +201,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (photo + generated set) and drops it from the « photo d'avant » history; `posts.pick(avoid=)` never offers a frame
   within REJECT_GAP (8 s, same camera shot) of a refused one for that slide. A smaller / bigger face keeps the moment;
   a moment Loïc names (at) wins over his old refusals; nothing left = a warning. Boot one-shot posts_rejected_1102
-  turns the existing histories into refusals. Test: `tests/posts_flow.py` (« refused photos »).
+  turns the existing histories into refusals. The Chain's previous-guest photo too (03.11: « autre photo » on Oti gave
+  the same frame): its second in their video (shot["pt"], else the file name) goes to rejected, `prev_shot(avoid=)`.
+  Test: `tests/posts_flow.py` (« refused photos »).
 - Fresh state per episode (Loïc 02.11): every message of the work topics Reels / Miniatures / Stories (the bot's in
   `_routed_post`, Loïc's in `set_origin`) is noted under its episode in reg.data["ep_msgs"][vid] (`ep_note`): the episode
   comes from `topics.EP`, set by `topics.within` from the wrapped function's Episode argument; else the topic's last

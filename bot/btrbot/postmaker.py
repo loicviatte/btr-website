@@ -300,8 +300,15 @@ class Maker:
         sdir.mkdir(parents=True, exist_ok=True)
         for nd in [r for r in reqs if r["who"] == "prev"]:      # the previous guest first: Oti is matched to Leila
             sid = nd["sid"]
+            old_prev = shots.get(sid) or {}
+            pt = self.prev_time(old_prev)
+            if pt is not None:          # Loïc 03.11: « autre photo » on Oti gave the same one (the best frame, every time)
+                rej = st.data.setdefault("rejected", {}).setdefault(sid, [])
+                if all(abs(pt - x) > 0.5 for x in rej):
+                    rej.append(pt)
             try:
-                shots[sid] = self.refine(self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir))
+                shots[sid] = self.refine(self.prev_shot(ep, (c_all.get(nd["key"]) or {}).get("prev_guest") or "", sdir,
+                                                        avoid=st.data.get("rejected", {}).get(sid) or []))
                 if shots[sid].get("name") and not (c_all.get(nd["key"]) or {}).get("prev_guest"):
                     c_all.setdefault(nd["key"], {})["prev_guest"] = shots[sid]["name"]
             except Exception as e:  # noqa: BLE001
@@ -588,8 +595,20 @@ class Maker:
                         "eyes": eyes}
         return shot
 
-    def prev_shot(self, ep, name: str, sdir: Path) -> dict:
-        """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question)."""
+    @staticmethod
+    def prev_time(shot: dict):
+        """Second of the previous guest's video a « prev » photo was taken at (pt, else from its file name)."""
+        if shot.get("who") != "prev":
+            return None
+        if shot.get("pt") is not None:
+            return float(shot["pt"])
+        m = re.search(r"prev_[\w-]{11}_(\d+)\.jpg$", str(shot.get("file") or ""))
+        return float(m.group(1)) if m else None
+
+    def prev_shot(self, ep, name: str, sdir: Path, avoid: list | None = None) -> dict:
+        """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question).
+        `avoid`: seconds of photos Loïc turned down (never within REJECT_GAP of them; all refused = the best one again)."""
+        avoid = avoid or []
         from . import reels
         import cv2
         vid = None
@@ -628,7 +647,7 @@ class Maker:
         a, b = max(0, dur - 900), max(60, dur - 30)
         clip = reels.download_section(vid, a, b, sdir / f"prev_{vid}.mp4", self.cfg.ytdlp_cookies, height=720)
         fr = frames.sample(clip, sdir / f"prev_{vid}", 2.0)
-        best = None
+        best = fallback = None
         for t, p in fr:
             img = cv2.imread(str(p))
             if img is None:
@@ -640,8 +659,13 @@ class Maker:
                 continue
             f = max(fs, key=lambda f: f.box[3])
             c = {"t": t, **info_c, "sharp": sharpness(img, f.box)}
+            if any(abs(a + t - x) <= posts.REJECT_GAP for x in avoid):
+                if fallback is None or posts.score(c) > posts.score(fallback):
+                    fallback = c
+                continue
             if best is None or posts.score(c) > posts.score(best):
                 best = c
+        best = best or fallback
         if not best:
             raise RuntimeError("pas de gros plan du guest précédent")
         out = sdir / f"prev_{vid}_{int(a + best['t'])}.jpg"
@@ -649,7 +673,8 @@ class Maker:
             frames.grab(frames.full_res_url(vid, self.cfg.ytdlp_cookies), a + best["t"], out)
         except Exception:  # noqa: BLE001
             frames.grab(str(clip), best["t"], out)
-        return {"file": str(out), "t": None, "size": list(Image.open(out).size), "who": "prev", "video": vid, "name": name,
+        return {"file": str(out), "t": None, "pt": a + best["t"], "size": list(Image.open(out).size), "who": "prev",
+                "video": vid, "name": name,
                 "face": {x: best[x] for x in ("cx", "cy", "fh", "fw", "top") if x in best}}
 
     # ------------------------------------------------------------ render
