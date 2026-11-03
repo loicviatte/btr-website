@@ -22,18 +22,15 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Dev clone (read only)
+      - name: Chain state
         run: |
-          mkdir -p out
-          ssh root@"$HOST" 'cd /opt/btr-src && git status | head -12; git log --oneline -4; git status --porcelain | head -20'
-          ssh root@"$HOST" 'cd /opt/btr-src && git format-patch -1 25fce7f --stdout' > out/agent.patch || true
-          ssh root@"$HOST" 'cd /opt/btr-src && git diff HEAD' > out/worktree.diff || true
-          wc -l out/*
-          tar czf out/thumbs.tgz -C out agent.patch worktree.diff
-      - uses: actions/checkout@v4
-        with:
-          path: repo
-      - name: Push files to a branch
-        run: |
-          cd repo && git checkout --orphan bot-files && git rm -rfq . && mkdir f && tar xzf ../out/thumbs.tgz -C f
-          git config user.email bot@local && git config user.name bot && git add f && git commit -qm files && git push -qf origin bot-files
+          ssh root@"$HOST" 'python3 - <<"PY"
+          import json
+          d=json.load(open("/opt/btr-bot/data/episodes/O_ZdYlKrdwU/posts.json"))
+          print("item", {k:v for k,v in d["items"].get("chain",{}).items() if k in ("status","files","b","at","task")})
+          for sid,s in d.get("shots",{}).items():
+              if sid.startswith("chain"): print(sid, {k:s.get(k) for k in ("t","who","file","video","face")})
+          print("rejected", {k:v for k,v in d.get("rejected",{}).items() if k.startswith("chain")})
+          print("history", [ (h.get("sid"),h.get("t")) for h in d.get("history",[]) if str(h.get("sid","")).startswith("chain")][-10:] if isinstance(d.get("history"),list) else list((d.get("history") or {}).keys()))
+          PY'
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-30min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request" | grep -iE -A6 "chain|post_photos|Photos|Traceback|ERROR|WARN" | grep -v "net_impl_backend" | tail -60
