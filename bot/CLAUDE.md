@@ -23,6 +23,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `assistant.Memory` keeps the chat (Loïc + everything the bot posted). Add a capability = a tool + a handler, not a regex.
   Exact « titre: / citation: / part: / description: » stay instant fast paths. `tests/stress.py` = 30 real-model scenarios
   (workflow « Bot stress test », runs after a deploy whose commit message contains [stress]).
+- Camera flashes in reels (Loïc 03.11, Hannah reel 7 at 23 s = 5 frames of Marius): a silence cut landing < FLASH 0.35 s
+  before / after a source camera switch with words spoken there (snap_to_cuts can't move it) → `reels.hold_flashes`
+  shows the neighbouring shot's frame held (p["hold"], `render_video`), sound / length unchanged. `Pipeline.reel_repicture`
+  = picture only, from the kept clip + SRT choices of the preview, refused unless the pieces match edit.json exactly;
+  keeps audio.m4a + subs.ass. Boot one-shot reel7_flash_1103. Test: `tests/reel_flash.py`. FRAMING not bumped.
 - `llm._json` (03.11, empty answer on the reel moments): no JSON → asked again with twice the max_tokens, then once on
   the work model; the error names the stop reasons. Boot one-shot reels_retry_1103 relaunched Hannah's reel moments.
 - Models (`llm.MODELS`, `usage.py`): chat Opus (Loïc 01.11: « un bot intelligent comme Claude »; was Haiku), creative Opus (axes, title, description), work Sonnet (chapters, frames),

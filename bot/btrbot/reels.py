@@ -561,6 +561,7 @@ def pieces(ranges: list[tuple[float, float]], shots: list[dict], fps: float, lim
             sh = shots[k]
             out.append({**{x: v for x, v in sh.items() if x not in ("a", "b")}, "f0": s, "frames": e - s,
                         "src": s / fps, "range": ri, "shot": k})
+    hold_flashes(out, fps, shots)
     zoom, last = "wide", None
     for p in out:
         if p["kind"] in ("guest", "marius", "unsure"):
@@ -575,6 +576,30 @@ def pieces(ranges: list[tuple[float, float]], shots: list[dict], fps: float, lim
         p["out"] = t_out / fps
         t_out += p["frames"]
     return out
+
+
+FLASH = 0.35          # a piece shorter than this on another camera than its neighbour reads as a jump
+
+
+def hold_flashes(out: list[dict], fps: float, shots: list[dict]) -> None:
+    """A cut that lands a few frames before (after) a camera switch, with words spoken there (snap_to_cuts can't move
+    it), leaves a flash of the other camera (Loïc 03.11, Hannah reel 7 at 23 s: 5 frames of Marius between two shots
+    of her). Its picture becomes the neighbouring frame of the same range, held: same sound, same length."""
+    for i, p in enumerate(out):
+        if p["frames"] >= FLASH * fps:
+            continue
+        nxt = out[i + 1] if i + 1 < len(out) else None
+        prv = out[i - 1] if i else None
+        if nxt and nxt["range"] == p["range"] and nxt["shot"] != p["shot"] and nxt["frames"] >= FLASH * fps:
+            nb, frame = nxt, nxt["f0"]
+        elif prv and prv["range"] == p["range"] and prv["shot"] != p["shot"] and prv["frames"] >= FLASH * fps:
+            nb, frame = prv, prv["f0"] + prv["frames"] - 1
+        else:
+            continue
+        for x in [x for x in p if x not in ("f0", "frames", "src", "range")]:
+            del p[x]
+        p.update({x: v for x, v in shots[nb["shot"]].items() if x not in ("a", "b")})
+        p["shot"], p["hold"] = nb["shot"], frame / fps
 
 
 def _even(v: float) -> int:
@@ -637,13 +662,17 @@ def vfilter(p: dict, W: int, H: int) -> str:
 
 def render_video(src: Path, pcs: list[dict], info: dict, work: Path) -> Path:
     """Each piece seeks a quarter frame before its first frame, so the decoder starts exactly on it, and takes
-    exactly `frames` frames at the source rate: no skipped, doubled or stray frame at any cut, at any frame rate."""
+    exactly `frames` frames at the source rate: no skipped, doubled or stray frame at any cut, at any frame rate.
+    A held piece (hold_flashes) shows its one frame for its whole length."""
     work.mkdir(parents=True, exist_ok=True)
     listing = []
     for i, p in enumerate(pcs):
         out = work / f"p_{i:03d}.mp4"
-        run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{max(0.0, p['src'] - 0.25 / info['fps']):.6f}", "-i", src,
-             "-an", "-filter_complex", vfilter(p, info["w"], info["h"]),
+        vf = vfilter(p, info["w"], info["h"])
+        if "hold" in p:
+            vf = "trim=end_frame=1," + vf                   # the tpad clone at the end repeats it
+        run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{max(0.0, p.get('hold', p['src']) - 0.25 / info['fps']):.6f}",
+             "-i", src, "-an", "-filter_complex", vf,
              "-frames:v", str(p["frames"]), "-c:v", "libx264", "-preset", "veryfast", "-crf", "15",
              "-pix_fmt", "yuv420p", "-r", info["rate"], out])
         listing.append(f"file '{out.name}'")

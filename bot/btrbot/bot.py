@@ -3949,6 +3949,31 @@ async def on_boot(app):
                 finally:
                     topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reels_failed, when=100, name="reels-failed-1103")
+    if not reg.data.get("reel7_flash_1103"):        # Loïc 03.11: a jump at 23 s in Hannah's reel 7 = 5 frames of Marius
+        reg.data["reel7_flash_1103"] = True           # (cut 0.2 s before the end of his shot): picture only made again
+        reg.save()
+
+        async def _reel7(ctx):
+            ep = reg.episode("O_ZdYlKrdwU")
+            item, cand = reel_item(ep, 7), reel_cand(ep, 7)
+            if not cand or item.get("status") != "preview" or not pipe.reel_edit_kept(ep, 7):
+                return
+            tok = topics.TOPIC.set("reels")
+            try:
+                async def go():
+                    res = await run(pipe.reel_repicture, ep, dict(cand), list(item["shift"]), list(item["cuts"]))
+                    if not res["held"]:
+                        return
+                    item.update(file=res["file"], size_mb=res["size_mb"])
+                    RS(ep).save()
+                    await say(ctx, "🎞️ Reel 7 : le saut à 23 s venait de 5 images de Marius (la coupe de silence tombait "
+                                   "0,2 s avant la fin de son plan). Ces images montrent maintenant Hannah, le son, la "
+                                   "durée et les sous-titres sont identiques. Nouvelle version à valider :")
+                    await send_reel(ctx, ep, 7)
+                bg(ctx, "Reel 7 (image)", go())
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_reel7, when=110, name="reel7-flash-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()

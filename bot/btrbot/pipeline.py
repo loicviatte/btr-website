@@ -658,6 +658,59 @@ class Pipeline:
         return {**self.reel_subtitles(ep, cand, fixes or [], note), "status": "preview", "confidence": round(conf),
                 "shots": {k: kinds.count(k) for k in set(kinds)}, "missing_cuts": missing, "doubts": doubts}
 
+    def reel_repicture(self, ep: Episode, cand: dict, shift: list, cuts: list) -> dict:
+        """The picture of a kept edit made again (new framing rules), the sound and the subtitles (subs.ass) as they
+        are. The cut is worked out again from the kept clip, words and SRT choices, and must give exactly the stored
+        pieces, else nothing changes."""
+        import cv2
+
+        from . import reels as R
+        n = cand["n"]
+        work = self.reel_work(ep, n)
+        edit = json.loads((work / "edit.json").read_text())
+        clips = sorted(work.glob("clip_*.mp4"))
+        if not clips or not (work / "subs.ass").exists() or not (work / "audio.m4a").exists():
+            raise RuntimeError("le montage de ce reel n'est plus sur le serveur")
+        clip = clips[0]
+        tag = clip.stem[5:]
+        info = R.probe(clip)
+        words = [R.Word(**w) for w in json.loads((work / f"words_{tag}.json").read_text())]
+        cues_all = self.cues(ep)
+        if ep.file("captions_davinci.srt").exists():
+            dl_a = int(tag.split("_")[0])
+            words, diffs = R.compare_with_srt(words, cues_all, dl_a + R.audio_offset(dl_a, info["fps"]))
+            shown = set(edit.get("doubts") or [])      # the choices shown in the preview, taken again (no model call)
+            picks = {k: "srt" for k, d in enumerate(diffs)
+                     if f"« {d['audio'] or '—'} » (audio) / « {d['srt']} » (SRT) → {d['srt']}" in shown}
+            words = R.apply_choices(words, diffs, picks)
+        i0, i1, _ = R.locate(words, cand.get("first_words", ""), cand.get("last_words", ""))
+        i1 = R.finish_sentence(words, i1)
+        ranges, _ = R.keep_ranges(words, i0, i1, R.Energy(work / f"clip_{tag}.wav"), float(shift[0]), float(shift[1]), cuts)
+        a, b = ranges[0][0], ranges[-1][1]
+        scene = R.scene_cuts(clip, max(0.0, a - 0.5), b + 0.5)
+        ranges = R.snap_to_cuts(ranges, scene, words)
+        a, b = ranges[0][0], ranges[-1][1]
+        fr = R.sample_frames(clip, a, b, work / "frames")
+        samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
+        pcs = R.pieces(ranges, R.shot_layouts(samples, scene, a, b), info["fps"], info["duration"])
+        if [(round(p["out"], 3), p["frames"]) for p in pcs] != [(round(p["out"], 3), p["frames"]) for p in edit["layout"]]:
+            raise RuntimeError("le découpage ne retombe pas exactement sur le montage gardé : rien changé")
+        held = [round(p["out"], 2) for p in pcs if "hold" in p]
+        video = R.render_video(clip, pcs, info, work / "pieces")
+        video.replace(work / "base.mp4")
+        import shutil
+        shutil.rmtree(work / "pieces", ignore_errors=True)
+        edit["layout"] = [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs]
+        (work / "edit.json").write_text(json.dumps(edit))
+        from . import subs
+        from .config import ASSETS
+        fonts = subs.prepare_fonts(ASSETS, self.cfg.data_dir / "fonts")
+        slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
+        total = edit["frames"] / edit["fps"]
+        out = R.final_mux(work / "base.mp4", work / "audio.m4a", work / "subs.ass", fonts,
+                          work / f"BTR_reel_{n:02d}_{slug}.mp4", total, edit["frames"])
+        return {"file": str(out), "held": held, "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+
     def reel_subtitles(self, ep: Episode, cand: dict, fixes: list, note: str = "") -> dict:
         """Subtitles + final file from the kept edit (base picture + sound): a few seconds, no new cut.
         Loïc's word fixes are applied here; `note` = his remark on the layout, passed to the layout model."""
