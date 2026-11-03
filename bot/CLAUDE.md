@@ -290,7 +290,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   (gdown download to reels/rNN/base.mp4 + copy as the reel file, one-piece edit.json for `_cover_from_edit`, words by
   Parakeet → said) → reel n (next free number, item teaser/external) on the ClickUp « Reel teaser » task (clickup_kind
   teaser = name kept), cover + captions, `share_reel`; then the usual « ✅ Cover OK » → Short + Instagram at the task's
-  time, TikTok sent to Loïc. Test: `tests/teaser_import.py`.
+  time, TikTok sent to Loïc. Cover = the episode's vertical thumbnail (render/thumb_instagram.jpg, item
+  cover_vertical; skipped by covers_name), else stills. Test: `tests/teaser_import.py`.
 - Solid cut-outs (Loïc 03.11, Hannah: « on voit le gradient jaune à travers elle »): `imaging.cutout` = isnet outline +
   u2net_human_seg body (counted only where isnet saw something: it grabs chairs), silhouette filled (holes and small
   gaps against the bottom / side edges where a model saw the person or the colour is dark / like the clothes), outline smoothed, opaque inside, isnet soft alpha only where the human model agrees (hair).

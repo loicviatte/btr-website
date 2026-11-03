@@ -1203,7 +1203,7 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None,
                                                           float(zoom) if zoom else None, bool(exact)), limit=5 * 60)
 
-    async def teaser_file(link, guest=None):
+    async def teaser_file(link=None, guest=None):
         ep = text_ep(guest, None) if guest else (reel_ep() or reels_or_fail())
         return bg(ctx, "Teaser du Drive", teaser_import(ctx, ep, link), limit=40 * 60)
 
@@ -2111,7 +2111,7 @@ async def covers_name(ctx, ep, show: bool, everywhere: bool = False):
     if everywhere:
         (cfg.data_dir / "covers.json").write_text(_json.dumps({"name": bool(show)}))
     nums = sorted(int(k) for k, it in (RS(ep).data.get("items") or {}).items()
-                  if it.get("cover") and it.get("status") != "dropped")
+                  if it.get("cover") and it.get("status") != "dropped" and not it.get("cover_vertical"))
     if not nums:
         await say(ctx, "Pas encore de cover pour cet épisode : les prochaines seront faites " +
                        ("avec" if show else "sans") + " le nom.")
@@ -2148,8 +2148,10 @@ async def teaser_import(ctx, ep, link: str):
     teaser's stills, captions from its words, Drive « BTR Reels / guest », then the usual « ✅ Cover OK » → ready →
     Short scheduled + Instagram posted by the bot at that time."""
     m = re.search(r"(?:/d/|id=|^)([\w-]{25,})", (link or "").strip())
-    if not m:
-        await say(ctx, "Je n'ai pas trouvé d'identifiant de fichier Drive dans ce lien (Partager → copier le lien).")
+    fid = m.group(1) if m else None
+    if not fid:          # the bot's Drive access only sees the files it made itself: Loïc's upload needs its link
+        await say(ctx, "Je ne vois pas les fichiers que tu ajoutes toi-même dans le Drive (je n'ai accès qu'aux miens). "
+                       "Partage le fichier « Tous les utilisateurs disposant du lien » et colle-moi le lien.")
         return
     items = RS(ep).data.setdefault("items", {})
     n = next((int(k) for k, it in items.items() if it.get("teaser") and it.get("external")), None)
@@ -2166,7 +2168,7 @@ async def teaser_import(ctx, ep, link: str):
     task = teasers[0] if teasers else None
     await say(ctx, f"📥 Je récupère ton teaser sur le Drive (reel {n})…")
     try:
-        res = await run(pipe.teaser_import, ep, m.group(1), n)
+        res = await run(pipe.teaser_import, ep, fid, n)
     except Exception as e:  # noqa: BLE001
         log.exception("teaser import")
         await say(ctx, "⚠️ Je n'arrive pas à télécharger le fichier. Vérifie qu'il est partagé « Tous les utilisateurs "
@@ -2177,11 +2179,20 @@ async def teaser_import(ctx, ep, link: str):
     if task:
         item.update(clickup_task=task["id"], clickup_kind="teaser")
     RS(ep).save()
-    try:
-        item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+    vert = ep.file("render/thumb_instagram.jpg")
+    if vert.exists():                               # Loïc 03.11: the teaser's cover = the episode's vertical thumbnail
+        import shutil
+        from pathlib import Path
+        cov = Path(item["file"]).with_name(f"BTR_reel_{n:02d}_teaser_cover.jpg")
+        shutil.copy(vert, cov)
+        item.update(cover=str(cov), cover_text={}, cover_vertical=True)
         RS(ep).save()
-    except Exception:  # noqa: BLE001
-        log.exception("teaser cover")
+    else:
+        try:
+            item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+            RS(ep).save()
+        except Exception:  # noqa: BLE001
+            log.exception("teaser cover")
     caps = await run(pipe.reel_captions, ep, item.get("said") or "")
     if caps:
         item["captions"] = caps

@@ -53,8 +53,14 @@ async def main():
     it = bot.reel_item(ep, 5)
     assert it["filed"] and it["clickup_kind"] == "teaser" and it["captions"]["instagram"] == "cap"
     assert "Cover OK" in said[-1], said
-    await bot.teaser_import(ctx, ep, "pas de lien")
-    assert "identifiant" in said[-1]
+    await bot.teaser_import(ctx, ep, "")
+    assert "colle-moi le lien" in said[-1], said[-1]
+    # the vertical thumbnail is the cover when it exists (Loïc 03.11)
+    Path(ep.file("render")).mkdir(exist_ok=True)
+    Path(ep.file("render/thumb_instagram.jpg")).write_bytes(b"jpg")
+    await bot.teaser_import(ctx, ep, "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view")
+    it = bot.reel_item(ep, 5)
+    assert it["cover_vertical"] and it["cover"].endswith("_teaser_cover.jpg") and Path(it["cover"]).read_bytes() == b"jpg"
     print("teaser import: OK")
 
 asyncio.run(main())
