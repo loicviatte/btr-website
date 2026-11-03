@@ -32,7 +32,7 @@ jobs:
           ssh root@"$HOST" bash -s > out/thumbs.tgz <<'SH'
           A=$(python3 -c "import json; print(json.load(open('/opt/btr-bot/data/registry.json'))['active'])")
           cd /opt/btr-bot/data/episodes/$A
-          tar czf - $(find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "design*.json" -o -name "state.json" -o -name "*4k*.jpg" \) -newermt "-2 day" | head -80)
+          tar czf - $(find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "design*.json" -o -name "state.json" -o -name "*4k*.jpg" \) -newermt "-1 day" | head -80)
           SH
           ls -la out; tar tzf out/thumbs.tgz | head -80
       - uses: actions/checkout@v4
