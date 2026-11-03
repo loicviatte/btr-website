@@ -3933,6 +3933,22 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reels_retry, when=90, name="reels-retry-1103")
+    if not reg.data.get("reels_failed_1103"):       # Hannah's reel 1 failed on a tiny audio chunk (fixed): made again
+        reg.data["reels_failed_1103"] = True
+        reg.save()
+
+        async def _reels_failed(ctx):
+            ep = reg.episode("O_ZdYlKrdwU")
+            items = (RS(ep).data or {}).get("items") or {}
+            failed = sorted(int(k) for k, it in items.items() if it.get("status") == "failed")
+            if failed:
+                tok = topics.TOPIC.set("reels")
+                try:
+                    await say(ctx, f"🔁 Reel {', '.join(map(str, failed))} : l'erreur de transcription est corrigée, je le refais.")
+                    await say(ctx, esc(start_reels(ctx, ep, failed)))
+                finally:
+                    topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_reels_failed, when=100, name="reels-failed-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
