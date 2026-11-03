@@ -4218,6 +4218,21 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_noname, when=60, name="covers-noname-1103")
+    if not reg.data.get("teaser_link_1103"):        # Loïc 03.11 18:12: his EP14 teaser, shared by link
+        reg.data["teaser_link_1103"] = True
+        reg.save()
+
+        async def _teaser_link(ctx):
+            ep = reg.episode("O_ZdYlKrdwU")
+            if any(it.get("teaser") and it.get("external") for it in (RS(ep).data.get("items") or {}).values()):
+                return
+            tok = topics.TOPIC.set("reels")
+            try:
+                bg(ctx, "Teaser du Drive", teaser_import(
+                    ctx, ep, "https://drive.google.com/file/d/1yXmYWFkNZjpBASESWSYzFmZgjfpG9UxC/view"), limit=40 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_teaser_link, when=30, name="teaser-link-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
