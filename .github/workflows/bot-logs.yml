@@ -22,15 +22,6 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Chain state
+      - name: Teaser
         run: |
-          ssh root@"$HOST" 'python3 - <<"PY"
-          import json
-          d=json.load(open("/opt/btr-bot/data/episodes/O_ZdYlKrdwU/posts.json"))
-          print("item", {k:v for k,v in d["items"].get("chain",{}).items() if k in ("status","files","b","at","task")})
-          for sid,s in d.get("shots",{}).items():
-              if sid.startswith("chain"): print(sid, {k:s.get(k) for k in ("t","who","file","video","face")})
-          print("rejected", {k:v for k,v in d.get("rejected",{}).items() if k.startswith("chain")})
-          print("history", [ (h.get("sid"),h.get("t")) for h in d.get("history",[]) if str(h.get("sid","")).startswith("chain")][-10:] if isinstance(d.get("history"),list) else list((d.get("history") or {}).keys()))
-          PY'
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-30min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request" | grep -iE -A6 "chain|post_photos|Photos|Traceback|ERROR|WARN" | grep -v "net_impl_backend" | tail -60
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-12min' --no-pager -o cat" | grep -v "getUpdates\|HTTP Request\|net_impl" | grep -iE -A8 "teaser|Traceback|ERROR|lancé|job" | cut -c1-400 | tail -60
