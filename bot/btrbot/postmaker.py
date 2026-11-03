@@ -781,6 +781,33 @@ class Maker:
         st.save()
         return it
 
+    def refresh_files(self, ep, st: posts.PostState, key: str) -> dict:
+        """A validated post rendered again (guest name fixed): same Drive files (links kept) under their new names,
+        new images in the task and its block below MARK. Status, dates and platform fields untouched."""
+        it = st.items[key]
+        guest = ep.get("guest_name") or "Guest"
+        d = share.Drive(share.Secrets(self.data_dir), self.cfg.youtube_client[:2])
+        folder = d.folder(guest, d.folder("BTR Posts"))
+        old, links = it.get("drive") or [], []
+        t = self._task(it)
+        day = posts.due(t) or datetime.now(posts.TZ)
+        for i, f in enumerate(it.get("files") or []):
+            name = f"{day.strftime('%m%d')}_{share._slug(guest, 30)}_{key.upper()}_{i + 1:02d}.jpg"
+            r = d.put(Path(f), folder, name, "image/jpeg", old[i]["id"] if i < len(old) else None)
+            links.append({"id": r["id"], "url": r.get("webViewLink", "")})
+        it["drive"], it["folder"] = links, d.folder_link(folder)
+        if t:
+            cu = self.clickup()
+            cu.update(t["id"], markdown_content=self.description(t, it, ep))
+            try:
+                for f in it.get("files") or []:
+                    cu.attach(t["id"], Path(f))
+                it["attached"] = "|".join(f"{Path(f).name}:{Path(f).stat().st_mtime:.0f}" for f in it.get("files") or [])
+            except Exception:  # noqa: BLE001
+                log.exception("posts attach")
+        st.save()
+        return it
+
     def _task(self, it: dict) -> dict | None:
         if not it.get("task"):
             return None

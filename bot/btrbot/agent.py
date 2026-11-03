@@ -76,6 +76,8 @@ class Agent:
             self._git("config", "user.name", "BTR bot")
             self._git("config", "user.email", "btr-bot@users.noreply.github.com")
         self._git("remote", "set-url", "origin", self._url())
+        if (self.src / ".git" / "rebase-merge").exists() or (self.src / ".git" / "rebase-apply").exists():
+            self._git("rebase", "--abort", check=False)
         if self.pending_files():
             return
         self._git("fetch", "-q", "origin", "main")
@@ -92,6 +94,7 @@ class Agent:
         return stat
 
     def discard(self) -> None:
+        self._git("rebase", "--abort", check=False)      # a deploy that stopped on a conflict (03.11)
         self._git("reset", "-q", "--hard", "origin/main", check=False)
         self._git("clean", "-fdq", check=False)
 
@@ -109,7 +112,14 @@ class Agent:
                 raise RuntimeError("le code ne compile pas, je ne déploie pas :\n" + (r.stdout + r.stderr)[-800:])
         self._git("add", "-A", "--", "bot")
         self._git("commit", "-q", "-m", f"bot (via Telegram): {message[:70]}")
-        self._git("pull", "-q", "--rebase", "origin", "main")
+        try:
+            self._git("pull", "-q", "--rebase", "origin", "main")
+        except RuntimeError:
+            # main changed meanwhile on the same lines (03.11): never leave the clone stuck mid-rebase
+            self._git("rebase", "--abort", check=False)
+            self._git("reset", "-q", "--soft", "HEAD~1", check=False)
+            raise RuntimeError("le code a changé entre-temps sur les mêmes lignes (une autre mise à jour), je n'ai rien "
+                               "déployé. Appuie sur « Annuler » puis redemande : Claude repartira de la version à jour.")
         self._git("push", "-q", "origin", "HEAD:main")
         return self._git("log", "-1", "--format=%h").strip()
 

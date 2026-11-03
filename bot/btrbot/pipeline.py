@@ -308,6 +308,33 @@ class Pipeline:
         self.yt.update_metadata(ep.video_id, ep["final"]["title"], desc)
         self.yt.set_thumbnail(ep.video_id, ep.dir / "render" / "thumb_youtube.jpg")
 
+    def update_thumb(self, ep: Episode) -> None:
+        """The thumbnail made again after the publication (guest name fixed), while the video is not public yet."""
+        self._guard(ep)
+        self.yt.set_thumbnail(ep.video_id, ep.dir / "render" / "thumb_youtube.jpg")
+
+    def youtube_text(self, ep: Episode) -> tuple[str, str]:
+        """Title and description as they are on YouTube now."""
+        sn = self.yt.video(ep.video_id)["snippet"]
+        return sn.get("title", ""), sn.get("description", "")
+
+    def description_for_youtube(self, ep: Episode) -> str:
+        """The episode's description as published: the chapters in place once they are on YouTube (stage done)."""
+        desc = ep["description"] or ""
+        block = "\n".join(f"{t} {title}" for t, title in ep.get("chapters") or [])
+        if ep.stage == "done" and block:
+            if "{CHAPTERS}" in desc or "{{CHAPTERS}}" in desc:
+                desc = desc.replace("{{CHAPTERS}}", block).replace("{CHAPTERS}", block)
+            elif block not in desc:
+                desc = desc.rstrip() + "\n\n" + block
+        desc = desc.replace("{{CHAPTERS}}", "").replace("{CHAPTERS}", "")
+        return re.sub(r"\n{3,}", "\n\n", desc).strip()
+
+    def update_meta(self, ep: Episode, title: str | None, description: str | None) -> None:
+        """Title and/or description fixed after the publication, while the video is not public yet (Loïc's go)."""
+        self._guard(ep)
+        self.yt.update_metadata(ep.video_id, title, description)
+
     # ---- 4. chapters --------------------------------------------------------
     def chapters(self, ep: Episode) -> list[list[str]]:
         if ep.get("chapters_in_description") and ep.get("chapters"):   # already written into the description

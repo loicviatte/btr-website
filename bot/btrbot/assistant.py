@@ -98,14 +98,24 @@ TOOLS = [
                                                        "set": {"type": "object", "description": "{nom_du_réglage: valeur}"},
                                                        "reset": {"type": "boolean"}, "show": {"type": "boolean"}},
                       "required": ["format"]}},
-    {"name": "set_title", "description": "Remplacer le titre YouTube de l'épisode en cours par ce texte exact.",
+    {"name": "fix_guest_name", "description": "Corriger l'orthographe du nom de l'invité PARTOUT (données de l'épisode, titre, "
+     "description, chapitres, transcript, carrousels / stories refaits avec les mêmes liens Drive, reels, YouTube Community, noms + "
+     "descriptions des tâches ClickUp sans toucher statuts ni dates, fichiers et dossiers Drive), puis aperçu du titre / de la "
+     "description YouTube corrigés avec un bouton (seulement si la vidéo n'est pas publique). Arrière-plan.",
+     "input_schema": {"type": "object", "properties": {"new": {"type": "string", "description": "le nom bien écrit"},
+                                                       "old": {"type": "string", "description": "le nom mal écrit (défaut : celui de l'épisode)"},
+                                                       "video": {"type": "string", "description": "lien / id (défaut : épisode en cours)"}},
+                      "required": ["new"]}},
+    {"name": "set_title", "description": "Remplacer le titre YouTube de l'épisode en cours par ce texte exact. Épisode déjà publié "
+     "(même « done ») et pas encore public : aperçu + bouton « Mettre à jour YouTube ».",
      "input_schema": {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}},
     {"name": "set_quote", "description": "Remplacer la citation des miniatures (haut / MOT / bas) et refaire les miniatures non validées.",
      "input_schema": {"type": "object", "properties": {"top": {"type": "string"}, "key": {"type": "string"}, "bottom": {"type": "string"}},
                       "required": ["top", "key", "bottom"]}},
     {"name": "set_part", "description": "Badge « PART n » en haut à droite des 3 miniatures de l'épisode en cours (part vide = enlever).",
      "input_schema": {"type": "object", "properties": {"part": {"type": "string"}}, "required": ["part"]}},
-    {"name": "edit_description", "description": "Réécrire la description YouTube selon une consigne (garde la structure).",
+    {"name": "edit_description", "description": "Réécrire la description YouTube selon une consigne (garde la structure). Épisode "
+     "déjà publié et pas encore public : aperçu + bouton « Mettre à jour YouTube ».",
      "input_schema": {"type": "object", "properties": {"instruction": {"type": "string"}}, "required": ["instruction"]}},
     {"name": "send_recap", "description": "Renvoyer les 3 miniatures actuelles + titre + description (dernier check avant publication).",
      "input_schema": {"type": "object", "properties": {}}},

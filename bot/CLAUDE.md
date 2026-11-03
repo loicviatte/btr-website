@@ -261,6 +261,15 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   still receiving / processing once (size, keep the computer on), reminds after PENDING_WARN_H 6 h, tells a failed
   processing; reg.data["pending"]; when it turns processed the normal flow starts (« ✅ YouTube a fini de traiter »).
   Test: `tests/pending_upload.py`.
+- Guest name fixed everywhere (Loïc 03.11: « Hannah Trever », not « Trevor »; made by dev mode, merged by hand):
+  `rename.py` (subs: full name, glued / dashed / UPPER, each changed word; never inside a word or an @handle; paths and
+  links untouched), tool fix_guest_name → `bot.guest_rename`: episode data + SRT + posts / community / teaser / reels
+  JSON, handles / EP numbers keys, ClickUp task names + descriptions, Drive names (scope drive.file), validated posts
+  rendered again with the same Drive links (`Maker.refresh_files`), the 3 thumbnails made again (validations kept), then
+  YouTube title / description / thumbnail behind « ✅ Mettre à jour YouTube » (`yt_meta_offer`, ytfix:, `Pipeline._guard`).
+  set_title / edit_description also work after the publication (same button). Boot one-shot trever_1103. Test:
+  `tests/guest_rename.py`. Dev mode: a deploy whose rebase conflicts is aborted (never left mid-rebase), « Annuler »
+  and the next request abort a stuck rebase.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 

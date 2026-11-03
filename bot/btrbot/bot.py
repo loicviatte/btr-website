@@ -938,9 +938,11 @@ def tool_handlers(ctx, images: list) -> dict:
         return out + "\n(pas encore re-rendu : redo_thumbnails pour voir le résultat)"
 
     async def set_title(title):
-        ep = need(("frames_proposed", "thumbs_proposed"))
+        ep = need(("frames_proposed", "thumbs_proposed") + AFTER_PUBLISH)
         ep["final"]["title"] = title.strip()[:100]
         ep.save()
+        if ep.stage in AFTER_PUBLISH:              # already on YouTube: same title there after Loïc's go
+            return await yt_meta_offer(ctx, ep, title=ep["final"]["title"])
         return "titre mis à jour : " + ep["final"]["title"]
 
     async def set_quote(top, key, bottom):
@@ -957,13 +959,24 @@ def tool_handlers(ctx, images: list) -> dict:
         return (f"badge PART {ep['part']}" if ep["part"] else "pas de badge") + " pour cet épisode (redo_thumbnails pour l'appliquer)"
 
     async def edit_description(instruction):
-        ep = need(("thumbs_proposed", "published", "chapters_proposed"))
+        ep = need(("thumbs_proposed",) + AFTER_PUBLISH)
         prompt = ("Rewrite this YouTube description following this instruction: " + instruction + "\n"
                   "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n" + ep["description"])
         ep["description"] = await run(lambda: pipe.llm._ask(prompt, task="description (retouche)"))
         ep.save()
+        if ep.stage in AFTER_PUBLISH:
+            return await yt_meta_offer(ctx, ep, description=pipe.description_for_youtube(ep))
         await plain(ctx, "Nouvelle description :\n\n" + ep["description"])
         return "nouvelle description envoyée à Loïc"
+
+    async def fix_guest_name(new, old=None, video=None):
+        m = re.search(r"(?:v=|youtu\.be/|^)([\w-]{11})", (video or "").strip())
+        ep = reg.episode(m.group(1)) if m else need()
+        old = (old or ep.get("guest_name") or "").strip()
+        new = (new or "").strip()
+        if not old or not new or old == new:
+            return f"rien à corriger (ancien « {old} », nouveau « {new} »)"
+        return bg(ctx, f"Nom corrigé · {new}", guest_rename(ctx, ep, old, new), limit=60 * 60)
 
     async def send_recap_t():
         ep = need(("thumbs_proposed",))
@@ -1484,6 +1497,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
+            "fix_guest_name": fix_guest_name,
             "set_title": set_title, "set_quote": set_quote, "set_part": set_part, "edit_description": edit_description,
             "send_recap": send_recap_t, "publish": publish, "chapters": chapters, "badge": badge,
             "thumbnail_feedback": thumbnail_feedback, "propose_claude_code": propose_claude_code,
@@ -3217,6 +3231,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
+    if q.data.startswith("ytfix:"):
+        await on_ytfix_button(ctx, q, q.data)
+        return
     if q.data.startswith("yc:"):
         await on_cm_button(ctx, q, q.data)
         return
@@ -3583,7 +3600,8 @@ async def on_text(update: Update, ctx):
         return
     low = text.lower()
     ep = reg.episode(reg.active) if reg.active else None
-    if ep and ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low):
+    if ep and (ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low)
+               or ep.stage in AFTER_PUBLISH and re.match(r"(titre|description)\s*:", low)):
         h = tool_handlers(ctx, [])
         MEMORY.add("user", text)
         arg = text.split(":", 1)[1].strip()
@@ -3747,6 +3765,19 @@ async def on_boot(app):
         except Exception:  # noqa: BLE001
             log.exception("ep msgs seed")
         reg.save()
+    if not reg.data.get("trever_1103"):          # Loïc 03.11: EP14's guest is « Hannah Trever », not « Trevor »
+        reg.data["trever_1103"] = True
+        reg.save()
+        hv = reg.episode("O_ZdYlKrdwU")
+        if hv.get("guest_name") == "Hannah Trevor":
+            async def _trever(ctx):
+                tok = topics.TOPIC.set("thumbs")
+                try:
+                    bg(ctx, "Nom corrigé · Hannah Trever", guest_rename(ctx, hv, "Hannah Trevor", "Hannah Trever"),
+                       limit=60 * 60)
+                finally:
+                    topics.TOPIC.reset(tok)
+            app.job_queue.run_once(_trever, when=60, name="trever")
     if reg.data.get("insights_digests_1102b") and not reg.data.get("insights_recent_1102"):   # Oti P2 (out 27.10)
         reg.data["insights_recent_1102"] = True
         reg.save()
@@ -4902,6 +4933,200 @@ async def posts_rerender(ctx, ep, keys: list[str]):
     await run(M.render, ep, st, keys)
     for k in keys:
         await send_post_safe(ctx, ep, k)
+
+
+# ---------------------------------------------------------------- YouTube text after the publication, guest name fix
+AFTER_PUBLISH = ("published", "chapters_proposed", "done")
+
+
+async def yt_meta_offer(ctx, ep, title: str | None = None, description: str | None = None, thumb: bool = False) -> str:
+    """Title / description (/ thumbnail) of an episode already sent to YouTube: shown, and sent there only with
+    « Mettre à jour YouTube » (never on a public video: Pipeline._guard)."""
+    ep["yt_fix"] = {"title": title, "description": description, "thumb": thumb}
+    ep.save()
+    txt = "🔄 Mise à jour YouTube prête"
+    if thumb:
+        txt += "\nMiniature : la nouvelle version horizontale (ci-dessus)"
+    if title:
+        txt += f"\nTitre : <b>{esc(title)}</b>"
+    if description:
+        txt += f"\nDescription :\n<pre>{esc(description[:3300])}</pre>"
+    await say(ctx, txt, reply_markup=K([[B("✅ Mettre à jour YouTube", callback_data=f"ytfix:{ep.video_id}"),
+                                         B("Non", callback_data=f"ytfix:no:{ep.video_id}")]]))
+    return "aperçu envoyé avec le bouton « Mettre à jour YouTube » : rien ne part sans son clic"
+
+
+async def on_ytfix_button(ctx, q, data: str):
+    try:
+        await q.edit_message_reply_markup(None)
+    except Exception:  # noqa: BLE001
+        pass
+    ep = reg.episode(data.split(":")[-1])
+    fx = ep.get("yt_fix")
+    if data.startswith("ytfix:no:") or not fx:
+        ep.data.pop("yt_fix", None)
+        ep.save()
+        await say(ctx, "OK, rien n'est envoyé sur YouTube." if fx else "C'est déjà fait.")
+        return
+
+    async def go():
+        if fx.get("title") or fx.get("description"):
+            await run(pipe.update_meta, ep, fx.get("title"), fx.get("description"))
+        if fx.get("thumb"):
+            await run(pipe.update_thumb, ep)
+        if fx.get("title") and ep.get("final"):
+            ep["final"]["title"] = fx["title"]
+        ep.data.pop("yt_fix", None)
+        ep.save()
+        what = ", ".join(w for w, v in (("titre", fx.get("title")), ("description", fx.get("description")),
+                                         ("miniature", fx.get("thumb"))) if v)
+        await say(ctx, f"✅ YouTube mis à jour ({what}) : https://youtu.be/{ep.video_id}")
+    await guarded(ctx, "Mise à jour YouTube", go())
+
+
+def guest_rename_local(ep, old: str, new: str) -> list[str]:
+    """Episode data, transcript, posts, reels, teaser, YouTube Community drafts, handles / EP numbers: the new spelling."""
+    import json
+    from . import rename
+    rules, done = rename.subs(old, new), []
+    before = json.dumps(ep.data, ensure_ascii=False)
+    ep.data = rename.fix_obj(ep.data, rules)
+    ep["guest_name"] = new
+    if json.dumps(ep.data, ensure_ascii=False) != before:
+        ep.save()
+        done.append("épisode (nom, titre, description, chapitres, axes)")
+    if any(rename.fix_file(p, rules) for p in ep.dir.glob("*.srt")):
+        done.append("transcript")
+    for name, label in (("posts.json", "carrousels & stories"), ("community.json", "YouTube Community"),
+                        ("teaser.json", "teaser")):
+        if rename.fix_json(ep.file(name), rules):
+            done.append(label)
+    rs = Reels.of(ep)
+    if rs.path.exists():
+        fixed = rename.fix_obj(rs.data, rules)
+        if fixed != rs.data:
+            rs.data.clear()
+            rs.data.update(fixed)
+            rs.save()
+            done.append("reels (légendes)")
+    ok, nk = _share.guest_key(old), _share.guest_key(new)
+    for f in ("handles.json", "ep_numbers.json"):
+        p = cfg.data_dir / f
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, ValueError):
+            continue
+        if ok in d and nk not in d:
+            d[nk] = d.pop(ok)
+            p.write_text(json.dumps(d, ensure_ascii=False, indent=1))
+    for table in (_share.HANDLES, _share.EP_NUMBERS):
+        if ok in table and nk not in table:
+            table[nk] = table[ok]
+    return done
+
+
+def guest_rename_remote(old: str, new: str) -> list[str]:
+    """ClickUp: task names and descriptions (status, dates, fields untouched). Drive: the bot's files and folders."""
+    from . import rename
+    rules, out = rename.subs(old, new), []
+    sec = _share.Secrets(cfg.data_dir)
+    try:
+        cu, n = _share.ClickUp(sec.get("clickup_token")), 0
+        for t in cu.tasks():
+            if all(rename.fix(t.get(f) or "", rules) == (t.get(f) or "")
+                   for f in ("name", "text_content", "description")):
+                continue
+            full = cu.task(t["id"])
+            desc = full.get("markdown_description") or full.get("text_content") or ""
+            upd = {}
+            if rename.fix(full.get("name", ""), rules) != full.get("name", ""):
+                upd["name"] = rename.fix(full["name"], rules)
+            if rename.fix(desc, rules) != desc:
+                upd["markdown_content"] = rename.fix(desc, rules)
+            if upd:
+                cu.update(t["id"], **upd)
+                n += 1
+        out.append(f"ClickUp : {n} tâche(s) corrigée(s)")
+    except Exception as e:  # noqa: BLE001
+        log.exception("rename clickup")
+        out.append(f"ClickUp pas corrigé ({str(e)[:120]})")
+    try:
+        d, n, tok = _share.Drive(sec, cfg.youtube_client[:2]), 0, None
+        while True:                                    # scope drive.file: only what the bot made
+            r = d.svc.files().list(q="trashed = false", fields="nextPageToken, files(id,name)", pageSize=1000,
+                                   pageToken=tok).execute()
+            for f in r.get("files", []):
+                name = rename.fix(f["name"], rules)
+                if name != f["name"]:
+                    d.svc.files().update(fileId=f["id"], body={"name": name}).execute()
+                    n += 1
+            tok = r.get("nextPageToken")
+            if not tok:
+                break
+        out.append(f"Drive : {n} fichier(s) / dossier(s) renommé(s)")
+    except Exception as e:  # noqa: BLE001
+        log.exception("rename drive")
+        out.append(f"Drive pas corrigé ({str(e)[:120]})")
+    return out
+
+
+async def guest_rename(ctx, ep, old: str, new: str):
+    """Loïc 03.11 (« Hannah Trever », pas « Trevor ») : the guest's name fixed everywhere the bot wrote it, then the
+    YouTube title / description shown with a button (not public yet only)."""
+    from . import rename
+    await say(ctx, f"✏️ Je corrige « {esc(old)} » → « {esc(new)} » partout (données, transcript, ClickUp, Drive, visuels)…")
+    done = await run(guest_rename_local, ep, old, new)
+    done += await run(guest_rename_remote, old, new)
+    st, M, redone, filed = _posts.PostState(ep), maker(), [], []
+    for k, it in list(st.items.items()):               # the name is in the pictures (slides, NEW EPISODE · NAME…)
+        if not it.get("files") or _dash.post_locked(it):
+            continue
+        was = {f: it.get(f) for f in ("status", "sent", "msg")}
+        try:
+            await run(M.render, ep, st, [k])
+            st = _posts.PostState(ep)
+            it = st.items[k]
+            it.update({f: v for f, v in was.items() if v is not None})
+            st.save()
+            if was["status"] == "ok":
+                await run(M.refresh_files, ep, st, k)
+                filed.append(post_name(ep, k))
+            else:
+                redone.append(k)
+        except Exception:  # noqa: BLE001
+            log.exception("rename render %s", k)
+    for k in redone:
+        await send_post_safe(ctx, ep, k)
+    if filed:
+        done.append("visuels validés refaits, mêmes liens Drive : " + ", ".join(filed))
+    thumbs = False
+    if ep.get("pick_guest") and ep.get("pick_marius") and ep.stage in ("thumbs_proposed",) + AFTER_PUBLISH:
+        try:                                          # the name is on the 3 thumbnails: all made again, validations kept
+            for d in THUMB_LABELS:
+                await run(pipe.thumbnails, ep, d)
+            thumbs = True
+            done.append("les 3 miniatures (validations gardées)")
+        except Exception:  # noqa: BLE001
+            log.exception("rename thumbnails")
+    await say(ctx, "✅ Nom corrigé :\n" + "\n".join("• " + esc(x) for x in done)
+              + ("\nLes aperçus pas encore validés sont renvoyés dans Stories." if redone else ""))
+    if thumbs:
+        for d in THUMB_LABELS:
+            await send_thumb(ctx, ep, d)
+    if ep.stage not in AFTER_PUBLISH:
+        return                                        # not on YouTube yet: published with the right name
+    try:
+        title, desc = await run(pipe.youtube_text, ep)
+        rules = rename.subs(old, new)
+        t2, d2 = rename.fix(title, rules), rename.fix(desc, rules)
+        if (t2, d2) == (title, desc) and not thumbs:
+            await say(ctx, "YouTube : le nom y est déjà bien écrit.")
+        else:
+            await yt_meta_offer(ctx, ep, title=t2 if t2 != title else None, description=d2 if d2 != desc else None,
+                                thumb=thumbs)
+    except Exception as e:  # noqa: BLE001
+        log.exception("rename youtube")
+        await say(ctx, f"⚠️ YouTube pas lu (<code>{esc(str(e)[:150])}</code>) : redemande la correction du nom.")
 
 
 def post_sids(st, k: str, slides: list[int] | None, part: str | None) -> list[str]:
@@ -6504,7 +6729,7 @@ topics.assign(globals(), "stories", """posts_make send_post post_validate on_pos
 topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
-    episode_cmd scan_cmd""")
+    episode_cmd scan_cmd yt_meta_offer on_ytfix_button guest_rename""")
 
 
 def main():
