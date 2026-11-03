@@ -458,6 +458,11 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
         log.warning("poll failed: %s", e)
         return
     first_run = not reg.data.get("initialised")
+    if not first_run:
+        try:
+            await poll_pending(ctx)
+        except Exception as e:  # noqa: BLE001
+            log.warning("pending poll failed: %s", e)
     for v in vids:
         vid = v["id"]
         if reg.seen(vid):
@@ -465,6 +470,9 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
         reg.mark_seen(vid)
         if first_run:
             continue
+        if (reg.data.get("pending") or {}).pop(vid, None):
+            reg.save()
+            await say(ctx, f"✅ YouTube a fini de traiter <b>{esc(v['snippet']['title'])}</b>, je m'y mets.")
         ep = reg.episode(vid)
         ep["title"] = v["snippet"]["title"]
         ep.stage = "waiting_transcript"
@@ -486,6 +494,53 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
             await say(ctx, "Bot prêt. Les vidéos déjà non répertoriées sont ignorées ; "
                            "pour en traiter une : <code>/episode ID</code>.")
     await poll_transcripts(ctx)
+
+
+async def poll_pending(ctx):
+    """Loïc 03.11: a 29 GB upload stayed « en traitement » for hours and the bot said nothing. An unlisted video that
+    YouTube is still receiving / processing is announced once (the work starts when it is processed), a failure is
+    told, and one reminder comes if it is still not ready after PENDING_WARN_H hours."""
+    from datetime import datetime as _dt, timezone as _tz
+    pend = reg.data.setdefault("pending", {})
+    for v in await run(pipe.yt.unlisted_pending):
+        vid = v["id"]
+        if reg.seen(vid):
+            continue
+        p = pend.setdefault(vid, {})
+        title = v["snippet"].get("title") or vid
+        pd = v.get("processingDetails") or {}
+        size = int((v.get("fileDetails") or {}).get("fileSize") or 0)
+        size_txt = f" ({size / 1e9:.0f} Go)" if size > 1e9 else ""
+        try:
+            up = _dt.fromisoformat(v["snippet"]["publishedAt"].replace("Z", "+00:00"))
+            hours = (_dt.now(_tz.utc) - up).total_seconds() / 3600
+        except (KeyError, ValueError):
+            hours = 0
+        status = pd.get("processingStatus")
+        if status in ("failed", "terminated") and not p.get("failed"):
+            p["failed"] = True
+            reg.save()
+            await say(ctx, f"⚠️ YouTube n'a pas réussi à traiter <b>{esc(title)}</b>{size_txt}.\nhttps://youtu.be/{vid}\n"
+                           "Regarde dans YouTube Studio ; il faudra sans doute la remettre en ligne.")
+            continue
+        if not p.get("told"):
+            p["told"] = True
+            late = hours >= PENDING_WARN_H
+            p["warned"] = late
+            reg.save()
+            await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(title)}</b>{size_txt}\nhttps://youtu.be/{vid}\n"
+                           "YouTube la reçoit / la traite encore. Je lance les axes dès qu'elle est prête "
+                           "(si l'envoi est encore en cours dans Studio, garde l'ordi allumé)."
+                           + (f"\n⏳ Ça fait déjà {hours:.0f} h : vérifie dans YouTube Studio que l'envoi est bien à 100 %."
+                              if late else ""))
+        elif hours >= PENDING_WARN_H and not p.get("warned"):
+            p["warned"] = True
+            reg.save()
+            await say(ctx, f"⏳ <b>{esc(title)}</b> est toujours en traitement chez YouTube après {hours:.0f} h"
+                           f"{size_txt}. Vérifie dans YouTube Studio que l'envoi est bien à 100 %.")
+
+
+PENDING_WARN_H = 6
 
 
 async def poll_transcripts(ctx):

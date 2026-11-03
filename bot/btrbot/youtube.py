@@ -57,6 +57,15 @@ class YouTube:
             if v["status"].get("privacyStatus") == "unlisted" and v["status"].get("uploadStatus") == "processed"
         ]
 
+    def unlisted_pending(self) -> list[dict]:
+        """Unlisted uploads YouTube is still receiving / processing (uploadStatus « uploaded »), with processingDetails."""
+        ids = [v["id"] for v in self.recent()
+               if v["status"].get("privacyStatus") == "unlisted" and v["status"].get("uploadStatus") == "uploaded"]
+        if not ids:
+            return []
+        r = self.svc.videos().list(part="snippet,status,processingDetails,fileDetails", id=",".join(ids)).execute()
+        return r.get("items", [])
+
     def public_references(self, n: int = 8) -> list[dict]:
         """Recent public long-form episodes (title + description), used as style references."""
         out = []

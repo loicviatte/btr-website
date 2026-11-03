@@ -250,6 +250,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `teaser.json`. Bot (topic reels): /teaser [lien], tools teaser_make (feedback keeps the previous moments in the request)
   / teaser_show, buttons tz:ok / tz:redo. Not wired yet: Drive + ClickUp « Reel teaser » task + publishing. Test:
   `tests/teaser_flow.py`.
+- Uploads still processing (Loïc 03.11: a 29 GB upload stayed « uploaded » for hours, the bot only watches « processed »):
+  `poll_pending` (each poll, `YouTube.unlisted_pending` with processingDetails) announces an unlisted video YouTube is
+  still receiving / processing once (size, keep the computer on), reminds after PENDING_WARN_H 6 h, tells a failed
+  processing; reg.data["pending"]; when it turns processed the normal flow starts (« ✅ YouTube a fini de traiter »).
+  Test: `tests/pending_upload.py`.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
