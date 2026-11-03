@@ -1426,9 +1426,10 @@ class Pipeline:
         if collab:
             tries.append((None, [], "Instagram a refusé la cover et/ou les invitations collab : ajoute-les à la main "
                                     "dans l'app (reel → Modifier)."))
+        video = self.ig_video(item)
         for k, (cov, col, note) in enumerate(tries):
             try:
-                cid = ig.container(Path(item["file"]), caps.get("instagram") or "", col, cov, grid)
+                cid = ig.container(video, caps.get("instagram") or "", col, cov, grid)
                 ig.wait(cid)
                 break
             except RuntimeError:
@@ -1436,6 +1437,26 @@ class Pipeline:
                     raise
                 log.exception("instagram try %s", k)
         return {"container": cid, "made": datetime.now(timezone.utc).isoformat(), "grid": grid, "note": note}
+
+    @staticmethod
+    def ig_video(item: dict) -> Path:
+        """The file sent to Instagram. The bot's own reels go as they are; a file Loïc exported himself (Drive teaser,
+        03.11: refused by Meta « ProcessingFailedError ») is made once in Instagram's specs: H.264 1080×1920 ≤30 fps,
+        ≤12 Mb/s, AAC 48 kHz, faststart."""
+        src = Path(item["file"])
+        if not item.get("external"):
+            return src
+        out = src.with_name(src.stem + "_ig.mp4")
+        if out.exists() and out.stat().st_size > 1000 and out.stat().st_mtime >= src.stat().st_mtime:
+            return out
+        import subprocess
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(src),
+                        "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,"
+                               "fps=30,format=yuv420p",
+                        "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-crf", "20",
+                        "-maxrate", "12M", "-bufsize", "24M", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2",
+                        "-movflags", "+faststart", str(out)], check=True, timeout=1800)
+        return out
 
     def ig_grid(self, item: dict) -> bool:
         """ClickUp « Instagram placement » of the reel's task: Grid = also in the profile grid (else Reels tab only)."""

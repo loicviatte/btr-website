@@ -296,7 +296,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   now », in the style of the latest Instagram teaser captions (`teaser_examples`) + the episode's YouTube description,
   quotes only if said in the teaser, collab invites kept. Tool teaser_captions(feedback) → `bot.teaser_recaption` →
   `Pipeline.teaser_apply`: Short title/description (only while not public), ClickUp block; Instagram picks the new
-  caption up at publishing (caps_sig).
+  caption up at publishing (caps_sig). Instagram gets `Pipeline.ig_video`: an external file is re-encoded once to
+  Meta specs (H.264 1080×1920 30 fps ≤12 Mb/s, AAC 48 kHz), Loïc's export was refused « ProcessingFailedError ».
 - Solid cut-outs (Loïc 03.11, Hannah: « on voit le gradient jaune à travers elle »): `imaging.cutout` = isnet outline +
   u2net_human_seg body (counted only where isnet saw something: it grabs chairs), silhouette filled (holes and small
   gaps against the bottom / side edges where a model saw the person or the colour is dark / like the clothes), outline smoothed, opaque inside, isnet soft alpha only where the human model agrees (hair).

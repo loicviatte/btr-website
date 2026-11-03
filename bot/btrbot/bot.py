@@ -4292,6 +4292,16 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_teaser_caps, when=30, name="teaser-caps-1103")
+    if not reg.data.get("teaser_ig_1103"):          # 03.11 18:26: Meta refused Loïc's own export (ProcessingFailed):
+        reg.data["teaser_ig_1103"] = True             # tries forgotten, the Instagram-spec copy is sent instead
+        reg.save()
+        _ep = reg.episode("O_ZdYlKrdwU")
+        for _it in (RS(_ep).data.get("items") or {}).values():
+            _ig = _it.get("ig_post") or {}
+            if _it.get("external") and not _ig.get("posted"):
+                for _k in ("tries", "failed", "container", "made"):
+                    _ig.pop(_k, None)
+        RS(_ep).save()
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
