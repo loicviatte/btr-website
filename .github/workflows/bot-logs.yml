@@ -22,19 +22,14 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Memory
-        run: |
-          ssh root@"$HOST" 'journalctl -k --since "-3h" --no-pager | grep -iE "oom|killed process|invoked" | tail -20; ps aux --sort=-rss | head -8 | cut -c1-200'
-          ssh root@"$HOST" 'swapon --show; free -m; ls -la /swapfile; grep swap /etc/fstab; systemctl show btr-bot -p MemoryMax -p MemoryHigh; cat /proc/sys/vm/swappiness; ls -t /opt/btr-bot/data/episodes | head -5; cat /opt/btr-bot/data/registry.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"active\"), d.get(\"pending\"))"'
-      - name: Thumbnail files
+      - name: Dev clone (read only)
         run: |
           mkdir -p out
-          ssh root@"$HOST" bash -s > out/thumbs.tgz <<'SH'
-          A=$(python3 -c "import json; print(json.load(open('/opt/btr-bot/data/registry.json'))['active'])")
-          cd /opt/btr-bot/data/episodes/$A
-          tar czf - $(find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "design*.json" -o -name "state.json" -o -name "*4k*.jpg" \) -newermt "-1 day" | head -80)
-          SH
-          ls -la out; tar tzf out/thumbs.tgz | head -80
+          ssh root@"$HOST" 'cd /opt/btr-src && git status | head -12; git log --oneline -4; git status --porcelain | head -20'
+          ssh root@"$HOST" 'cd /opt/btr-src && git format-patch -1 25fce7f --stdout' > out/agent.patch || true
+          ssh root@"$HOST" 'cd /opt/btr-src && git diff HEAD' > out/worktree.diff || true
+          wc -l out/*
+          tar czf out/thumbs.tgz -C out agent.patch worktree.diff
       - uses: actions/checkout@v4
         with:
           path: repo
