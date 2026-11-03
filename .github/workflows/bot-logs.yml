@@ -22,9 +22,6 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Teaser file sizes
-        run: |
-          ssh root@"$HOST" 'ls -la /opt/btr-bot/data/episodes/O_ZdYlKrdwU/reels/*/ | grep -i "teaser\|base"; for f in /opt/btr-bot/data/episodes/O_ZdYlKrdwU/reels/*/BTR_reel_*_teaser*.mp4; do echo $f; ffprobe -v error -show_entries format=duration,bit_rate:stream=codec_type,codec_name,width,height,r_frame_rate -of compact "$f"; done'
       - name: Teaser texts
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-6min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A2 "teaser|instagram|Traceback|ERROR|textes" | tail -60
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-8min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A2 "teaser|instagram|Traceback|ERROR|textes" | tail -60
