@@ -1,6 +1,6 @@
 # New episode → website (runbook for the scheduled Claude task)
 
-The GitHub Action `.github/workflows/new-episodes.yml` checks YouTube every 2 hours. For each **public** upload
+The GitHub Action `.github/workflows/new-episodes.yml` checks YouTube at :05 and :35 every hour; this task runs at :40 every hour (episodes go out on the hour or half hour). For each **public** upload
 **longer than 15 minutes** that is not on the site yet, it saves `data/incoming/<videoId>/` with `meta.json`,
 `thumb.jpg` and `captions.srt`. This runbook turns those folders into pages and puts them online.
 Loïc chose **direct publishing**: no review step, so check carefully before pushing.
