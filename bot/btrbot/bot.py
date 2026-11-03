@@ -3919,6 +3919,20 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_cm_atlas, when=70, name="cm-atlas-1103b")
+    if not reg.data.get("reels_retry_1103"):        # Hannah's reel moments failed (empty model answer): asked again
+        reg.data["reels_retry_1103"] = True
+        reg.save()
+
+        async def _reels_retry(ctx):
+            ep = reg.episode("O_ZdYlKrdwU")
+            if (RS(ep).data or {}).get("cands"):
+                return
+            tok = topics.TOPIC.set("reels")
+            try:
+                bg(ctx, "Moments pour les reels", propose_reels(ctx, ep.video_id))
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_reels_retry, when=90, name="reels-retry-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()

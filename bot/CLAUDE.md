@@ -23,6 +23,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `assistant.Memory` keeps the chat (Loïc + everything the bot posted). Add a capability = a tool + a handler, not a regex.
   Exact « titre: / citation: / part: / description: » stay instant fast paths. `tests/stress.py` = 30 real-model scenarios
   (workflow « Bot stress test », runs after a deploy whose commit message contains [stress]).
+- `llm._json` (03.11, empty answer on the reel moments): no JSON → asked again with twice the max_tokens, then once on
+  the work model; the error names the stop reasons. Boot one-shot reels_retry_1103 relaunched Hannah's reel moments.
 - Models (`llm.MODELS`, `usage.py`): chat Opus (Loïc 01.11: « un bot intelligent comme Claude »; was Haiku), creative Opus (axes, title, description), work Sonnet (chapters, frames),
   vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).

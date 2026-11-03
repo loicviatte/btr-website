@@ -45,14 +45,25 @@ class LLM:
                 if "cache_control" in block:
                     block["cache_control"] = {"type": "ephemeral"}
             msg = self.create(task or tier, **kw)
+        self.last_stop = getattr(msg, "stop_reason", None)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
     def _json(self, content, max_tokens: int = 4000, tier: str = "creative", task: str = "") -> dict:
-        text = self._ask(content, max_tokens, tier, task)
-        m = re.search(r"\{.*\}", text, re.S)
-        if not m:
-            raise ValueError(f"No JSON in model answer: {text[:300]}")
-        return json.loads(m.group(0))
+        """Loïc 03.11 (« Moments pour les reels a échoué : No JSON in model answer: » with an empty answer): an empty
+        or cut answer is asked again, with twice the room if it ran out of tokens, then once on the work model."""
+        tries = [(tier, max_tokens), (tier, max_tokens * 2)] + ([("work", max_tokens * 2)] if tier != "work" else [])
+        text, stops = "", []
+        for t, mt in tries:
+            text = self._ask(content, mt, t, task)
+            stops.append(str(getattr(self, "last_stop", "") or "?"))
+            m = re.search(r"\{.*\}", text, re.S)
+            if m:
+                try:
+                    return json.loads(m.group(0))
+                except json.JSONDecodeError:
+                    if getattr(self, "last_stop", "") != "max_tokens":
+                        raise
+        raise ValueError(f"No JSON in model answer (stop: {', '.join(stops)}): {text[:300]}")
 
     @staticmethod
     def _with_transcript(transcript: str, text: str) -> list[dict]:
