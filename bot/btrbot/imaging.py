@@ -4,29 +4,79 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageFilter
 
-_rembg_session = None
+_sessions: dict = {}
 _lama = None
 
 
-def cutout(img: Image.Image) -> Image.Image:
-    """Person cut-out with clean edges: largest blob only, small bridges to the set removed."""
-    global _rembg_session
-    import cv2
-    from rembg import new_session, remove
+def _session(name):
+    from rembg import new_session
+    if name not in _sessions:
+        _sessions[name] = new_session(name)
+    return _sessions[name]
+
+
+def release() -> None:
+    """Free the cut-out / LaMa models (≈ 2-3 GB) once a render batch is done: on the 4 GB server, keeping them while
+    Claude Code (dev mode) runs got the whole bot killed by the OOM killer (03.11)."""
+    global _lama
+    _sessions.clear()
+    _lama = None
+    import gc
+    gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _largest(mask):
     from scipy import ndimage
-    if _rembg_session is None:
-        _rembg_session = new_session("isnet-general-use")
-    rgba = remove(img.convert("RGB"), session=_rembg_session).convert("RGBA")
-    a = np.asarray(rgba.getchannel("A")).astype(np.float32) / 255
-    a = np.clip((a - 0.3) / 0.45, 0, 1)
-    solid = (a > 0.5).astype(np.uint8)
+    lab, n = ndimage.label(mask)
+    if not n:
+        return mask.astype(bool)
+    sizes = ndimage.sum(np.ones_like(mask), lab, range(1, n + 1))
+    return lab == int(np.argmax(sizes)) + 1
+
+
+def cutout(img: Image.Image) -> Image.Image:
+    """Person cut-out with clean edges and a SOLID body (Loïc 03.11, Hannah: « on voit le gradient jaune à travers
+    elle »): the general model (isnet) gives the outline and the hair, but is unsure on dark clothes against a dark
+    set (half-transparent sleeves / legs → the gold haze showed through). The human model (u2net_human_seg) says
+    where the body is; it only counts where isnet saw something (it also grabs chairs). The silhouette is filled
+    (holes, and small gaps against the bottom / side edges of the frame) and fully opaque inside; soft alpha only on
+    the outline. Largest blob only, small bridges to the set removed."""
+    import cv2
+    from rembg import remove
+    from scipy import ndimage
+    rgb = img.convert("RGB")
+    rgba = remove(rgb, session=_session("isnet-general-use")).convert("RGBA")
+    a_is = np.asarray(rgba.getchannel("A")).astype(np.float32) / 255
+    try:
+        a_hu = np.asarray(remove(rgb, session=_session("u2net_human_seg"), only_mask=True)).astype(np.float32) / 255
+    except Exception:  # noqa: BLE001  (model download failed: isnet alone, as before)
+        a_hu = np.zeros_like(a_is)
     k = max(3, int(min(img.size) * 0.008)) | 1
-    opened = cv2.morphologyEx(solid, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
-    lab, n = ndimage.label(opened)
-    if n:
-        sizes = ndimage.sum(np.ones_like(opened), lab, range(1, n + 1))
-        keep = ndimage.binary_dilation(lab == int(np.argmax(sizes)) + 1, iterations=max(2, k // 2))
-        a = a * keep
+    ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    a = np.clip((a_is - 0.3) / 0.45, 0, 1)
+    seen = cv2.dilate((a_is > 0.06).astype(np.uint8), ker) > 0
+    sil = ((a > 0.5) | ((a_hu > 0.5) & seen)).astype(np.uint8)
+    sil = _largest(cv2.morphologyEx(sil, cv2.MORPH_OPEN, ker))
+    # holes, and gaps against the frame's bottom / sides (they count as body, the top doesn't): filled when a model
+    # saw the person there (a lost sleeve / knee), left open when it's set seen between an arm and the body
+    pad = np.pad(sil, 1, constant_values=True)
+    pad[0, :] = False
+    gaps = ndimage.binary_fill_holes(pad)[1:-1, 1:-1] & ~sil
+    lab, n = ndimage.label(gaps)
+    for i in range(1, n + 1):
+        g = lab == i
+        inside = not (g[-1].any() or g[:, 0].any() or g[:, -1].any())
+        if (inside or (g[-1].any() and g.sum() < 0.06 * g.size)) and (a_is[g].mean() > 0.1 or a_hu[g].mean() > 0.5):
+            sil |= g
+    core = cv2.erode(sil.astype(np.uint8) * 255, ker)
+    core = np.asarray(Image.fromarray(core).filter(ImageFilter.GaussianBlur(k / 3))).astype(np.float32) / 255
+    keep = ndimage.binary_dilation(sil, iterations=max(2, k // 2))
+    a = np.maximum(a * keep, core)
     m = Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
     rgba.putalpha(m)
     return rgba

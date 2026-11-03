@@ -135,7 +135,10 @@ class Agent:
         cmd += ["--allowedTools", *TOOLS]
         env = {**os.environ, "ANTHROPIC_API_KEY": self.api_key, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}
         r = subprocess.run(cmd, input=message, capture_output=True, text=True, cwd=str(self.src / "bot"),
-                           env=env, timeout=timeout)
+                           env=env, timeout=timeout, preexec_fn=_oom_first)
+        if r.returncode in (-9, 137) and not r.stdout.strip():
+            raise RuntimeError("le serveur a manqué de mémoire et Claude Code a été arrêté (le bot, lui, continue). "
+                               "Redemande-moi dans un instant.")
         try:
             out = json.loads(r.stdout.strip().splitlines()[-1])
         except Exception:  # noqa: BLE001
@@ -153,3 +156,13 @@ class Agent:
         return {"text": str(out.get("result") or "").strip() or "(pas de réponse)",
                 "cost": out.get("total_cost_usd"), "error": out.get("is_error"),
                 "files": [f for f in self.pending_files() if f.startswith("bot/")]}
+
+
+def _oom_first():
+    """In the Claude Code child: if the 4 GB server runs out of memory, the kernel kills Claude Code, not the bot
+    (03.11: the OOM killer took the bot down, and with it the thumbnails being made)."""
+    try:
+        with open("/proc/self/oom_score_adj", "w") as f:
+            f.write("900")
+    except OSError:
+        pass

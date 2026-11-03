@@ -4,7 +4,7 @@ import logging
 import re
 from pathlib import Path
 
-from . import design, frames, render, srt
+from . import design, frames, imaging, render, srt
 from .config import Settings
 from .faces import Faces
 from .llm import LLM
@@ -97,6 +97,13 @@ def part_number(ep) -> str | None:
 
 
 def render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=()) -> dict[str, Path]:
+    try:
+        return _render_thumbs(ep, models_dir, only, skip)
+    finally:
+        imaging.release()      # 2-3 GB of models: never kept on the 4 GB server once the thumbnails are made
+
+
+def _render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=()) -> dict[str, Path]:
     """Render the 3 thumbnails from the picked frames, or just one ("youtube" | "instagram" | "square").
     Designs in `skip` (validated by Loïc) are left untouched."""
     g, m = ep["pick_guest"], ep["pick_marius"]

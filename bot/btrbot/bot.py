@@ -14,7 +14,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, ApplicationHandlerStop, CallbackQueryHandler, CommandHandler, ContextTypes,
                           ExtBot, MessageHandler, MessageReactionHandler, TypeHandler, filters)
 
-from . import assistant, design, drive, topics
+from . import assistant, design, drive, imaging, topics
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -318,6 +318,12 @@ async def talk_to_agent(ctx, text: str, strong: bool = False, thumb_ep=None):
     if AGENT_LOCK.locked():
         await say(ctx, "⏳ Je suis déjà en train de travailler sur ta demande précédente, je te réponds dès que c'est fini.")
     async with AGENT_LOCK:
+        if LOCK.locked():   # a heavy job (thumbnails, reels…) + Claude Code don't fit together in the server's 4 GB
+            await say(ctx, f"⏳ J'attends la fin de « {esc(RUNNING.get('label') or 'la tâche en cours')} » avant de "
+                           "regarder (le serveur n'a pas la mémoire pour les deux en même temps).")
+            while LOCK.locked():
+                await asyncio.sleep(5)
+        await run(imaging.release)
         await ctx.bot.send_message(cfg.chat_id, ("🧠 Mode Opus. " if strong else "🤔 ")
                                    + "Je regarde… (jusqu'à quelques minutes si je dois coder)")
         reg.data["dev_last_request"] = text[:200]
@@ -3797,6 +3803,23 @@ async def on_boot(app):
                 st.save()
             except Exception:  # noqa: BLE001
                 log.exception("rejected migration")
+    if not reg.data.get("hannah_cut_1103"):               # solid cut-outs (Loïc 03.11: the haze showed through Hannah)
+        reg.data["hannah_cut_1103"] = True
+        reg.save()
+
+        async def _recut(ctx):
+            ep = reg.episode("O_ZdYlKrdwU")
+            if ep.stage != "thumbs_proposed" or not (ep.get("pick_guest") and ep.get("pick_marius")):
+                return
+            tok = topics.TOPIC.set("thumbs")
+            try:
+                await say(ctx, "✂️ Détourage corrigé : la silhouette de Hannah est maintenant pleine (manches et jambes "
+                               "comprises), le voile or reste derrière elle. Je refais les miniatures avec tes réglages "
+                               "de texte (« Now we're » / « part of the BDC » plus petits).")
+                bg(ctx, "Miniatures", make_thumbs(ctx, ep))
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_recut, when=45, name="hannah-cut-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
