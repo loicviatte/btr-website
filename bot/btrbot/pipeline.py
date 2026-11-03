@@ -1446,7 +1446,7 @@ class Pipeline:
         src = Path(item["file"])
         if not item.get("external"):
             return src
-        out = src.with_name(src.stem + "_ig.mp4")
+        out = src.with_name(src.stem + "_ig2.mp4")
         if out.exists() and out.stat().st_size > 1000 and out.stat().st_mtime >= src.stat().st_mtime:
             return out
         import subprocess
@@ -1455,6 +1455,7 @@ class Pipeline:
                                "fps=30,format=yuv420p",
                         "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-crf", "20",
                         "-maxrate", "12M", "-bufsize", "24M", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2",
+                        "-map", "0:v:0", "-map", "0:a:0?", "-dn", "-map_metadata", "-1",   # no timecode/data track
                         "-movflags", "+faststart", str(out)], check=True, timeout=1800)
         return out
 
