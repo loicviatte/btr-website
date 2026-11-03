@@ -22,6 +22,6 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Teaser
+      - name: Teaser texts
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-12min' --no-pager -o cat" | grep -v "getUpdates\|HTTP Request\|net_impl" | grep -iE -A8 "teaser|Traceback|ERROR|lancé|job" | cut -c1-400 | tail -60
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-12min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A8 "teaser|Traceback|ERROR" | tail -60
