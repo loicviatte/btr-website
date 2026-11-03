@@ -2197,10 +2197,15 @@ async def teaser_import(ctx, ep, link: str):
     if caps:
         item["captions"] = caps
         RS(ep).save()
-    with open(item["file"], "rb") as f:
-        await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎬 Teaser (reel {n}) récupéré du Drive", supports_streaming=True,
-                                 width=1080, height=1920, duration=int(item.get("duration") or 0),
-                                 read_timeout=300, write_timeout=300)
+    from pathlib import Path
+    if Path(item["file"]).stat().st_size < 48_000_000:   # Telegram refuses bots' videos over 50 MB (03.11)
+        try:
+            with open(item["file"], "rb") as f:
+                await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎬 Teaser (reel {n}) récupéré du Drive",
+                                         supports_streaming=True, width=1080, height=1920,
+                                         duration=int(item.get("duration") or 0), read_timeout=300, write_timeout=300)
+        except Exception:  # noqa: BLE001
+            log.exception("teaser preview")
     line = await share_reel(ctx, ep, n, quiet=True)
     item["filed"] = True
     RS(ep).save()
@@ -4218,13 +4223,14 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_noname, when=60, name="covers-noname-1103")
-    if not reg.data.get("teaser_link_1103"):        # Loïc 03.11 18:12: his EP14 teaser, shared by link
-        reg.data["teaser_link_1103"] = True
+    if not reg.data.get("teaser_link_1103b"):       # Loïc 03.11 18:12: his EP14 teaser, shared by link (again: the
+        reg.data["teaser_link_1103b"] = True          # first try stopped on Telegram's 50 MB limit for the preview)
         reg.save()
 
         async def _teaser_link(ctx):
             ep = reg.episode("O_ZdYlKrdwU")
-            if any(it.get("teaser") and it.get("external") for it in (RS(ep).data.get("items") or {}).values()):
+            if any(it.get("teaser") and it.get("external") and it.get("filed")
+                   for it in (RS(ep).data.get("items") or {}).values()):
                 return
             tok = topics.TOPIC.set("reels")
             try:
@@ -4232,7 +4238,7 @@ async def on_boot(app):
                     ctx, ep, "https://drive.google.com/file/d/1yXmYWFkNZjpBASESWSYzFmZgjfpG9UxC/view"), limit=40 * 60)
             finally:
                 topics.TOPIC.reset(tok)
-        app.job_queue.run_once(_teaser_link, when=30, name="teaser-link-1103")
+        app.job_queue.run_once(_teaser_link, when=20, name="teaser-link-1103b")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
