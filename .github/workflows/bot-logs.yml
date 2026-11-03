@@ -24,4 +24,4 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
       - name: Teaser texts
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-9min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A8 "teaser|instagram|Traceback|ERROR|textes" | tail -60
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-6min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A2 "teaser|instagram|Traceback|ERROR|textes" | tail -60
