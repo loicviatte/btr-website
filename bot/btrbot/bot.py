@@ -3732,6 +3732,7 @@ def start_polling(app):
         app.job_queue.run_repeating(tt_tick, interval=60, first=40, name="tt")
     if not app.job_queue.get_jobs_by_name("dash"):
         app.job_queue.run_repeating(dash_tick, interval=30, first=20, name="dash")
+        app.job_queue.run_repeating(dash_poke, interval=3, first=25, name="dash-poke")
         app.job_queue.run_repeating(del_tick, interval=10, first=15, name="del")
     if not app.job_queue.get_jobs_by_name("stats"):
         app.job_queue.run_repeating(stats_tick, interval=2 * 3600, first=600, name="stats")
@@ -5516,6 +5517,25 @@ def dash_episodes(cleaned: bool = True) -> list:
 
 
 CU_CACHE = {"at": 0.0, "tasks": []}
+CU_DIRTY = {"on": False}       # the bot changed a ClickUp task (validation, date, status…): refresh in a few seconds
+
+
+def _cu_changed():
+    CU_DIRTY["on"] = True
+
+
+_share.ON_CHANGE.append(_cu_changed)
+
+
+async def dash_poke(ctx):
+    """Every 3 s: after a change the bot made in ClickUp (Loïc 03.11: « quand je valide un truc ça actualise direct
+    dans Posts planning »), the tasks are read again and « Posts planning » / « À valider » are updated at once
+    instead of within 5 min."""
+    if not CU_DIRTY["on"] or DASH_LOCK.locked():
+        return
+    CU_DIRTY["on"] = False
+    CU_CACHE["at"] = 0.0
+    await dash_tick(ctx)
 
 
 def ep_tasks(ep) -> dict:
@@ -6737,6 +6757,7 @@ def main():
     socket.setdefaulttimeout(120)        # Google APIs (httplib2) have no timeout of their own: never hang a job forever
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)      # its INFO lines carry the bot token in the URL
+    logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)   # « Running job » every 3 s
     # concurrent updates: he can keep talking while a render or a frame search runs (heavy jobs share LOCK)
     app = Application.builder().token(cfg.telegram_token).post_init(on_boot).concurrent_updates(True).build()
     app.add_handler(TypeHandler(Update, set_origin), group=-1)

@@ -176,7 +176,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   renamed « 🗓️ Posts planning ». Every other message there (Loïc's and the bot's) is noted (`plan_forget`,
   reg.data["plan_msgs"]) and the whole exchange is deleted PLAN_TTL (90 s) after its last message; kept while Loïc's
   request waits for its answer (≤ 15 min).
-  Test: `tests/planning_overview.py`.
+  Test: `tests/planning_overview.py`. Instant refresh (Loïc 03.11: « quand je valide un truc ça actualise direct »):
+  every ClickUp change the bot makes (status / name / date update, set_field, create, delete → `share.ON_CHANGE`) sets
+  CU_DIRTY; `dash_poke` (3 s) then reads the tasks again and runs dash_tick (Posts planning + À valider). Changes made
+  by hand in ClickUp still show within 5 min. apscheduler « Running job » logs are off.
 - Stress pass (01.11, `tests/planning_stress.py`): « À valider » deletions are kept in reg.data["del_queue"] and done by
   `del_tick` (10 s), so a restart no longer leaves messages behind; the planning sweep waits while the chat model is
   still working on a request from that topic (`PLAN_BUSY`, set in `ask_assistant`, max 30 min); an overview edit that

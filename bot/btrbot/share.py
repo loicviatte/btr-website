@@ -243,6 +243,17 @@ def drive_error(e: Exception) -> str:
 
 
 # ---------------------------------------------------------------- ClickUp
+ON_CHANGE: list = []      # callbacks when the bot changes the calendar (Loïc 03.11: « Posts planning » follows at once)
+
+
+def _changed() -> None:
+    for f in ON_CHANGE:
+        try:
+            f()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 class ClickUp:
     def __init__(self, token: str | None):
         if not token:
@@ -276,20 +287,27 @@ class ClickUp:
 
     def update(self, tid: str, **fields) -> dict:
         try:
-            return self._req("PUT", f"/task/{tid}", json=fields)
+            r = self._req("PUT", f"/task/{tid}", json=fields)
         except RuntimeError as e:
             if "markdown_content" not in fields or "ClickUp 4" not in str(e):
                 raise
             fields["description"] = fields.pop("markdown_content")          # older API: plain text
-            return self._req("PUT", f"/task/{tid}", json=fields)
+            r = self._req("PUT", f"/task/{tid}", json=fields)
+        if set(fields) - {"markdown_content", "description"}:              # status / name / date: calendar changed
+            _changed()
+        return r
 
     def set_field(self, tid: str, field: str, value) -> None:
         self._req("POST", f"/task/{tid}/field/{field}", json={"value": value})
+        _changed()
 
     def create(self, list_id: str = CONTENT_LIST, **fields) -> dict:
-        return self._req("POST", f"/list/{list_id}/task", json=fields)
+        r = self._req("POST", f"/list/{list_id}/task", json=fields)
+        _changed()
+        return r
 
     def delete(self, tid: str) -> None:
+        _changed()
         self._req("DELETE", f"/task/{tid}")
 
     def attach(self, tid: str, path: Path) -> None:
