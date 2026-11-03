@@ -2,6 +2,8 @@ name: Bot logs
 on:
   push:
     branches: [bot-logs]
+permissions:
+  contents: write
 jobs:
   logs:
     runs-on: ubuntu-latest
@@ -22,6 +24,7 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
       - name: Memory
         run: |
+          ssh root@"$HOST" 'journalctl -k --since "-3h" --no-pager | grep -iE "oom|killed process|invoked" | tail -20; ps aux --sort=-rss | head -8 | cut -c1-200'
           ssh root@"$HOST" 'swapon --show; free -m; ls -la /swapfile; grep swap /etc/fstab; systemctl show btr-bot -p MemoryMax -p MemoryHigh; cat /proc/sys/vm/swappiness; ls -t /opt/btr-bot/data/episodes | head -5; cat /opt/btr-bot/data/registry.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"active\"), d.get(\"pending\"))"'
       - name: Thumbnail files
         run: |
@@ -32,7 +35,10 @@ jobs:
           tar czf - $(find . -maxdepth 3 \( -name "*cut*.png" -o -name "thumb_*.jpg" -o -name "*_bg.jpg" -o -name "*.html" -o -name "design*.json" -o -name "state.json" -o -name "*4k*.jpg" \) -newermt "-2 day" | head -80)
           SH
           ls -la out; tar tzf out/thumbs.tgz | head -80
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          name: thumbs
-          path: out/
+          path: repo
+      - name: Push files to a branch
+        run: |
+          cd repo && git checkout --orphan bot-files && git rm -rfq . && mkdir f && tar xzf ../out/thumbs.tgz -C f
+          git config user.email bot@local && git config user.name bot && git add f && git commit -qm files && git push -qf origin bot-files
