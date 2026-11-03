@@ -131,6 +131,8 @@ class Transcriber:
 
     def words(self, wav: Path, chunk: float = 50.0) -> list[Word]:
         sr, x = read_wav(wav)
+        if len(x) < sr // 2:
+            raise RuntimeError("pas de son dans l'extrait téléchargé (vidéo encore en traitement chez YouTube ?)")
         out: list[Word] = []
         step = int(chunk * sr)
         pos = 0
@@ -141,11 +143,15 @@ class Transcriber:
                 win = x[stop - 6 * sr:stop]
                 e = np.convolve(win ** 2, np.ones(sr // 20), "same")
                 stop = stop - 6 * sr + int(np.argmin(e))
+            if len(x) - stop < 2 * sr:      # 03.11: a tail of a few samples crashed Parakeet (« Invalid input shape {0,128} »)
+                stop = len(x)
             out += self._decode(x[pos:stop], sr, pos / sr)
             pos = stop
         return out
 
     def _decode(self, samples: np.ndarray, sr: int, offset: float) -> list[Word]:
+        if len(samples) < int(0.3 * sr):    # too short to hold a word (and too short for the encoder)
+            return []
         s = self.rec.create_stream()
         s.accept_waveform(sr, samples)
         self.rec.decode_stream(s)
