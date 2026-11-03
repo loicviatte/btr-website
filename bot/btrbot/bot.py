@@ -1301,6 +1301,12 @@ def tool_handlers(ctx, images: list) -> dict:
         return await post_change(str(key).lower().strip(), "text", {"dy": float(dy or 0), "reset": bool(reset),
                                                                      "part": (part or "").lower() or None})
 
+    async def post_text_size(key, factor=None, part=None, reset=False):
+        if not factor and not reset:
+            return "dis-moi de combien (factor : 1.15 = un peu plus grand, 1.3 = nettement, 0.87 = plus petit) ou reset=true"
+        return await post_change(str(key).lower().strip(), "size", {"factor": float(factor or 1), "reset": bool(reset),
+                                                                     "part": (part or "").lower() or None})
+
     async def planning_list(days=21, posted=False):
         await plan_refresh()
         return plan_list_text(int(days or 21), bool(posted))
@@ -1486,7 +1492,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
-            "post_text_move": post_text_move, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
+            "post_text_move": post_text_move, "post_text_size": post_text_size, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
@@ -4317,6 +4323,8 @@ def post_op(ctx, ep, k: str, op: str, a: dict):
                                              bool(a.get("previous")), tuple(mv) if mv else None)
     if op == "text":
         return f"Texte {name}", posts_text_move(ctx, ep, k, a.get("dy"), bool(a.get("reset")), a.get("part"))
+    if op == "size":
+        return f"Taille du texte {name}", posts_text_size(ctx, ep, k, a.get("factor"), bool(a.get("reset")), a.get("part"))
     if op == "feedback":
         fb = a.get("feedback") or ""
         return f"{name} (retour)", posts_make(ctx, ep, [k], feedback=fb, photos=bool(a.get("photos")), reset=bool(fb))
@@ -5345,6 +5353,39 @@ async def posts_text_move(ctx, ep, k: str, dy=None, reset: bool = False, part=No
     what = "remis à sa place d'origine" if reset else \
         f"{'descendu' if new > old else 'monté'} de {abs(new - old)} px{edge}, mêmes textes et mêmes photos"
     await send_post_safe(ctx, ep, k, [f"Texte {what} ; la zone du sticker suit."])
+
+
+async def posts_text_size(ctx, ep, k: str, factor=None, reset: bool = False, part=None):
+    """Loïc 03.11 (« plus grand le texte de la question », the model rewrote the words instead): the story's text
+    bigger / smaller, same words and photos. part « question » = the question line only (item["q_scale"]), else the
+    whole block (item["text_scale"]); multiplies the current size; the block grows upward so the sticker zone keeps
+    its place (templates/posts.html scaleText)."""
+    st = _posts.PostState(ep)
+    it = st.items.get(k) or {}
+    if not it.get("files"):
+        await say(ctx, "Ce post n'est pas encore fait.")
+        return
+    kind = it.get("kind") or k
+    if kind not in _posts.TEXT_MOVE:
+        await say(ctx, f"La taille du texte de {esc(post_name(ep, k))} ne se règle pas encore (stories The Chain, Poll, "
+                       "Rapid fire, Ask, Atlas).")
+        return
+    q = str(part or "").startswith(("q", "titre"))
+    field = "q_scale" if q else "text_scale"
+    old = _posts.text_scale(kind, it.get(field))
+    new = 1.0 if reset else _posts.text_scale(kind, old * float(factor or 1))
+    it[field] = new
+    st.save()
+    await run(maker().render, ep, st, [k])
+    lo, hi = _posts.SCALE
+    edge = " (butée atteinte)" if new in (lo, hi) and not reset else ""
+    what = "la question" if q else "tout le texte"
+    msg = (f"Taille de {what} remise d'origine" if reset else
+           f"{what.capitalize()} {'agrandi' if new > old else 'réduit'} : {round(new * 100)} % de la taille d'origine{edge}")
+    note = [msg + " ; mêmes mots, mêmes photos, le bloc grandit vers le haut (la zone du sticker ne bouge pas)."]
+    if (it.get("overflow") or []):
+        note.append("Le texte ne tient plus dans sa zone à cette taille : il a été un peu réduit automatiquement.")
+    await send_post_safe(ctx, ep, k, note)
 
 
 async def posts_foot_move(ctx, ep, k: str, dy=None, reset: bool = False):

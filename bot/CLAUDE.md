@@ -187,6 +187,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   show the platforms still open (`plan_missing`, from the ClickUp Instagram / TikTok / YouTube fields) and a tappable
   `/fait_<task id>` (`plan_mark_done`: those fields → Posted, status posted; refused for a post not yet due); the
   overview is capped under Telegram's 4096 chars; `run()` passes keyword arguments.
+- Text size of a story (Loïc 03.11: « plus grand le texte de la question » → the model had rewritten the words with
+  post_feedback): tool post_text_size (factor × current, part=question = the question line only, reset) → `posts_text_size`,
+  item["text_scale"] / ["q_scale"] (`posts.text_scale`, SCALE 0.7-1.6, TEXT_MOVE kinds), page vars ts / qs →
+  templates/posts.html `scaleText` (data-ts block, data-q question, data-ts-follow = « X ASKED » labels): the block grows
+  upward so its bottom and the sticker zone stay put, never above y 300, then window.fit as usual. Guarded like the other
+  post changes (op « size »).
 - Validated content linked to its task AFTER the validation (01.11: « Posts planning » switched the Ask task to The
   Chain, whose content was already validated → task stayed « to generate »): `posts_file_linked` files it (Drive,
   description, images, « scheduled »); called by posts_make when there is nothing to make, and by the posts_refresh

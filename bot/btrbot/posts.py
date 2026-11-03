@@ -94,6 +94,18 @@ def text_dy(kind: str, dy) -> int:
     return int(max(lo, min(hi, round(float(dy or 0)))))
 
 
+SCALE = (0.7, 1.6)     # « texte plus grand / plus petit » (Loïc 03.11): item["text_scale"] (block) / ["q_scale"] (question)
+
+
+def text_scale(kind: str, f) -> float:
+    if kind not in TEXT_MOVE:
+        return 1.0
+    try:
+        return round(max(SCALE[0], min(SCALE[1], float(f or 1))), 2)
+    except (TypeError, ValueError):
+        return 1.0
+
+
 def foot_dy(kind: str, dy) -> int:
     lo, hi = FOOT_MOVE if kind in TEXT_MOVE else (0, 0)
     return int(max(lo, min(hi, round(float(dy or 0)))))
@@ -478,7 +490,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
         return out
     base = {"name": f"story-{kind}{'-b' if b else ''}", "H": 1920, "kind": kind, "b": b, "first": first,
             "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio.",
-            "dy": text_dy(kind, ctx.get("dy")), "fdy": foot_dy(kind, ctx.get("fdy"))}
+            "dy": text_dy(kind, ctx.get("dy")), "fdy": foot_dy(kind, ctx.get("fdy")),
+            "ts": text_scale(kind, ctx.get("ts")), "qs": text_scale(kind, ctx.get("qs"))}
     full = (0, 0, 1080, 1920)
     if kind == "teaser":
         base.update(p1=ph("bg", full, css="filter:blur(14px) brightness(.8);transform:scale(1.06)"),

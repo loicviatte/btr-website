@@ -188,7 +188,8 @@ TOOLS = [
                                             "topics, change le titre 3 », « la story poll : question trop longue », "
                                             "« autre photo pour la citation »). key = moment, topics, poll, … ; "
                                             "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle. "
-                                            "Monter / descendre le texte d'une story = post_text_move, pas cet outil.",
+                                            "Monter / descendre le texte d'une story = post_text_move, le texte plus grand / plus petit = post_text_size, "
+                                            "pas cet outil (il réécrit les mots).",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "feedback": {"type": "string"},
                       "photos": {"type": "boolean"}}, "required": ["key"]}},
     {"name": "post_photos", "description": "Prendre une AUTRE PHOTO (autre moment de la vidéo) pour certaines slides d'un carrousel (ou d'une story) sans "
@@ -252,6 +253,16 @@ TOOLS = [
                                              "le bloc du haut seul. Les deux peuvent se combiner en deux appels.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "dy": {"type": "number"},
                       "reset": {"type": "boolean"}, "part": {"type": "string", "enum": ["haut", "bas"]}},
+                      "required": ["key"]}},
+    {"name": "post_text_size", "description": "TAILLE du texte d'une story (The Chain, Poll, Rapid fire, Ask the next guest, "
+                                             "Atlas), mêmes MOTS et mêmes photos : « plus grand le texte de la question », "
+                                             "« texte plus gros », « écris plus petit ». factor multiplie la taille actuelle "
+                                             "(1.15 = un peu, 1.3 = nettement, 1.5 = beaucoup ; 0.87 = plus petit). "
+                                             "part=question = la ligne de la question seule ; rien = tout le bloc. "
+                                             "reset=true = taille d'origine. JAMAIS post_feedback pour une taille : "
+                                             "il réécrirait les mots.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "factor": {"type": "number"},
+                      "part": {"type": "string", "enum": ["question", "tout"]}, "reset": {"type": "boolean"}},
                       "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
