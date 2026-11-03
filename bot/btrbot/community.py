@@ -42,6 +42,36 @@ class State:
         self.path.write_text(json.dumps(self.data, ensure_ascii=False, indent=1))
 
 
+class ImgState:
+    """The poll image's photos, kept in the poll item (item["img"]), shaped like posts.PostState so the posts Maker
+    picks / offers / swaps them (Maker.choices, use_choice): item key « ycpoll », photo sid « ycpoll:face » (never
+    « poll:face »: the Story Poll's files in posts/choices would be cleaned with it)."""
+
+    def __init__(self, st: State, kind: str = "poll"):
+        self.st, self.ep = st, st.ep
+        self.data = st.items.setdefault(kind, {}).setdefault("img", {})
+        self.data.setdefault("items", {})["ycpoll"] = {"kind": "ycpoll"}
+        self.data.setdefault("content", {})["ycpoll"] = {}
+
+    @property
+    def items(self) -> dict:
+        return self.data["items"]
+
+    def save(self) -> None:
+        self.st.save()
+
+
+SID = "ycpoll:face"
+SMILE_WANT = "souriant(e), regard vers la caméra si possible, visage bien net"
+
+
+def image_caption(it: dict) -> str:
+    """The poll image as its own YouTube « Image » post (a poll post can't carry an image): question + answers in the
+    text, votes in the comments. No link."""
+    opts = "\n".join(f"{i}. {o}" for i, o in enumerate(it.get("options") or [], 1))
+    return "\n\n".join(x for x in (it.get("question") or "", opts, "Vote in our poll and tell us why in the comments.") if x)
+
+
 def no_link(text: str) -> str:
     """No link on YouTube (Loïc's rule): URLs out, « link in bio » becomes « on the channel »."""
     t = re.sub(r"https?://\S+", "", text or "")

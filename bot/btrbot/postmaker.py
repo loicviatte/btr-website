@@ -490,7 +490,7 @@ class Maker:
                     continue
             except Exception:  # noqa: BLE001
                 log.exception("choice refine")
-            shot["smile"] = c["t"] in smile
+            shot["smile"], shot["rank"] = c["t"] in smile, len(out)      # rank 0 = the model's favourite
             out.append(shot)
         out.sort(key=lambda s: s["t"])
         for i, s in enumerate(out, 1):
@@ -893,6 +893,15 @@ class Maker:
                 log.exception("posts attach")
         st.save()
         return it
+
+    # ------------------------------------------------------------ YouTube Community poll image (Loïc 03.11)
+    def community_image(self, ep, ist, question: str, guest: str, part: str | None) -> tuple[Path, list]:
+        """Square image of the poll: the guest's 4K photo (ist.data["shots"]["ycpoll:face"]) + the question, Story Poll
+        fonts and colours. → (jpg, texts that still overflow)."""
+        sh = {sid.split(":", 1)[1]: v for sid, v in ist.data.get("shots", {}).items() if sid.startswith("ycpoll:")}
+        pg = posts.pages("ycpoll", {"question": question}, sh, {"guest": guest, "part": part})
+        res = posts.render_pages(pg, ep.dir / "community")
+        return Path(res[0]["file"]), res[0]["overflow"]
 
     def _task(self, it: dict) -> dict | None:
         if not it.get("task"):

@@ -434,6 +434,7 @@ def needs(kind: str, c: dict, n_topics: int = 6) -> list[dict]:
     return {
         "teaser": [{"id": "bg", "who": "wide", "t": None, "win": None}],
         "poll": [{"id": "face", "who": "guest", "t": t, "win": 60}],
+        "ycpoll": [{"id": "face", "who": "guest", "t": None, "win": None}],
         "rapid": [{"id": "face", "who": "guest", "t": t, "win": 90}],
         "chain": [{"id": "prev", "who": "prev", "t": None, "win": None},
                   {"id": "face", "who": "guest", "t": t, "win": 60}],
@@ -488,6 +489,12 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
         out.append({"name": f"topics-{n:02d}", "H": 1350, "kind": "topics_end", "p1": ph("end", (0, 0, 1080, 608), 0.5, 0.42),
                     "counter": f"{n:02d} / {n:02d}", "toc": [{"watch": it.get("watch", ""), "title": it.get("title", "")} for it in items]})
         return out
+    if kind == "ycpoll":          # YouTube Community poll image (Loïc 03.11): square, face in the top half, text below
+        f = (shots.get("face") or {}).get("face") or {}
+        z = min(2.4, max(1.0, 250 / (f["fh"] * 1080))) if f.get("fh") else 1.6     # head ≈ 250 px of 1080
+        return [{"name": "community-poll", "H": 1080, "kind": "ycpoll", "p1": ph("face", (0, 0, 1080, 1080), 0.5, 0.3, z),
+                 "logo_x": 44 if f.get("cx", 0.5) > 0.62 else 900, "question": clean(c.get("question")),
+                 "line": f"POLL · {guest.upper()}" + (f" · PART {part}" if part else "")}]
     base = {"name": f"story-{kind}{'-b' if b else ''}", "H": 1920, "kind": kind, "b": b, "first": first,
             "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio.",
             "dy": text_dy(kind, ctx.get("dy")), "fdy": foot_dy(kind, ctx.get("fdy")),

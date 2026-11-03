@@ -1425,12 +1425,25 @@ def tool_handlers(ctx, images: list) -> dict:
                        f"Le reste : {_json.dumps(extra, ensure_ascii=False, default=str)}")
         return "\n\n".join(out)[:8000]
 
-    async def youtube_community(kind=None, feedback=None, guest=None, link=None, show=False, unvalidate=False):
+    async def youtube_community(kind=None, feedback=None, guest=None, link=None, show=False, unvalidate=False,
+                                image=False, photos=False, photo=None):
         if kind not in _cm.KINDS:
             return "kind = tomorrow, poll ou atlas"
         ep = text_ep(guest, link)
         st = _cm.State(ep)
         it = st.items.get(kind) or {}
+        if image or photos or photo:
+            if kind != "poll" or not it.get("question"):
+                return "l'image n'existe que pour le sondage, et il n'est pas encore écrit"
+            if it.get("status") == "posted":
+                return "déjà publié : je n'y touche pas"
+            if photo:
+                return bg(ctx, "Image du sondage", within_stories(cm_pick(ctx, ep, kind, int(photo)))) + " (dans Stories & carrousels)"
+            if photos:
+                return bg(ctx, "Sélection de photos · sondage", within_stories(cm_choices(ctx, ep, kind, feedback or ""))) + \
+                    " (dans Stories & carrousels)"
+            return bg(ctx, "Image du sondage", within_stories(cm_image_redo(ctx, ep, kind, feedback or ""))) + \
+                " (dans Stories & carrousels)"
         if unvalidate:
             asyncio.create_task(within_stories(cm_unvalidate(ctx, ep, kind)))
             return "validation annulée, l'aperçu revient dans Stories & carrousels avec ses boutons"
@@ -3788,6 +3801,22 @@ async def on_boot(app):
                 finally:
                     topics.TOPIC.reset(tok)
             app.job_queue.run_once(_trever, when=60, name="trever")
+    if not reg.data.get("cm_poll_img_1103"):     # Loïc 03.11: the poll gets its image, Hannah's first (then cm_make)
+        reg.data["cm_poll_img_1103"] = True
+        reg.save()
+        for f in (cfg.data_dir / "episodes").glob("*/community.json"):
+            e = reg.episode(f.parent.name)
+            pit = _cm.State(e).items.get("poll") or {}
+            if pit.get("question") and not pit.get("images") and pit.get("status") in ("draft", "ok"):
+                async def _poll_img(ctx, e=e):
+                    async def go():
+                        st = _cm.State(e)
+                        it = st.items["poll"]
+                        it["warn"] = (it.get("warn") or []) + await run(cm_poll_image, e, st, it)
+                        st.save()
+                        await cm_image_changed(ctx, e, st, it, "image ajoutée (photo du guest + la question)")
+                    bg(ctx, "Image du sondage", within_stories(go()))
+                app.job_queue.run_once(_poll_img, when=180, name=f"poll-img-{e.video_id}")
     if reg.data.get("insights_digests_1102b") and not reg.data.get("insights_recent_1102"):   # Oti P2 (out 27.10)
         reg.data["insights_recent_1102"] = True
         reg.save()
@@ -6539,6 +6568,12 @@ async def cm_make(ctx, ep, t: dict, kind: str, feedback: str = "") -> bool:
             fb = (feedback + "\n" if feedback else "") + "Fix these problems: " + "; ".join(errs)
         it.update(cand, images=[str(img)] if kind == "tomorrow" else [])
         warn = errs
+        if kind == "poll" and it.get("question"):          # its square image (same photo when only the text changes)
+            try:
+                warn = warn + await run(cm_poll_image, ep, st, it)
+            except Exception as e:  # noqa: BLE001
+                log.exception("community poll image")
+                warn = warn + [f"image du sondage pas faite ({str(e)[:100]})"]
     it.update(status="draft", made=_t.time(), warn=warn, sent=False)
     st.save()
     try:                                                    # ClickUp: written, waiting for Loïc
@@ -6573,13 +6608,19 @@ async def cm_send(ctx, ep, kind: str, final: bool = False):
     warn = ("\n⚠️ " + "\n⚠️ ".join(esc(w) for w in it.get("warn") or [])) if it.get("warn") and not final else ""
     tip = ("\n<i>Sondage : dans YouTube, « Créer un post » → Sondage, puis colle la question et les réponses.</i>"
            if it.get("question") else "")
+    if it.get("question") and it.get("img_caption") and imgs:
+        tip += ("\n<i>YouTube ne met pas d'image sur un sondage : l'image se poste à part (« Créer un post » → Image), "
+                f"avec ce texte :</i>\n<pre>{esc(it['img_caption'])}</pre>")
     text = (f"{head} · {esc(_cm.KINDS[kind])} · {esc(ep.get('guest_name') or ep.video_id)}{extra} · {esc(when)}\n"
             f"<pre>{esc(_cm.block(it))}</pre>{tip}{warn}")
     vid = ep.video_id
     if final:
         kb = K([[B("✅ Posté sur YouTube", callback_data=f"yc:done:{vid}:{kind}")]])
     elif it.get("status") == "draft":
-        kb = K([[B("✅ Valider", callback_data=f"yc:ok:{vid}:{kind}"), B("✍️ Autre texte", callback_data=f"yc:redo:{vid}:{kind}")]])
+        rows = [[B("✅ Valider", callback_data=f"yc:ok:{vid}:{kind}"), B("✍️ Autre texte", callback_data=f"yc:redo:{vid}:{kind}")]]
+        if it.get("img_caption") and it.get("images"):
+            rows.append([B("📷 Autres photos", callback_data=f"yc:ph:{vid}:{kind}")])
+        kb = K(rows)
     else:
         kb = None
     m = await say(ctx, text, reply_markup=kb)
@@ -6600,6 +6641,9 @@ async def cm_validate(ctx, ep, kind: str):
             f"https://youtu.be/{ep.video_id}", "", "**Texte à coller** (pas de lien) :", "", _cm.block(it)]
     if links:
         body += ["", "Images (dans l'ordre) :"] + [f"- {u}" for u in links]
+    if it.get("img_caption"):
+        body += ["", "**Post image séparé** (un sondage ne peut pas avoir d'image : « Créer un post » → Image, l'image est "
+                     "en pièce jointe) :", "", it["img_caption"]]
     due = _posts.due(t)
     await run(cu.update, it["task"], markdown_content="\n".join(body), status="scheduled" if due else "ready")
     try:
@@ -6641,9 +6685,90 @@ async def cm_unvalidate(ctx, ep, kind: str):
     await cm_send(ctx, ep, kind)
 
 
+def cm_poll_image(ep, st, it, new_photo: bool = False, want: str = "") -> list[str]:
+    """(heavy, in a thread) The poll's square image (Loïc 03.11): a 4K photo of the guest from the episode, smiling /
+    looking at the camera first (Maker.choices ranking; the 10 candidates are kept for « Autres photos »), the question
+    on it (templates/posts.html ycpoll). Same photo when only the text changes. → warnings."""
+    from .pipeline import part_number
+    M, ist = maker(), _cm.ImgState(st, it.get("kind") or "poll")
+    if new_photo or _cm.SID not in ist.data.get("shots", {}):
+        out = M.choices(ep, ist, _cm.SID, "guest", 10, want or _cm.SMILE_WANT)
+        if not out:
+            raise RuntimeError("aucune photo du guest trouvée dans l'épisode")
+        M.use_choice(ist, _cm.SID, min(out, key=lambda s: s.get("rank", 99))["n"])
+    f, over = M.community_image(ep, ist, it.get("question") or "", ep.get("guest_name") or "", part_number(ep))
+    it.update(images=[str(f)], img_caption=_cm.image_caption(it))
+    st.save()
+    return [f"texte trop long sur l'image : « {o} »" for o in over]
+
+
+async def cm_image_changed(ctx, ep, st, it, what: str):
+    """A new poll image: in the ClickUp task too when the post is already validated, then the post sent again."""
+    if it.get("status") == "ok" and it.get("task") and it.get("images"):
+        try:
+            await run(maker().clickup().attach, it["task"], Path(it["images"][0]))
+        except Exception:  # noqa: BLE001
+            log.exception("community image attach")
+    await say(ctx, f"📷 Sondage {esc(ep.get('guest_name') or ep.video_id)} : {esc(what)}.")
+    await cm_send(ctx, ep, it.get("kind") or "poll")
+
+
+async def cm_image_redo(ctx, ep, kind: str = "poll", want: str = ""):
+    st = _cm.State(ep)
+    it = st.items.get(kind) or {}
+    warn = await run(cm_poll_image, ep, st, it, True, want)
+    it["warn"] = warn
+    st.save()
+    await cm_image_changed(ctx, ep, st, it, "nouvelle image (autre photo)")
+
+
+async def cm_choices(ctx, ep, kind: str = "poll", want: str = ""):
+    """10 numbered 4K photos of the guest for the poll image (smiles first), one button per number."""
+    from telegram import InputMediaPhoto as P
+    st = _cm.State(ep)
+    if not (st.items.get(kind) or {}).get("question"):
+        await say(ctx, "Le sondage n'est pas encore écrit.")
+        return
+    out = await run(maker().choices, ep, _cm.ImgState(st, kind), _cm.SID, "guest", 10, want or _cm.SMILE_WANT)
+    if not out:
+        await say(ctx, "Je n'ai trouvé aucune autre photo du guest dans l'épisode.")
+        return
+    await tg(ctx.bot.send_media_group, cfg.chat_id,
+             [P(Path(s["label"]).read_bytes(), caption=f"{s['n']} · {_posts.tc(s['t'])}" + (" · sourire" if s.get("smile") else ""))
+              for s in out[:10]])
+    btns = [B(str(s["n"]), callback_data=f"yc:pk:{ep.video_id}:{kind}:{s['n']}") for s in out]
+    await say(ctx, f"🎞️ Image du sondage {esc(ep.get('guest_name') or ep.video_id)} : {len(out)} photos de tout l'épisode. "
+                   "Laquelle je pose ? (ou écris « la 4 »)", reply_markup=K([btns[j:j + 5] for j in range(0, len(btns), 5)]))
+    MEMORY.add("assistant", f"[sélection de {len(out)} photos envoyée pour l'image du sondage YouTube Community ; « la 4 » → "
+                            "youtube_community kind=poll photo=4]")
+
+
+async def cm_pick(ctx, ep, kind: str, num: int):
+    st = _cm.State(ep)
+    it = st.items.get(kind) or {}
+    if it.get("status") == "posted":
+        await say(ctx, "Déjà publié sur YouTube : je n'y touche pas.")
+        return
+    try:
+        maker().use_choice(_cm.ImgState(st, kind), _cm.SID, num)
+    except ValueError as e:
+        await say(ctx, f"⚠️ {esc(e)}")
+        return
+    it["warn"] = await run(cm_poll_image, ep, st, it)
+    st.save()
+    await cm_image_changed(ctx, ep, st, it, f"photo n° {num} posée")
+
+
 async def on_cm_button(ctx, q, data: str):
     _, act, vid, kind = data.split(":", 3)
     ep = reg.episode(vid)
+    if act == "pk":                                  # a photo of the selection (the album's buttons stay)
+        kind, num = kind.split(":", 1)
+        bg(ctx, "Image du sondage", cm_pick(ctx, ep, kind, int(num)))
+        return
+    if act == "ph":                                  # the preview keeps its buttons until a photo is picked
+        bg(ctx, "Sélection de photos · sondage", cm_choices(ctx, ep, kind))
+        return
     try:
         await q.edit_message_reply_markup(None)
     except Exception:  # noqa: BLE001
@@ -6880,7 +7005,8 @@ async def on_teaser_button(ctx, q, data: str):
         bg(ctx, "Teaser", teaser_make(ctx, ep, "Pick completely different moments from the previous ones."))
 
 
-topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate on_cm_button community_tick""")
+topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate on_cm_button community_tick
+    cm_image_changed cm_image_redo cm_choices cm_pick""")
 topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle

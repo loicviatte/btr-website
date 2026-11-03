@@ -305,11 +305,16 @@ TOOLS = [
                                                  "sur le texte (« plus court », « autre question ») → réécrit et renvoyé pour "
                                                  "validation ; show=true = renvoyer tel quel ; unvalidate=true = annuler une validation "
                                                  "(« c'est pas ça », « il l'a planifié par erreur »). guest / link si ce n'est pas "
-                                                 "l'épisode en cours.",
+                                                 "l'épisode en cours. Le SONDAGE a une IMAGE carrée (photo 4K du guest + la "
+                                                 "question) : image=true + feedback = refaire l'image avec une autre photo selon "
+                                                 "le retour (« plus souriante », « regard caméra ») ; photos=true = sélection de "
+                                                 "10 photos numérotées (feedback = ce qu'il cherche) ; photo=n = poser la n° n de la "
+                                                 "sélection (« la 4 »). Une nouvelle question refait l'image toute seule.",
      "input_schema": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["tomorrow", "poll", "atlas"]},
                                                        "feedback": {"type": "string"}, "guest": {"type": "string"},
                                                        "link": {"type": "string"}, "show": {"type": "boolean"},
-                                                       "unvalidate": {"type": "boolean"}},
+                                                       "unvalidate": {"type": "boolean"}, "image": {"type": "boolean"},
+                                                       "photos": {"type": "boolean"}, "photo": {"type": "integer"}},
                       "required": ["kind"]}},
     {"name": "teaser_make", "description": "TEASER de l'épisode : 4-5 moments clés courts montés ensemble comme des reels "
                                            "(sous-titres v3) + écran de fin « Episode out now », envoyé dans le fil Reels. "

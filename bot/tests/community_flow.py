@@ -66,7 +66,20 @@ class CU:
 
     def attach(self, tid, p):
         calls.append(("attach", tid))
-bot.maker = lambda: NS(clickup=lambda: CU())
+picked = []
+bot.maker = lambda: NS(clickup=lambda: CU(), use_choice=lambda st, sid, n: picked.append((sid, n)))
+imgs = []
+
+
+def poll_image(ep, st, it, new_photo=False, want=""):        # (the real one scans the episode: tests/community_image.py)
+    imgs.append((it.get("question"), new_photo, want))
+    f = ep.dir / "community" / "community-poll.jpg"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_bytes(b"jpg")
+    it.update(images=[str(f)], img_caption=cm.image_caption(it), img={"shots": {cm.SID: {"t": 12.0}}})
+    st.save()
+    return []
+bot.cm_poll_image = poll_image
 answers = [{"text": "Flavia says “I always wanted TV”.", "question": "Would you go on TV?", "options": ["Yes", "No"]},
            {"text": "Flavia on the spotlight: “I never wanted to be on television.”", "question": "Would you go on TV?",
             "options": ["Yes", "No way", "Only for dance"], "correct": None},
@@ -119,6 +132,18 @@ async def main():
     poll, tom, atl = st.items["poll"], st.items["tomorrow"], st.items["atlas"]
     assert "Nov 24" not in str(st.items) and len(st.items) == 3
     assert poll["status"] == "draft" and poll["options"] == ["Yes", "No way", "Only for dance"] and not poll["warn"], poll
+    assert poll["images"][0].endswith("community-poll.jpg") and "Would you go on TV?" in poll["img_caption"], poll
+    assert imgs == [("Would you go on TV?", False, "")]
+    pv = [(t, k) for t, k in sent if k and "Sondage" in t and "Would you go on TV?" in t][-1]
+    assert "Créer un post » → Image" in pv[0] and "Vote in our poll" in pv[0], pv[0]
+    assert pv[1].inline_keyboard[1][0].callback_data == "yc:ph:VIDCOMM0001:poll"
+    # Loïc picks photo 3 of the selection: same text, new image, preview again
+    await bot.cm_pick(ctx, ep, "poll", 3)
+    assert picked == [(cm.SID, 3)] and imgs[-1] == ("Would you go on TV?", False, "")
+    assert "photo n° 3" in sent[-2][0] and sent[-1][1].inline_keyboard[0][0].callback_data == "yc:ok:VIDCOMM0001:poll"
+    # « une photo plus souriante »: another photo chosen with his words
+    await bot.cm_image_redo(ctx, ep, "poll", "plus souriante")
+    assert imgs[-1] == ("Would you go on TV?", True, "plus souriante")
     assert "citation pas exacte" in asked[1][1] or "Fix these problems" in asked[1][1], asked
     assert tom["images"][0].endswith("thumb_youtube.jpg") and atl["country"] == "Italy"
     assert atl["text"].endswith("on the channel.") and atl["images"][7].endswith("13-italy/08.jpg")
