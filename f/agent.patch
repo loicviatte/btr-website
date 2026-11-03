@@ -1,0 +1,536 @@
+From 25fce7f62a4c5e2f5d2d9d114734e46d7116fae2 Mon Sep 17 00:00:00 2001
+From: BTR bot <btr-bot@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 14:01:17 +0000
+Subject: [PATCH] =?UTF-8?q?bot=20(via=20Telegram):=20Corriger=20le=20nom?=
+ =?UTF-8?q?=20de=20l'invit=C3=A9e=20de=20l'EP14=20(vid=C3=A9o=20YouTube=20?=
+ =?UTF-8?q?O=5FZdYlKrdwU,=20act?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ bot/btrbot/assistant.py   |  14 ++-
+ bot/btrbot/bot.py         | 214 +++++++++++++++++++++++++++++++++++++-
+ bot/btrbot/imaging.py     |  11 +-
+ bot/btrbot/pipeline.py    |  22 ++++
+ bot/btrbot/postmaker.py   |  27 +++++
+ bot/btrbot/rename.py      |  58 +++++++++++
+ bot/tests/guest_rename.py |  34 ++++++
+ 7 files changed, 373 insertions(+), 7 deletions(-)
+ create mode 100644 bot/btrbot/rename.py
+ create mode 100644 bot/tests/guest_rename.py
+
+diff --git a/bot/btrbot/assistant.py b/bot/btrbot/assistant.py
+index 5077716..3c80d76 100644
+--- a/bot/btrbot/assistant.py
++++ b/bot/btrbot/assistant.py
+@@ -98,14 +98,24 @@ TOOLS = [
+                                                        "set": {"type": "object", "description": "{nom_du_réglage: valeur}"},
+                                                        "reset": {"type": "boolean"}, "show": {"type": "boolean"}},
+                       "required": ["format"]}},
+-    {"name": "set_title", "description": "Remplacer le titre YouTube de l'épisode en cours par ce texte exact.",
++    {"name": "fix_guest_name", "description": "Corriger l'orthographe du nom de l'invité PARTOUT (données de l'épisode, titre, "
++     "description, chapitres, transcript, carrousels / stories refaits avec les mêmes liens Drive, reels, YouTube Community, noms + "
++     "descriptions des tâches ClickUp sans toucher statuts ni dates, fichiers et dossiers Drive), puis aperçu du titre / de la "
++     "description YouTube corrigés avec un bouton (seulement si la vidéo n'est pas publique). Arrière-plan.",
++     "input_schema": {"type": "object", "properties": {"new": {"type": "string", "description": "le nom bien écrit"},
++                                                       "old": {"type": "string", "description": "le nom mal écrit (défaut : celui de l'épisode)"},
++                                                       "video": {"type": "string", "description": "lien / id (défaut : épisode en cours)"}},
++                      "required": ["new"]}},
++    {"name": "set_title", "description": "Remplacer le titre YouTube de l'épisode en cours par ce texte exact. Épisode déjà publié "
++     "(même « done ») et pas encore public : aperçu + bouton « Mettre à jour YouTube ».",
+      "input_schema": {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}},
+     {"name": "set_quote", "description": "Remplacer la citation des miniatures (haut / MOT / bas) et refaire les miniatures non validées.",
+      "input_schema": {"type": "object", "properties": {"top": {"type": "string"}, "key": {"type": "string"}, "bottom": {"type": "string"}},
+                       "required": ["top", "key", "bottom"]}},
+     {"name": "set_part", "description": "Badge « PART n » en haut à droite des 3 miniatures de l'épisode en cours (part vide = enlever).",
+      "input_schema": {"type": "object", "properties": {"part": {"type": "string"}}, "required": ["part"]}},
+-    {"name": "edit_description", "description": "Réécrire la description YouTube selon une consigne (garde la structure).",
++    {"name": "edit_description", "description": "Réécrire la description YouTube selon une consigne (garde la structure). Épisode "
++     "déjà publié et pas encore public : aperçu + bouton « Mettre à jour YouTube ».",
+      "input_schema": {"type": "object", "properties": {"instruction": {"type": "string"}}, "required": ["instruction"]}},
+     {"name": "send_recap", "description": "Renvoyer les 3 miniatures actuelles + titre + description (dernier check avant publication).",
+      "input_schema": {"type": "object", "properties": {}}},
+diff --git a/bot/btrbot/bot.py b/bot/btrbot/bot.py
+index 013b49f..6d28688 100644
+--- a/bot/btrbot/bot.py
++++ b/bot/btrbot/bot.py
+@@ -929,9 +929,11 @@ def tool_handlers(ctx, images: list) -> dict:
+         return out + "\n(pas encore re-rendu : redo_thumbnails pour voir le résultat)"
+ 
+     async def set_title(title):
+-        ep = need(("frames_proposed", "thumbs_proposed"))
++        ep = need(("frames_proposed", "thumbs_proposed") + AFTER_PUBLISH)
+         ep["final"]["title"] = title.strip()[:100]
+         ep.save()
++        if ep.stage in AFTER_PUBLISH:              # already on YouTube: same title there after Loïc's go
++            return await yt_meta_offer(ctx, ep, title=ep["final"]["title"])
+         return "titre mis à jour : " + ep["final"]["title"]
+ 
+     async def set_quote(top, key, bottom):
+@@ -948,14 +950,25 @@ def tool_handlers(ctx, images: list) -> dict:
+         return (f"badge PART {ep['part']}" if ep["part"] else "pas de badge") + " pour cet épisode (redo_thumbnails pour l'appliquer)"
+ 
+     async def edit_description(instruction):
+-        ep = need(("thumbs_proposed", "published", "chapters_proposed"))
++        ep = need(("thumbs_proposed",) + AFTER_PUBLISH)
+         prompt = ("Rewrite this YouTube description following this instruction: " + instruction + "\n"
+                   "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n" + ep["description"])
+         ep["description"] = await run(lambda: pipe.llm._ask(prompt, task="description (retouche)"))
+         ep.save()
++        if ep.stage in AFTER_PUBLISH:
++            return await yt_meta_offer(ctx, ep, description=pipe.description_for_youtube(ep))
+         await plain(ctx, "Nouvelle description :\n\n" + ep["description"])
+         return "nouvelle description envoyée à Loïc"
+ 
++    async def fix_guest_name(new, old=None, video=None):
++        m = re.search(r"(?:v=|youtu\.be/|^)([\w-]{11})", (video or "").strip())
++        ep = reg.episode(m.group(1)) if m else need()
++        old = (old or ep.get("guest_name") or "").strip()
++        new = (new or "").strip()
++        if not old or not new or old == new:
++            return f"rien à corriger (ancien « {old} », nouveau « {new} »)"
++        return bg(ctx, f"Nom corrigé · {new}", guest_rename(ctx, ep, old, new), limit=60 * 60)
++
+     async def send_recap_t():
+         ep = need(("thumbs_proposed",))
+         return bg(ctx, "Récap", send_recap(ctx, ep))
+@@ -1475,6 +1488,7 @@ def tool_handlers(ctx, images: list) -> dict:
+             "reel_validate": reel_validate, "reel_drop": reel_drop,
+             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
+             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
++            "fix_guest_name": fix_guest_name,
+             "set_title": set_title, "set_quote": set_quote, "set_part": set_part, "edit_description": edit_description,
+             "send_recap": send_recap_t, "publish": publish, "chapters": chapters, "badge": badge,
+             "thumbnail_feedback": thumbnail_feedback, "propose_claude_code": propose_claude_code,
+@@ -3208,6 +3222,9 @@ async def on_button(update: Update, ctx):
+     if q.data.startswith("badge:"):
+         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
+         return
++    if q.data.startswith("ytfix:"):
++        await on_ytfix_button(ctx, q, q.data)
++        return
+     if q.data.startswith("yc:"):
+         await on_cm_button(ctx, q, q.data)
+         return
+@@ -3574,7 +3591,8 @@ async def on_text(update: Update, ctx):
+         return
+     low = text.lower()
+     ep = reg.episode(reg.active) if reg.active else None
+-    if ep and ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low):
++    if ep and (ep.stage == "thumbs_proposed" and re.match(r"(titre|citation|part|description)\s*:", low)
++               or ep.stage in AFTER_PUBLISH and re.match(r"(titre|description)\s*:", low)):
+         h = tool_handlers(ctx, [])
+         MEMORY.add("user", text)
+         arg = text.split(":", 1)[1].strip()
+@@ -3738,6 +3756,19 @@ async def on_boot(app):
+         except Exception:  # noqa: BLE001
+             log.exception("ep msgs seed")
+         reg.save()
++    if not reg.data.get("trever_1103"):          # Loïc 03.11: EP14's guest is « Hannah Trever », not « Trevor »
++        reg.data["trever_1103"] = True
++        reg.save()
++        hv = reg.episode("O_ZdYlKrdwU")
++        if hv.get("guest_name") == "Hannah Trevor":
++            async def _trever(ctx):
++                tok = topics.TOPIC.set("thumbs")
++                try:
++                    bg(ctx, "Nom corrigé · Hannah Trever", guest_rename(ctx, hv, "Hannah Trevor", "Hannah Trever"),
++                       limit=60 * 60)
++                finally:
++                    topics.TOPIC.reset(tok)
++            app.job_queue.run_once(_trever, when=60, name="trever")
+     if reg.data.get("insights_digests_1102b") and not reg.data.get("insights_recent_1102"):   # Oti P2 (out 27.10)
+         reg.data["insights_recent_1102"] = True
+         reg.save()
+@@ -4878,6 +4909,181 @@ async def posts_rerender(ctx, ep, keys: list[str]):
+         await send_post_safe(ctx, ep, k)
+ 
+ 
++# ---------------------------------------------------------------- YouTube text after the publication, guest name fix
++AFTER_PUBLISH = ("published", "chapters_proposed", "done")
++
++
++async def yt_meta_offer(ctx, ep, title: str | None = None, description: str | None = None) -> str:
++    """Title / description of an episode already sent to YouTube: shown, and sent there only with « Mettre à jour
++    YouTube » (never on a public video: Pipeline._guard)."""
++    ep["yt_fix"] = {"title": title, "description": description}
++    ep.save()
++    txt = "🔄 Mise à jour YouTube prête"
++    if title:
++        txt += f"\nTitre : <b>{esc(title)}</b>"
++    if description:
++        txt += f"\nDescription :\n<pre>{esc(description[:3300])}</pre>"
++    await say(ctx, txt, reply_markup=K([[B("✅ Mettre à jour YouTube", callback_data=f"ytfix:{ep.video_id}"),
++                                         B("Non", callback_data=f"ytfix:no:{ep.video_id}")]]))
++    return "aperçu envoyé avec le bouton « Mettre à jour YouTube » : rien ne part sans son clic"
++
++
++async def on_ytfix_button(ctx, q, data: str):
++    try:
++        await q.edit_message_reply_markup(None)
++    except Exception:  # noqa: BLE001
++        pass
++    ep = reg.episode(data.split(":")[-1])
++    fx = ep.get("yt_fix")
++    if data.startswith("ytfix:no:") or not fx:
++        ep.data.pop("yt_fix", None)
++        ep.save()
++        await say(ctx, "OK, rien n'est envoyé sur YouTube." if fx else "C'est déjà fait.")
++        return
++
++    async def go():
++        await run(pipe.update_meta, ep, fx.get("title"), fx.get("description"))
++        if fx.get("title") and ep.get("final"):
++            ep["final"]["title"] = fx["title"]
++        ep.data.pop("yt_fix", None)
++        ep.save()
++        what = " et ".join(w for w, v in (("titre", fx.get("title")), ("description", fx.get("description"))) if v)
++        await say(ctx, f"✅ YouTube mis à jour ({what}) : https://youtu.be/{ep.video_id}")
++    await guarded(ctx, "Mise à jour YouTube", go())
++
++
++def guest_rename_local(ep, old: str, new: str) -> list[str]:
++    """Episode data, transcript, posts, reels, teaser, YouTube Community drafts, handles / EP numbers: the new spelling."""
++    import json
++    from . import rename
++    rules, done = rename.subs(old, new), []
++    before = json.dumps(ep.data, ensure_ascii=False)
++    ep.data = rename.fix_obj(ep.data, rules)
++    ep["guest_name"] = new
++    if json.dumps(ep.data, ensure_ascii=False) != before:
++        ep.save()
++        done.append("épisode (nom, titre, description, chapitres, axes)")
++    if any(rename.fix_file(p, rules) for p in ep.dir.glob("*.srt")):
++        done.append("transcript")
++    for name, label in (("posts.json", "carrousels & stories"), ("community.json", "YouTube Community"),
++                        ("teaser.json", "teaser")):
++        if rename.fix_json(ep.file(name), rules):
++            done.append(label)
++    rs = Reels.of(ep)
++    if rs.path.exists():
++        fixed = rename.fix_obj(rs.data, rules)
++        if fixed != rs.data:
++            rs.data.clear()
++            rs.data.update(fixed)
++            rs.save()
++            done.append("reels (légendes)")
++    ok, nk = _share.guest_key(old), _share.guest_key(new)
++    for f in ("handles.json", "ep_numbers.json"):
++        p = cfg.data_dir / f
++        try:
++            d = json.loads(p.read_text())
++        except (OSError, ValueError):
++            continue
++        if ok in d and nk not in d:
++            d[nk] = d.pop(ok)
++            p.write_text(json.dumps(d, ensure_ascii=False, indent=1))
++    for table in (_share.HANDLES, _share.EP_NUMBERS):
++        if ok in table and nk not in table:
++            table[nk] = table[ok]
++    return done
++
++
++def guest_rename_remote(old: str, new: str) -> list[str]:
++    """ClickUp: task names and descriptions (status, dates, fields untouched). Drive: the bot's files and folders."""
++    from . import rename
++    rules, out = rename.subs(old, new), []
++    sec = _share.Secrets(cfg.data_dir)
++    try:
++        cu, n = _share.ClickUp(sec.get("clickup_token")), 0
++        for t in cu.tasks():
++            if all(rename.fix(t.get(f) or "", rules) == (t.get(f) or "")
++                   for f in ("name", "text_content", "description")):
++                continue
++            full = cu.task(t["id"])
++            desc = full.get("markdown_description") or full.get("text_content") or ""
++            upd = {}
++            if rename.fix(full.get("name", ""), rules) != full.get("name", ""):
++                upd["name"] = rename.fix(full["name"], rules)
++            if rename.fix(desc, rules) != desc:
++                upd["markdown_content"] = rename.fix(desc, rules)
++            if upd:
++                cu.update(t["id"], **upd)
++                n += 1
++        out.append(f"ClickUp : {n} tâche(s) corrigée(s)")
++    except Exception as e:  # noqa: BLE001
++        log.exception("rename clickup")
++        out.append(f"ClickUp pas corrigé ({str(e)[:120]})")
++    try:
++        d, n, tok = _share.Drive(sec, cfg.youtube_client[:2]), 0, None
++        while True:                                    # scope drive.file: only what the bot made
++            r = d.svc.files().list(q="trashed = false", fields="nextPageToken, files(id,name)", pageSize=1000,
++                                   pageToken=tok).execute()
++            for f in r.get("files", []):
++                name = rename.fix(f["name"], rules)
++                if name != f["name"]:
++                    d.svc.files().update(fileId=f["id"], body={"name": name}).execute()
++                    n += 1
++            tok = r.get("nextPageToken")
++            if not tok:
++                break
++        out.append(f"Drive : {n} fichier(s) / dossier(s) renommé(s)")
++    except Exception as e:  # noqa: BLE001
++        log.exception("rename drive")
++        out.append(f"Drive pas corrigé ({str(e)[:120]})")
++    return out
++
++
++async def guest_rename(ctx, ep, old: str, new: str):
++    """Loïc 03.11 (« Hannah Trever », pas « Trevor ») : the guest's name fixed everywhere the bot wrote it, then the
++    YouTube title / description shown with a button (not public yet only)."""
++    from . import rename
++    await say(ctx, f"✏️ Je corrige « {esc(old)} » → « {esc(new)} » partout (données, transcript, ClickUp, Drive, visuels)…")
++    done = await run(guest_rename_local, ep, old, new)
++    done += await run(guest_rename_remote, old, new)
++    st, M, redone, filed = _posts.PostState(ep), maker(), [], []
++    for k, it in list(st.items.items()):               # the name is in the pictures (slides, NEW EPISODE · NAME…)
++        if not it.get("files") or _dash.post_locked(it):
++            continue
++        was = {f: it.get(f) for f in ("status", "sent", "msg")}
++        try:
++            await run(M.render, ep, st, [k])
++            st = _posts.PostState(ep)
++            it = st.items[k]
++            it.update({f: v for f, v in was.items() if v is not None})
++            st.save()
++            if was["status"] == "ok":
++                await run(M.refresh_files, ep, st, k)
++                filed.append(post_name(ep, k))
++            else:
++                redone.append(k)
++        except Exception:  # noqa: BLE001
++            log.exception("rename render %s", k)
++    for k in redone:
++        await send_post_safe(ctx, ep, k)
++    if filed:
++        done.append("visuels validés refaits, mêmes liens Drive : " + ", ".join(filed))
++    await say(ctx, "✅ Nom corrigé :\n" + "\n".join("• " + esc(x) for x in done)
++              + ("\nLes aperçus pas encore validés sont renvoyés dans Stories." if redone else ""))
++    if not ep.get("thumb_msgs") and ep.stage not in AFTER_PUBLISH:
++        return                                        # not on YouTube yet: published with the right name
++    try:
++        title, desc = await run(pipe.youtube_text, ep)
++        rules = rename.subs(old, new)
++        t2, d2 = rename.fix(title, rules), rename.fix(desc, rules)
++        if (t2, d2) == (title, desc):
++            await say(ctx, "YouTube : le nom y est déjà bien écrit.")
++        else:
++            await yt_meta_offer(ctx, ep, title=t2 if t2 != title else None, description=d2 if d2 != desc else None)
++    except Exception as e:  # noqa: BLE001
++        log.exception("rename youtube")
++        await say(ctx, f"⚠️ YouTube pas lu (<code>{esc(str(e)[:150])}</code>) : redemande la correction du nom.")
++
++
+ def post_sids(st, k: str, slides: list[int] | None, part: str | None) -> list[str]:
+     """Which photos Loïc means: slides of a carousel (↑/↓ on the Key moment), or the left / right (top / bottom)
+     photo of a two-photo story, else all the photos of the post."""
+@@ -6478,7 +6684,7 @@ topics.assign(globals(), "stories", """posts_make send_post post_validate on_pos
+ topics.assign(globals(), "thumbs", """badge_preview on_badge_button badge_cmd poll_drive poll_youtube poll_transcripts
+     propose_axes send_axes propose_frames send_thumb make_thumbs send_recap propose_ask on_ask_button thumb_feedback
+     show_chapters retime_chapters propose_chapters start_video pick_axis title_discussion handle_new_srt use_srt_for
+-    episode_cmd scan_cmd""")
++    episode_cmd scan_cmd yt_meta_offer on_ytfix_button guest_rename""")
+ 
+ 
+ def main():
+diff --git a/bot/btrbot/imaging.py b/bot/btrbot/imaging.py
+index 6a2bfee..e9b9cd4 100644
+--- a/bot/btrbot/imaging.py
++++ b/bot/btrbot/imaging.py
+@@ -27,7 +27,16 @@ def cutout(img: Image.Image) -> Image.Image:
+         sizes = ndimage.sum(np.ones_like(opened), lab, range(1, n + 1))
+         keep = ndimage.binary_dilation(lab == int(np.argmax(sizes)) + 1, iterations=max(2, k // 2))
+         a = a * keep
+-    m = Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
++        # fully opaque body: holes inside the person (dark clothes, between arm and legs) are filled,
++        # the bottom frame edge closing the shape under the person, so the gold haze stays behind
++        body = keep & (a > 0.5)
++        cols = np.where(body[-1])[0]
++        pad = np.zeros((1, body.shape[1]), bool)
++        if len(cols):
++            pad[0, cols.min():cols.max() + 1] = True
++        filled = ndimage.binary_fill_holes(np.vstack([body, pad]))[:-1]
++        a = np.where(ndimage.binary_erosion(filled, iterations=2, border_value=1), 1.0, a)
++    m =Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
+     rgba.putalpha(m)
+     return rgba
+ 
+diff --git a/bot/btrbot/pipeline.py b/bot/btrbot/pipeline.py
+index 95376ae..0320085 100644
+--- a/bot/btrbot/pipeline.py
++++ b/bot/btrbot/pipeline.py
+@@ -301,6 +301,28 @@ class Pipeline:
+         self.yt.update_metadata(ep.video_id, ep["final"]["title"], desc)
+         self.yt.set_thumbnail(ep.video_id, ep.dir / "render" / "thumb_youtube.jpg")
+ 
++    def youtube_text(self, ep: Episode) -> tuple[str, str]:
++        """Title and description as they are on YouTube now."""
++        sn = self.yt.video(ep.video_id)["snippet"]
++        return sn.get("title", ""), sn.get("description", "")
++
++    def description_for_youtube(self, ep: Episode) -> str:
++        """The episode's description as published: the chapters in place once they are on YouTube (stage done)."""
++        desc = ep["description"] or ""
++        block = "\n".join(f"{t} {title}" for t, title in ep.get("chapters") or [])
++        if ep.stage == "done" and block:
++            if "{CHAPTERS}" in desc or "{{CHAPTERS}}" in desc:
++                desc = desc.replace("{{CHAPTERS}}", block).replace("{CHAPTERS}", block)
++            elif block not in desc:
++                desc = desc.rstrip() + "\n\n" + block
++        desc = desc.replace("{{CHAPTERS}}", "").replace("{CHAPTERS}", "")
++        return re.sub(r"\n{3,}", "\n\n", desc).strip()
++
++    def update_meta(self, ep: Episode, title: str | None, description: str | None) -> None:
++        """Title and/or description fixed after the publication, while the video is not public yet (Loïc's go)."""
++        self._guard(ep)
++        self.yt.update_metadata(ep.video_id, title, description)
++
+     # ---- 4. chapters --------------------------------------------------------
+     def chapters(self, ep: Episode) -> list[list[str]]:
+         if ep.get("chapters_in_description") and ep.get("chapters"):   # already written into the description
+diff --git a/bot/btrbot/postmaker.py b/bot/btrbot/postmaker.py
+index 30f57f3..e811c90 100644
+--- a/bot/btrbot/postmaker.py
++++ b/bot/btrbot/postmaker.py
+@@ -781,6 +781,33 @@ class Maker:
+         st.save()
+         return it
+ 
++    def refresh_files(self, ep, st: posts.PostState, key: str) -> dict:
++        """A validated post rendered again (guest name fixed): same Drive files (links kept) under their new names,
++        new images in the task and its block below MARK. Status, dates and platform fields untouched."""
++        it = st.items[key]
++        guest = ep.get("guest_name") or "Guest"
++        d = share.Drive(share.Secrets(self.data_dir), self.cfg.youtube_client[:2])
++        folder = d.folder(guest, d.folder("BTR Posts"))
++        old, links = it.get("drive") or [], []
++        t = self._task(it)
++        day = posts.due(t) or datetime.now(posts.TZ)
++        for i, f in enumerate(it.get("files") or []):
++            name = f"{day.strftime('%m%d')}_{share._slug(guest, 30)}_{key.upper()}_{i + 1:02d}.jpg"
++            r = d.put(Path(f), folder, name, "image/jpeg", old[i]["id"] if i < len(old) else None)
++            links.append({"id": r["id"], "url": r.get("webViewLink", "")})
++        it["drive"], it["folder"] = links, d.folder_link(folder)
++        if t:
++            cu = self.clickup()
++            cu.update(t["id"], markdown_content=self.description(t, it, ep))
++            try:
++                for f in it.get("files") or []:
++                    cu.attach(t["id"], Path(f))
++                it["attached"] = "|".join(f"{Path(f).name}:{Path(f).stat().st_mtime:.0f}" for f in it.get("files") or [])
++            except Exception:  # noqa: BLE001
++                log.exception("posts attach")
++        st.save()
++        return it
++
+     def _task(self, it: dict) -> dict | None:
+         if not it.get("task"):
+             return None
+diff --git a/bot/btrbot/rename.py b/bot/btrbot/rename.py
+new file mode 100644
+index 0000000..235f129
+--- /dev/null
++++ b/bot/btrbot/rename.py
+@@ -0,0 +1,58 @@
++"""A guest's name spelled wrong (Loïc 03.11: « Hannah Trever », not « Trevor »): the replacements used everywhere —
++episode data, transcript, posts, ClickUp, Drive, YouTube. Pure functions (tests/guest_rename.py)."""
++import json
++import re
++from pathlib import Path
++
++
++def subs(old: str, new: str) -> list[tuple[re.Pattern, str]]:
++    """The full name (also glued: #HannahTrevor, HANNAH-TREVOR / _ in file names) and each changed word alone (« Ms
++    Trevor »), as written / UPPER / lower. Never inside another word nor an @handle."""
++    ow, nw = old.split(), new.split()
++    pairs = [(old, new)] + [(j.join(ow), j.join(nw)) for j in ("", "-", "_") if len(ow) > 1]
++    if len(ow) == len(nw):
++        pairs += [(a, b) for a, b in zip(ow, nw) if a != b and len(a) >= 3]
++    out = []
++    for a, b in dict.fromkeys(pairs):
++        for f in (str, str.upper, str.lower):
++            out.append((re.compile(r"(?<![A-Za-z@])" + re.escape(f(a)) + r"(?![A-Za-z])"), f(b)))
++    return out
++
++
++def fix(text: str, rules) -> str:
++    for rx, to in rules:
++        text = rx.sub(to, text)
++    return text
++
++
++def fix_obj(o, rules):
++    """Every string of a JSON-like object, except local paths and links (a file name on disk / an id in a URL)."""
++    if isinstance(o, dict):
++        return {k: fix_obj(v, rules) for k, v in o.items()}
++    if isinstance(o, list):
++        return [fix_obj(v, rules) for v in o]
++    if isinstance(o, str) and not o.startswith(("/", "file:", "http")):
++        return fix(o, rules)
++    return o
++
++
++def fix_json(path: Path, rules) -> bool:
++    """A JSON file fixed in place; True when something changed."""
++    if not path.exists():
++        return False
++    before = json.loads(path.read_text())
++    after = fix_obj(before, rules)
++    if after == before:
++        return False
++    tmp = path.with_suffix(".tmp")
++    tmp.write_text(json.dumps(after, ensure_ascii=False, indent=1))
++    tmp.replace(path)
++    return True
++
++
++def fix_file(path: Path, rules) -> bool:
++    text = path.read_text(encoding="utf-8", errors="replace")
++    new = fix(text, rules)
++    if new != text:
++        path.write_text(new, encoding="utf-8")
++    return new != text
+diff --git a/bot/tests/guest_rename.py b/bot/tests/guest_rename.py
+new file mode 100644
+index 0000000..abd766a
+--- /dev/null
++++ b/bot/tests/guest_rename.py
+@@ -0,0 +1,34 @@
++"""Guest name fix (Loïc 03.11: « Hannah Trever », not « Trevor »): the replacements, and a dry run on a copy of a real
++episode's files (argument: data/episodes/<id>, read only).  python tests/guest_rename.py [/opt/btr-bot/data/episodes/O_ZdYlKrdwU]"""
++import re
++import shutil
++import sys
++import tempfile
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++from btrbot import rename  # noqa: E402
++
++R = rename.subs("Hannah Trevor", "Hannah Trever")
++CASES = {"with Hannah Trevor | x": "with Hannah Trever | x", "#HannahTrevor #dpa": "#HannahTrever #dpa",
++         "1103_HANNAH-TREVOR_QUOTE_01.jpg": "1103_HANNAH-TREVER_QUOTE_01.jpg", "HANNAH TREVOR ON RISKS": "HANNAH TREVER ON RISKS",
++         "Ms Trevor said": "Ms Trever said", "@hannahtrevor": "@hannahtrevor", "Trevorson": "Trevorson",
++         "hannah trevor": "hannah trever"}
++for a, b in CASES.items():
++    got = rename.fix(a, R)
++    assert got == b, (a, got, b)
++assert rename.fix_obj({"f": "/x/Hannah Trevor.jpg", "u": "https://a/Trevor", "t": ["Trevor"]}, R) == \
++    {"f": "/x/Hannah Trevor.jpg", "u": "https://a/Trevor", "t": ["Trever"]}
++print("replacements ok")
++
++if len(sys.argv) > 1:
++    src = Path(sys.argv[1])
++    with tempfile.TemporaryDirectory() as d:
++        for f in list(src.glob("*.json")) + list(src.glob("*.srt")):
++            shutil.copy(f, d)
++        for p in sorted(Path(d).iterdir()):
++            before = p.read_text(errors="replace")
++            changed = rename.fix_json(p, R) if p.suffix == ".json" else rename.fix_file(p, R)
++            after = p.read_text(errors="replace")
++            print(f"{p.name}: {'fixed' if changed else '-'} · Trevor {len(re.findall('(?i)trevor', before))}"
++                  f" → {len(re.findall('(?i)trevor', after))} · Trever {len(re.findall('(?i)trever', after))}")
+-- 
+2.43.0
+
