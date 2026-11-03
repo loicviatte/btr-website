@@ -260,6 +260,7 @@ async def guarded(ctx, label: str, coro, limit: int | None = None):
         RUNNING.update(label=label, since=time.time())
         WAITING.pop(label, None)
         ok = False
+        IN_JOB.set(True)        # the job itself: talk_to_agent must not wait for the LOCK it holds (03.11 deadlock)
         try:
             r = await asyncio.wait_for(coro, timeout=limit or JOB_LIMIT)
             ok = True
@@ -279,6 +280,7 @@ async def guarded(ctx, label: str, coro, limit: int | None = None):
 
 
 WAITING: dict = {}          # jobs waiting for the one running (label → since)
+IN_JOB = contextvars.ContextVar("in_job", default=False)
 
 
 def bg(ctx, label: str, coro, limit: int | None = None) -> str:
@@ -318,7 +320,7 @@ async def talk_to_agent(ctx, text: str, strong: bool = False, thumb_ep=None):
     if AGENT_LOCK.locked():
         await say(ctx, "⏳ Je suis déjà en train de travailler sur ta demande précédente, je te réponds dès que c'est fini.")
     async with AGENT_LOCK:
-        if LOCK.locked():   # a heavy job (thumbnails, reels…) + Claude Code don't fit together in the server's 4 GB
+        if LOCK.locked() and not IN_JOB.get():   # a heavy job (thumbnails, reels…) + Claude Code don't fit together in the server's 4 GB
             await say(ctx, f"⏳ J'attends la fin de « {esc(RUNNING.get('label') or 'la tâche en cours')} » avant de "
                            "regarder (le serveur n'a pas la mémoire pour les deux en même temps).")
             while LOCK.locked():
