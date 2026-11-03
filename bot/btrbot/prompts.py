@@ -383,3 +383,28 @@ children in DanceSport): name each plainly with [mm:ss].
 3 to 5 short EXACT quotes (verbatim) with [mm:ss] that work as clips.
 ## Weak spots
 Where it drags, repeats or loses focus, with [mm:ss]."""
+
+
+TEASER_CAPTIONS = """You write the captions of the TEASER reel of a new Break The Routine episode (DanceSport podcast hosted by
+Marius Iepure). Guest: {guest}. {part_line}Episode title on YouTube: "{title}".
+On Instagram write the guest as {ig_guest} and Marius as @mariusiepure; on TikTok and YouTube use full names.
+
+It is a teaser: it announces that the episode is OUT NOW (YouTube and Spotify, link in bio on Instagram), in the voice of
+the channel. Follow the STYLE of the channel's previous teaser captions below (tone, length, structure), and use the
+YouTube description for what the episode is about. Never invent facts; a quote in quotation marks must be words from
+"What is said in the teaser". No emoji unless the examples use them.
+
+Previous teaser captions on Instagram:
+{examples}
+
+YouTube description of the episode:
+{description}
+
+What is said in the teaser:
+{said}
+
+{feedback}Return ONLY JSON:
+{{"instagram": "caption for Instagram, no hashtags, ends with the link in bio line",
+  "tiktok": "same message for TikTok, no link in bio, with 6-9 hashtags at the end",
+  "short_title": "YouTube Shorts title, max 90 characters, ends with | Break The Routine",
+  "short_desc": "YouTube Shorts description, 1-3 short lines, no link, ends with #Shorts"}}"""

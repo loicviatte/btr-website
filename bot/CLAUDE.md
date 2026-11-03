@@ -292,6 +292,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   teaser = name kept), cover + captions, `share_reel`; then the usual « ✅ Cover OK » → Short + Instagram at the task's
   time, TikTok sent to Loïc. Cover = the episode's vertical thumbnail (render/thumb_instagram.jpg, item
   cover_vertical; skipped by covers_name), else stills. Test: `tests/teaser_import.py`.
+- Teaser captions (03.11): a Drive teaser gets `Pipeline.teaser_captions` (not the clip format): « the episode is out
+  now », in the style of the latest Instagram teaser captions (`teaser_examples`) + the episode's YouTube description,
+  quotes only if said in the teaser, collab invites kept. Tool teaser_captions(feedback) → `bot.teaser_recaption` →
+  `Pipeline.teaser_apply`: Short title/description (only while not public), ClickUp block; Instagram picks the new
+  caption up at publishing (caps_sig).
 - Solid cut-outs (Loïc 03.11, Hannah: « on voit le gradient jaune à travers elle »): `imaging.cutout` = isnet outline +
   u2net_human_seg body (counted only where isnet saw something: it grabs chairs), silhouette filled (holes and small
   gaps against the bottom / side edges where a model saw the person or the colour is dark / like the clothes), outline smoothed, opaque inside, isnet soft alpha only where the human model agrees (hair).

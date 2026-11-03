@@ -364,6 +364,13 @@ TOOLS = [
                                                                  "additionalProperties": {"type": "string"}}}}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "teaser_captions", "description": "Réécrire les TEXTES du reel TEASER (légende Instagram, TikTok, titre "
+                                              "et description du Short) en mode teaser : « l'épisode est out now », "
+                                              "dans le style des teasers précédents et de la description YouTube. "
+                                              "Met à jour le Short (encore privé), ClickUp et la future publication "
+                                              "Instagram. feedback = ce que Loïc veut changer dans ces textes.",
+     "input_schema": {"type": "object", "properties": {"feedback": {"type": "string"}, "n": {"type": "integer"},
+                                                       "guest": {"type": "string"}}}},
     {"name": "teaser_file", "description": "Le TEASER monté par Loïc lui-même, mis sur Google Drive : link = le lien de "
                                           "partage du fichier (drive.google.com/file/d/…). Le bot le télécharge, en fait "
                                           "un reel de l'épisode rangé sur la tâche ClickUp « Reel teaser » (cover, "

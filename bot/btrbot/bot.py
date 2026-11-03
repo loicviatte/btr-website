@@ -1207,6 +1207,11 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = text_ep(guest, None) if guest else (reel_ep() or reels_or_fail())
         return bg(ctx, "Teaser du Drive", teaser_import(ctx, ep, link), limit=40 * 60)
 
+    async def teaser_captions(feedback=None, n=None, guest=None):
+        ep = text_ep(guest, None) if guest else (reel_ep() or reels_or_fail())
+        return bg(ctx, "Textes du teaser", teaser_recaption(ctx, ep, int(n) if n else None, feedback or ""),
+                  limit=10 * 60)
+
     async def reel_covers_name(show=False, everywhere=False):
         ep = reels_or_fail()
         return bg(ctx, "Covers " + ("avec" if show else "sans") + " le nom", covers_name(ctx, ep, bool(show), bool(everywhere)),
@@ -1518,7 +1523,7 @@ def tool_handlers(ctx, images: list) -> dict:
         await shorts_watch(ctx)
         return "lancé (seuls les reels en « ready » dans ClickUp, cover validée, sont programmés)"
 
-    return {"teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
+    return {"teaser_captions": teaser_captions, "teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
@@ -1811,7 +1816,8 @@ async def make_reel(ctx, ep, list_id: int, n: int) -> bool:
     item.update(res)
     item["status"] = "ok" if item.pop("keep_ok", False) else "preview"
     if not item.get("captions"):
-        item["captions"] = await run(pipe.reel_captions, ep, res["said"])
+        item["captions"] = (await run(pipe.teaser_captions, ep, dict(item)) if item.get("teaser") and item.get("external")
+                            else await run(pipe.reel_captions, ep, res["said"]))
     if item.pop("redo", False):                           # Loïc asked for another change during this render
         item["status"] = "queued"
         RS(ep).save()
@@ -2193,7 +2199,11 @@ async def teaser_import(ctx, ep, link: str):
             RS(ep).save()
         except Exception:  # noqa: BLE001
             log.exception("teaser cover")
-    caps = await run(pipe.reel_captions, ep, item.get("said") or "")
+    try:
+        caps = await run(pipe.teaser_captions, ep, dict(item))        # teaser style: « the episode is out now »
+    except Exception:  # noqa: BLE001
+        log.exception("teaser captions")
+        caps = await run(pipe.reel_captions, ep, item.get("said") or "")
     if caps:
         item["captions"] = caps
         RS(ep).save()
@@ -2214,6 +2224,38 @@ async def teaser_import(ctx, ep, link: str):
                                       if due else "") +
               "valide la cover (« ✅ Cover OK ») et je programme le Short YouTube + la publication Instagram à "
               "cette heure-là ; TikTok, je t'envoie la vidéo et le texte au même moment.")
+
+
+async def teaser_recaption(ctx, ep, n: int | None = None, feedback: str = ""):
+    """Loïc 03.11: the teaser's texts written as a teaser (« the episode is out now », like the YouTube description and
+    the previous teaser reels), then carried to the Short (still private), ClickUp and the Instagram post to come."""
+    items = RS(ep).data.get("items") or {}
+    if n is None:
+        n = next((int(k) for k, it in sorted(items.items(), key=lambda x: -int(x[0])) if it.get("teaser")), None)
+    if n is None or str(n) not in items:
+        await say(ctx, "Pas de teaser dans les reels de cet épisode.")
+        return
+    item = reel_item(ep, n)
+    caps = await run(pipe.teaser_captions, ep, dict(item), feedback)
+    item["captions"] = caps
+    RS(ep).save()
+    done = []
+    if item.get("filed"):
+        try:
+            done = await run(pipe.teaser_apply, ep, n, dict(item))
+        except Exception as e:  # noqa: BLE001
+            log.exception("teaser apply")
+            done = [f"⚠️ {str(e)[-100:]}"]
+    ig = (item.get("ig") or {})
+    where = " + ".join(done + (["Instagram (au moment de publier)"] if item.get("instagram", True) and not ig.get("posted")
+                               else []))
+    lines = [f"✍️ Teaser (reel {n}) : nouveaux textes" + (f" · mis à jour : {esc(where)}" if where else "")]
+    for k, lab in (("instagram", "Instagram"), ("tiktok", "TikTok"), ("short_title", "Titre du Short"),
+                   ("short_desc", "Description du Short")):
+        if caps.get(k):
+            lines.append(f"\n<b>{lab}</b> :\n<pre>{esc(caps[k])}</pre>")
+    await say(ctx, "\n".join(lines))
+    MEMORY.add("assistant", f"[teaser reel {n} : légendes réécrites en mode teaser]")
 
 
 def pipe_cover_text(text: dict) -> dict:
@@ -4239,6 +4281,17 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_teaser_link, when=20, name="teaser-link-1103b")
+    if not reg.data.get("teaser_caps_1103"):        # Loïc 03.11 18:2x: the EP14 teaser's texts in teaser style
+        reg.data["teaser_caps_1103"] = True
+        reg.save()
+
+        async def _teaser_caps(ctx):
+            tok = topics.TOPIC.set("reels")
+            try:
+                bg(ctx, "Textes du teaser", teaser_recaption(ctx, reg.episode("O_ZdYlKrdwU")), limit=10 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_teaser_caps, when=30, name="teaser-caps-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()

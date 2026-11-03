@@ -31,7 +31,10 @@ bot.pipe.teaser_import = lambda e, fid, n: (sent.append(("import", fid, n)) or
                                              "status": "ok", "title": "Teaser", "teaser": True, "external": True,
                                              "instagram": True})
 bot.pipe.reel_cover = lambda e, n, it, *a, **k: {"cover": str(vid), "cover_text": {"big": "NO"}}
-bot.pipe.reel_captions = lambda e, s: {"instagram": "cap", "v": 99}
+bot.pipe.reel_captions = lambda e, s: {"instagram": "regular", "v": 99}
+bot.pipe.teaser_captions = lambda e, it, fb="": {"instagram": "cap" + (" " + fb if fb else ""), "short_title": "T",
+                                                 "v": 99, "teaser": True}
+bot.pipe.teaser_apply = lambda e, n, it: (sent.append(("apply", n, it["captions"]["instagram"])) or ["Short YouTube", "ClickUp"])
 
 
 async def share(ctx, e, n, quiet=False, cover=True):
@@ -61,6 +64,12 @@ async def main():
     await bot.teaser_import(ctx, ep, "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view")
     it = bot.reel_item(ep, 5)
     assert it["cover_vertical"] and it["cover"].endswith("_teaser_cover.jpg") and Path(it["cover"]).read_bytes() == b"jpg"
+    # teaser-style texts again on demand, carried to the Short + ClickUp (Loïc 03.11)
+    it["filed"] = True
+    bot.RS(ep).save()
+    await bot.teaser_recaption(ctx, ep, None, "plus court")
+    assert ("apply", 5, "cap plus court") in sent, sent
+    assert "Short YouTube + ClickUp + Instagram" in said[-1] and "cap plus court" in said[-1], said[-1]
     print("teaser import: OK")
 
 asyncio.run(main())

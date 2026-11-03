@@ -916,6 +916,70 @@ class Pipeline:
             out["cover"] = cover
         return share.apply_handle(out, guest, handle, share.extra_collabs(guest, ep))   # + extra collaborators
 
+    def teaser_examples(self, k: int = 4) -> list[str]:
+        """Captions of the channel's latest teaser reels on Instagram (« out now », « new episode », « teaser »)."""
+        from . import instagram, share
+        ig = instagram.Instagram(share.Secrets(self.cfg.data_dir))
+        page = ig._get(f"{ig.uid}/media", fields="caption,media_product_type,timestamp", limit=60)
+        out = []
+        for m in page.get("data", []):
+            cap = m.get("caption") or ""
+            if m.get("media_product_type") == "REELS" and re.search(r"out now|new episode|teaser|full episode", cap, re.I):
+                out.append(cap.strip())
+            if len(out) >= k:
+                break
+        return out
+
+    def teaser_captions(self, ep: Episode, item: dict, feedback: str = "") -> dict:
+        """Loïc 03.11: the teaser's captions = a teaser (« the episode is out now »), in the style of the previous teaser
+        reels and the YouTube description, not the clip format (hook / topic / question). Collab invites kept."""
+        from . import share
+        guest = ep.get("guest_name") or "our guest"
+        part = part_number(ep)
+        try:
+            examples = self.teaser_examples()
+        except Exception:  # noqa: BLE001
+            log.exception("teaser examples")
+            examples = []
+        try:
+            sn = self.yt.video(ep.video_id)["snippet"]
+            title, desc = sn.get("title", ""), sn.get("description", "")
+        except Exception:  # noqa: BLE001
+            title, desc = self.reel_title(ep), ep.get("description") or ""
+        handle = share.guest_handle(guest)
+        c = self.llm.teaser_captions(
+            guest=guest, ig_guest="@" + handle if handle else guest, part_line=f"This is Part {part}. " if part else "", title=title,
+            examples="\n\n---\n\n".join(examples[:4]) or "(none found)", description=desc[:3000],
+            said=(item.get("said") or "")[:3000], feedback=f"Producer's feedback to apply: {feedback}\n\n" if feedback else "")
+        said = item.get("said") or ""
+        for k in ("instagram", "tiktok", "short_desc"):         # quotes must be words really said in the teaser
+            for q in re.findall(r"“([^”]+)”", str(c.get(k) or "")):
+                if said and not said_exactly(q, said):
+                    c[k] = str(c[k]).replace(f"“{q}”", "").strip()
+        old = item.get("captions") or {}
+        out = {"instagram": str(c.get("instagram") or old.get("instagram") or "").strip(),
+               "tiktok": str(c.get("tiktok") or old.get("tiktok") or "").strip(),
+               "short_title": str(c.get("short_title") or old.get("short_title") or "")[:100],
+               "short_desc": str(c.get("short_desc") or old.get("short_desc") or "").strip(),
+               "v": CAPTIONS_V, "teaser": True}
+        return share.apply_handle(out, guest, handle, share.extra_collabs(guest, ep))
+
+    def teaser_apply(self, ep: Episode, n: int, item: dict) -> list[str]:
+        """New captions of a filed teaser carried everywhere already sent: the Short (still private → title and
+        description), the ClickUp block. Instagram takes them by itself (caps_sig → new container)."""
+        done = []
+        caps = item.get("captions") or {}
+        ys = item.get("yt_short") or {}
+        if ys.get("id") and not ys.get("posted"):
+            st = self.yt.statuses([ys["id"]]).get(ys["id"]) or {}
+            if st and st.get("privacyStatus") != "public":            # never touch a public video
+                self.yt.update_metadata(ys["id"], caps.get("short_title"), caps.get("short_desc"))
+                done.append("Short YouTube")
+        if item.get("clickup_task"):
+            self.reel_task_text(ep, n, item)
+            done.append("ClickUp")
+        return done
+
     def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None,
                    zoom: float | None = None, exact: bool = False, suffix: str = "") -> dict:
         """The cover of reel n: the best 4K still of the guest (eyes open, lively; the model looks at the faces),

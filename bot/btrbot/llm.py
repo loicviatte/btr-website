@@ -246,5 +246,8 @@ class LLM:
         return self._json(prompts.REEL_CAPTIONS.format(guest_name=guest_name or "the guest", video_title=video_title,
                                                        text=text[:4000]), 1500, task="reels (légendes)")
 
+    def teaser_captions(self, **kw) -> dict:
+        return self._json(prompts.TEASER_CAPTIONS.format(**kw), 2500, task="teaser (légendes)")
+
     def posts_content(self, transcript: str, text: str) -> dict:
         return self._json(self._with_transcript(transcript, text), 8000, task="carrousels & stories")
