@@ -2987,9 +2987,14 @@ async def tt_tick(ctx):
         name = short_name({"ep": ep, "n": n})
         late = (now - at).total_seconds() > 3600
         try:
-            with open(it["file"], "rb") as f:
+            video = it["file"]
+            if it.get("external"):                            # Loïc's own export can pass Telegram's 50 MB (03.11): the
+                video = str(await run(pipe.ig_video, dict(it)))   # 1080×1920 copy made for Instagram
+            drive = (it.get("links") or {}).get("video")
+            with open(video, "rb") as f:
                 await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 TikTok · {name}" + (" (en retard)" if late else "")
-                                         + " : c'est l'heure. Partage la vidéo vers TikTok et colle la légende ci-dessous.",
+                                         + " : c'est l'heure. Partage la vidéo vers TikTok et colle la légende ci-dessous."
+                                         + (f"\nPleine qualité : {drive}" if it.get("external") and drive else ""),
                                          supports_streaming=True, width=1080, height=1920,
                                          duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
             if it.get("cover") and Path(it["cover"]).exists():
