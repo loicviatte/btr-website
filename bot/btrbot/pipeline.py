@@ -131,6 +131,15 @@ def _render_thumbs(ep: Episode, models_dir: Path, only: str | None = None, skip=
     return out
 
 
+def cover_name_default(data_dir: Path) -> bool:
+    """Reel covers: the guest's first name + surname under the hook, unless Loïc turned it off for every episode
+    (data/covers.json {"name": false})."""
+    try:
+        return bool(json.loads((Path(data_dir) / "covers.json").read_text()).get("name", True))
+    except (OSError, ValueError):
+        return True
+
+
 class DryRun(Exception):
     """Raised instead of writing to a video that is already public."""
 
@@ -929,7 +938,10 @@ class Pipeline:
             hook = self.reel_captions(ep, item.get("said", "")).get("cover")
         hook = hook or cover_hook(None, item.get("said", ""), fallback=True)
         slug = re.sub(r"[^a-z0-9]+", "-", (ep.get("guest_name") or "btr").lower()).strip("-")
-        out = render.reel_cover(cdir, still, c, hook, ep.get("guest_name") or "",
+        show_name = ep.get("cover_name")
+        if show_name is None:                           # Loïc 03.11: name under the hook on or off (episode > default)
+            show_name = cover_name_default(self.cfg.data_dir)
+        out = render.reel_cover(cdir, still, c, hook, (ep.get("guest_name") or "") if show_name else "",
                                 work / f"BTR_reel_{n:02d}_{slug}_cover{suffix}.jpg")
         chk_p = out.parent / (out.stem + ".check.json")
         chk = json.loads(chk_p.read_text()) if chk_p.exists() else {}

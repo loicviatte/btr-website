@@ -28,7 +28,7 @@ html,body{margin:0;background:#080403}
     {% if small %}<p class="s">{{ small }}</p>{% endif %}
     {% if big %}<p class="b" id="big">{{ big }}</p>{% endif %}
     {% if gold %}<p class="b g" id="gold">{{ gold }}</p>{% endif %}
-    <p class="name">{{ name }}</p>
+    {% if name %}<p class="name">{{ name }}</p>{% endif %}
   </div>
 </div>
 <script>

@@ -364,6 +364,12 @@ TOOLS = [
                                                                  "additionalProperties": {"type": "string"}}}}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "reel_covers_name", "description": "Le NOM ET PRÉNOM du guest affiché SOUS la phrase des covers de reels "
+                                                "(pas un nom dans l'accroche) : show=false = l'enlever, true = le remettre. "
+                                                "Refait TOUTES les covers de l'épisode avec la même photo, le même cadrage et "
+                                                "la même accroche, validations gardées, Drive (mêmes liens) + ClickUp à jour. "
+                                                "everywhere=true = aussi pour tous les épisodes à venir.",
+     "input_schema": {"type": "object", "properties": {"show": {"type": "boolean"}, "everywhere": {"type": "boolean"}}}},
     {"name": "reel_cover", "description": "Refaire la cover (miniature) du reel n : autre photo (photo = numéro, ou "
                                           "« next » pour la suivante) et/ou autre accroche (small = petits mots, big = "
                                           "mot(s) en très gros, gold = dernier(s) mot(s) en or italique ; uniquement des "

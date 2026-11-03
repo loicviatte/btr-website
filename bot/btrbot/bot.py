@@ -1203,6 +1203,11 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None,
                                                           float(zoom) if zoom else None, bool(exact)), limit=5 * 60)
 
+    async def reel_covers_name(show=False, everywhere=False):
+        ep = reels_or_fail()
+        return bg(ctx, "Covers " + ("avec" if show else "sans") + " le nom", covers_name(ctx, ep, bool(show), bool(everywhere)),
+                  limit=20 * 60)
+
     async def reels_resend(nums=None):
         ep = reels_or_fail()
         return resend_reels(ctx, ep, [int(x) for x in nums or []] or None)
@@ -1509,7 +1514,7 @@ def tool_handlers(ctx, images: list) -> dict:
         await shorts_watch(ctx)
         return "lancé (seuls les reels en « ready » dans ClickUp, cover validée, sont programmés)"
 
-    return {"reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
+    return {"reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
@@ -2088,6 +2093,48 @@ async def redo_cover(ctx, ep, n: int, text: dict | None, photo: int | None, zoom
         await share_reel(ctx, ep, n)                      # sends the cover; same Drive link, new cover on ClickUp
     else:
         await send_cover(ctx, ep, n)
+
+
+async def covers_name(ctx, ep, show: bool, everywhere: bool = False):
+    """Loïc 03.11 (« enlève le nom et prénom sous la phrase de toutes les covers ») : the guest's name under the hook
+    on / off for this episode (ep["cover_name"]) or as the default for every episode (data/covers.json); every cover
+    of the episode made again with the SAME photo, framing and hook (the words stay, a name inside the hook too);
+    cover validations kept; filed reels: same Drive file / link, new image attached to ClickUp, nothing else moved."""
+    import json as _json
+    from pathlib import Path
+    ep["cover_name"] = bool(show)
+    ep.save()
+    if everywhere:
+        (cfg.data_dir / "covers.json").write_text(_json.dumps({"name": bool(show)}))
+    nums = sorted(int(k) for k, it in (RS(ep).data.get("items") or {}).items()
+                  if it.get("cover") and it.get("status") != "dropped")
+    if not nums:
+        await say(ctx, "Pas encore de cover pour cet épisode : les prochaines seront faites " +
+                       ("avec" if show else "sans") + " le nom.")
+        return
+    await say(ctx, f"🖼 Covers {', '.join(map(str, nums))} : je les refais {'avec' if show else 'sans'} le nom sous la "
+                   "phrase (même photo, même cadrage, même accroche)…")
+    done, bad = [], []
+    for n in nums:
+        item = reel_item(ep, n)
+        try:
+            res = await run(pipe.reel_cover, ep, n, dict(item), item.get("cover_text"), item.get("cover_pick"),
+                            item.get("cover_zoom"), True)
+            item.update(res)
+            RS(ep).save()
+            if item.get("filed"):
+                await run(pipe.cover_replace_files, ep, n, dict(item), Path(item["cover"]))
+            done.append(n)
+        except Exception as e:  # noqa: BLE001
+            log.exception("covers name %s", n)
+            bad.append(f"{n} ({str(e)[:80]})")
+    for n in done:
+        await send_cover(ctx, ep, n)
+    await say(ctx, f"✅ Covers {', '.join(map(str, done))} refaites {'avec' if show else 'sans'} le nom"
+                   + (" ; Drive (mêmes liens) et ClickUp mis à jour" if any(reel_item(ep, n).get("filed") for n in done) else "")
+                   + ". Les validations sont gardées."
+                   + (f"\n⚠️ Pas refaites : {esc(', '.join(bad))}" if bad else "")
+                   + ("" if everywhere else "\nPour les prochains épisodes aussi, dis-moi « sans nom sur toutes les covers à l'avenir »."))
 
 
 def pipe_cover_text(text: dict) -> dict:
@@ -4086,6 +4133,17 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reel7, when=110, name="reel7-flash-1103")
+    if not reg.data.get("covers_noname_1103"):      # Loïc 03.11: « enlève le nom et prénom sous la phrase » (EP14)
+        reg.data["covers_noname_1103"] = True
+        reg.save()
+
+        async def _noname(ctx):
+            tok = topics.TOPIC.set("reels")
+            try:
+                bg(ctx, "Covers sans le nom", covers_name(ctx, reg.episode("O_ZdYlKrdwU"), False), limit=20 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_noname, when=60, name="covers-noname-1103")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
@@ -7139,7 +7197,7 @@ async def on_teaser_button(ctx, q, data: str):
 
 topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate on_cm_button community_tick
     cm_image_changed cm_image_redo cm_choices cm_pick""")
-topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
+topics.assign(globals(), "reels", """covers_name teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
