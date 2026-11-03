@@ -118,16 +118,6 @@ async def main():
     ctx = NS(bot=NS(send_photo=None, send_media_group=None))
     bot.CM_SCAN["at"] = 0
     await bot.community_tick(ctx)
-    # Loïc 03.11: no World Atlas carousel of the episode in the calendar → no YouTube Atlas post, told once
-    a0 = cm.State(ep).items["atlas"]
-    assert a0.get("blocked") == "no_atlas" and "text" not in a0 and a0.get("told_blocked"), a0
-    told = [t for t, k in sent if "pas de carrousel World Atlas" in t]
-    assert len(told) == 1, sent
-    bot.CU_CACHE["tasks"].append({"id": "C", "name": "Carousel · World Atlas 13 Italy · Ep Nov 3",
-                                  "status": {"status": "scheduled"}, "due_date": ms(NOW + timedelta(days=2)), "custom_fields": []})
-    assert bot.cm_atlas_planned({"no": 13, "display": "Italy", "name": "Italy"})
-    bot.CM_SCAN["at"] = 0
-    await bot.community_tick(ctx)
     st = cm.State(ep)
     poll, tom, atl = st.items["poll"], st.items["tomorrow"], st.items["atlas"]
     assert "Nov 24" not in str(st.items) and len(st.items) == 3
@@ -140,7 +130,7 @@ async def main():
     # Loïc picks photo 3 of the selection: same text, new image, preview again
     await bot.cm_pick(ctx, ep, "poll", 3)
     assert picked == [(cm.SID, 3)] and imgs[-1] == ("Would you go on TV?", False, "")
-    assert "photo n° 3" in sent[-2][0] and sent[-1][1].inline_keyboard[0][0].callback_data == "yc:ok:VIDCOMM0001:poll"
+    assert any("photo n° 3" in t for t, _ in sent[-3:]) and sent[-1][1].inline_keyboard[0][0].callback_data == "yc:ok:VIDCOMM0001:poll"
     # « une photo plus souriante »: another photo chosen with his words
     await bot.cm_image_redo(ctx, ep, "poll", "plus souriante")
     assert imgs[-1] == ("Would you go on TV?", True, "plus souriante")

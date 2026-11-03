@@ -3893,7 +3893,8 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_recut, when=45, name="hannah-cut-1103b")
-    if not reg.data.get("cm_atlas_1103"):           # Hannah's Atlas validated for YouTube while no Atlas carousel is planned
+    if not reg.data.get("cm_atlas_1103b"):          # Loïc 03.11: « je me suis trompé, l'Atlas de l'épisode va bien sur
+        reg.data["cm_atlas_1103b"] = True             # YouTube Community » → Hannah's Atlas (Nauru) validated again
         reg.data["cm_atlas_1103"] = True
         reg.save()
 
@@ -3901,34 +3902,23 @@ async def on_boot(app):
             ep = reg.episode("O_ZdYlKrdwU")
             st = _cm.State(ep)
             it = st.items.get("atlas") or {}
-            if not it.get("task") or it.get("status") == "posted" or it.get("sent"):
+            if not it.get("task") or it.get("status") in ("ok", "posted") or it.get("sent"):
                 return
-            try:
-                if not CU_CACHE["tasks"]:
-                    CU_CACHE["tasks"] = await run(maker().clickup().tasks)
-                countries = await run(cm_fetch, "pipeline/countries.json")
-                e = _cm.atlas_entry(countries, ep.get("guest_name") or "")
-                if not e or cm_atlas_planned(e[1]):
-                    return
-                cu = maker().clickup()
-                t = await run(cu.task, it["task"])
-                keep = (t.get("markdown_description") or t.get("text_content") or "").split(_share.MARK)[0].rstrip()
-                await run(cu.update, it["task"], markdown_content=keep, status="to generate")
-                await run(cu.set_field, it["task"], _share.F_YT, _share.YT_TODO)
-            except Exception:  # noqa: BLE001
-                log.exception("cm atlas 1103")
-                return
-            it.update(status=None, blocked="no_atlas", told_blocked=True)
+            for x in ("blocked", "told_blocked"):
+                it.pop(x, None)
             st.save()
             tok = topics.TOPIC.set("stories")
             try:
-                await say(ctx, "↩️ J'ai annulé le post YouTube Community World Atlas (Nauru) prévu jeudi : il n'y a pas de "
-                               "carrousel World Atlas de Hannah dans ClickUp cette semaine. Désormais je ne prépare ce post "
-                               "que si le carrousel Atlas de l'épisode est planifié. La tâche est repassée « to generate » ; "
-                               "supprime-la dans Posts planning si ce post n'a pas lieu d'être.")
+                t = await run(maker().clickup().task, it["task"])
+                if await cm_make(ctx, ep, t, "atlas"):
+                    await cm_validate(ctx, ep, "atlas")
+                    await say(ctx, "✅ Compris : le World Atlas de l'épisode va bien sur YouTube Community. J'ai remis le "
+                                   "post Nauru validé pour jeudi 17:00, comme tu l'avais fait (ClickUp « scheduled »).")
+            except Exception:  # noqa: BLE001
+                log.exception("cm atlas 1103b")
             finally:
                 topics.TOPIC.reset(tok)
-        app.job_queue.run_once(_cm_atlas, when=70, name="cm-atlas-1103")
+        app.job_queue.run_once(_cm_atlas, when=70, name="cm-atlas-1103b")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()
@@ -6526,18 +6516,6 @@ async def cm_make(ctx, ep, t: dict, kind: str, feedback: str = "") -> bool:
             st.save()
             return False
         slug, c = e
-        if not cm_atlas_planned(c):         # Loïc 03.11: « sur ClickUp il n'y a pas de World Atlas de l'épisode cette semaine »
-            it.update(blocked="no_atlas", country=c.get("display") or c.get("name"))
-            first = not it.get("told_blocked")
-            it["told_blocked"] = True
-            st.save()
-            if first:
-                await say(ctx, f"ℹ️ {esc(cm_name(ep, kind))} : il n'y a pas de carrousel World Atlas de "
-                               f"{esc(ep.get('guest_name') or 'cet épisode')} ({esc(it['country'])}) dans le calendrier "
-                               "ClickUp, donc je ne prépare pas ce post YouTube (on ne montre pas l'Atlas sur YouTube avant "
-                               "Instagram). Je le ferai tout seul dès que le carrousel est planifié ; sinon tu peux supprimer "
-                               "la tâche dans Posts planning.")
-            return False
         it.pop("blocked", None)
         it.update(text=_cm.no_link(cap), question=None, options=None, correct=None, country=c.get("display") or c.get("name"),
                   images=_cm.atlas_images(_pm.MEDIA, slug, c.get("no", 0)))
@@ -6852,19 +6830,6 @@ async def community_tick(ctx):
                 log.exception("community make %s", t.get("name"))
 
 
-def cm_atlas_planned(c: dict) -> dict | None:
-    """The guest's own World Atlas carousel in the ClickUp calendar (not a catch-up, not the YouTube post itself):
-    the YouTube Community Atlas only follows it."""
-    no, names = int(c.get("no") or 0), {str(c.get(x) or "").lower() for x in ("display", "name") if c.get(x)}
-    for t in CU_CACHE["tasks"]:
-        n = (t.get("name") or "").lower()
-        if "world atlas" not in n or "community" in n or "catch" in n:
-            continue
-        if any(x and x in n for x in names) or (no and re.search(rf"atlas (?:no\.? )?0?{no}\b", n)):
-            return t
-    return None
-
-
 def cm_dash(ep, code: str, text: str) -> str:
     """« À valider »: the episode's YouTube Community posts (calendar tasks + the bot's drafts)."""
     tasks = [t for t in ep_calendar(ep) if _cm.task_kind(t.get("name", ""))]
@@ -6885,8 +6850,6 @@ def cm_dash(ep, code: str, text: str) -> str:
         elif it.get("status") == "draft":
             lines.append(f"⏳ {esc(name)} — à valider  /{code}_yt_{kind}")
             waiting += 1
-        elif it.get("blocked") == "no_atlas":
-            lines.append(f"⬜ {esc(name)} — pas de carrousel Atlas de l'épisode dans ClickUp : rien à poster")
         else:
             need = {"tomorrow": "dès que les miniatures sont faites", "atlas": "dès que le carrousel Atlas existe"}.get(kind, "")
             lines.append(f"⬜ {esc(name)} — {esc(_posts.label_time(due))}, écrit 3 jours avant" + (f" ({need})" if need else ""))
