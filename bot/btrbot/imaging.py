@@ -44,8 +44,9 @@ def cutout(img: Image.Image) -> Image.Image:
     elle »): the general model (isnet) gives the outline and the hair, but is unsure on dark clothes against a dark
     set (half-transparent sleeves / legs → the gold haze showed through). The human model (u2net_human_seg) says
     where the body is; it only counts where isnet saw something (it also grabs chairs). The silhouette is filled
-    (holes, and small gaps against the bottom / side edges of the frame) and fully opaque inside; soft alpha only on
-    the outline. Largest blob only, small bridges to the set removed."""
+    (holes, and gaps against the bottom / side edges of the frame: a lost sleeve, the shadow between a leg and the
+    chair), its outline smoothed (no ragged shadow bits) and fully opaque inside; isnet's soft alpha is kept only
+    where the human model agrees (hair, face). Largest blob only, small bridges to the set removed."""
     import cv2
     from rembg import remove
     from scipy import ndimage
@@ -63,7 +64,13 @@ def cutout(img: Image.Image) -> Image.Image:
     sil = ((a > 0.5) | ((a_hu > 0.5) & seen)).astype(np.uint8)
     sil = _largest(cv2.morphologyEx(sil, cv2.MORPH_OPEN, ker))
     # holes, and gaps against the frame's bottom / sides (they count as body, the top doesn't): filled when a model
-    # saw the person there (a lost sleeve / knee), left open when it's set seen between an arm and the body
+    # saw the person there, or when it is dark / the colour of the clothes (a lost sleeve, the shadow between a leg
+    # and the chair); left open when it's set (a lit chair seen between an arm and the body)
+    lab_img = cv2.cvtColor(np.asarray(rgb), cv2.COLOR_RGB2LAB).astype(np.float32)
+    H = sil.shape[0]
+    lower = sil.copy()
+    lower[: H // 2] = False
+    ref = np.median(lab_img[lower if lower.any() else sil.astype(bool)], axis=0)
     pad = np.pad(sil, 1, constant_values=True)
     pad[0, :] = False
     gaps = ndimage.binary_fill_holes(pad)[1:-1, 1:-1] & ~sil
@@ -71,12 +78,20 @@ def cutout(img: Image.Image) -> Image.Image:
     for i in range(1, n + 1):
         g = lab == i
         inside = not (g[-1].any() or g[:, 0].any() or g[:, -1].any())
-        if (inside or (g[-1].any() and g.sum() < 0.06 * g.size)) and (a_is[g].mean() > 0.1 or a_hu[g].mean() > 0.5):
+        if not (inside or (g[-1].any() and g.sum() < 0.06 * g.size)):
+            continue
+        col = np.median(lab_img[g], axis=0)
+        body_like = col[0] < max(30.0, ref[0] + 8) and np.linalg.norm(col - ref) < 20
+        if a_is[g].mean() > 0.1 or a_hu[g].mean() > 0.5 or body_like:
             sil |= g
+    # smooth outline: ragged shadow bits around the legs / chair become a clean edge
+    sm = cv2.GaussianBlur(sil.astype(np.float32), (0, 0), k * 0.8) > 0.5
+    sil = _largest(sm) if sm.any() else sil
     core = cv2.erode(sil.astype(np.uint8) * 255, ker)
     core = np.asarray(Image.fromarray(core).filter(ImageFilter.GaussianBlur(k / 3))).astype(np.float32) / 255
     keep = ndimage.binary_dilation(sil, iterations=max(2, k // 2))
-    a = np.maximum(a * keep, core)
+    agree = cv2.dilate((a_hu > 0.3).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3 * k, 3 * k))) > 0
+    a = np.maximum(a * keep * agree, core)
     m = Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))
     rgba.putalpha(m)
     return rgba

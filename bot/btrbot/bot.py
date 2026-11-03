@@ -3805,8 +3805,8 @@ async def on_boot(app):
                 st.save()
             except Exception:  # noqa: BLE001
                 log.exception("rejected migration")
-    if not reg.data.get("hannah_cut_1103"):               # solid cut-outs (Loïc 03.11: the haze showed through Hannah)
-        reg.data["hannah_cut_1103"] = True
+    if not reg.data.get("hannah_cut_1103b"):              # solid cut-outs (Loïc 03.11: the haze showed through Hannah)
+        reg.data["hannah_cut_1103b"] = True
         reg.save()
 
         async def _recut(ctx):
@@ -3815,13 +3815,13 @@ async def on_boot(app):
                 return
             tok = topics.TOPIC.set("thumbs")
             try:
-                await say(ctx, "✂️ Détourage corrigé : la silhouette de Hannah est maintenant pleine (manches et jambes "
-                               "comprises), le voile or reste derrière elle. Je refais les miniatures avec tes réglages "
-                               "de texte (« Now we're » / « part of the BDC » plus petits).")
+                await say(ctx, "✂️ Détourage repris : l'ombre entre sa jambe et le fauteuil (sous sa main) fait maintenant "
+                               "partie de la silhouette et le contour est lissé, plus de jaune à travers elle. Je refais "
+                               "les miniatures non validées.")
                 bg(ctx, "Miniatures", make_thumbs(ctx, ep))
             finally:
                 topics.TOPIC.reset(tok)
-        app.job_queue.run_once(_recut, when=45, name="hannah-cut-1103")
+        app.job_queue.run_once(_recut, when=45, name="hannah-cut-1103b")
     if not reg.data.get("teaser_try_1101"):
         reg.data["teaser_try_1101"] = True
         reg.save()

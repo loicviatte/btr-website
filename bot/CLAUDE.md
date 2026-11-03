@@ -252,7 +252,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `tests/teaser_flow.py`.
 - Solid cut-outs (Loïc 03.11, Hannah: « on voit le gradient jaune à travers elle »): `imaging.cutout` = isnet outline +
   u2net_human_seg body (counted only where isnet saw something: it grabs chairs), silhouette filled (holes and small
-  gaps against the bottom / side edges, only where a model saw the person) and opaque inside, soft alpha on the outline only.
+  gaps against the bottom / side edges where a model saw the person or the colour is dark / like the clothes), outline smoothed, opaque inside, isnet soft alpha only where the human model agrees (hair).
 - Memory (03.11: thumbnails + Claude Code → OOM killer took the whole bot down on the 4 GB server): `imaging.release()`
   frees the rembg sessions + LaMa after `render_thumbs` and before every dev-mode request; dev mode waits for a heavy
   job (LOCK) to finish first; the Claude Code child has oom_score_adj 900 (killed before the bot, clear message).
