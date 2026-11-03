@@ -874,10 +874,10 @@ class Pipeline:
         short_desc = (f"{guest} on {topic}: “{quote}”" if quote else f"{guest} on {topic}.") + \
             f"\n\n#BreakTheRoutine #DanceSport #Ballroom {gtag} #Shorts"
         out = {"instagram": ig, "tiktok": tt, "short_title": short_title, "short_desc": short_desc,
-               "collab": [h for h in (handle, "mariusiepure") if h], "v": CAPTIONS_V}
+               "v": CAPTIONS_V}
         if cover:
             out["cover"] = cover
-        return out
+        return share.apply_handle(out, guest, handle, share.extra_collabs(guest, ep))   # + extra collaborators
 
     def reel_cover(self, ep: Episode, n: int, item: dict, text: dict | None = None, pick: int | None = None,
                    zoom: float | None = None, exact: bool = False, suffix: str = "") -> dict:
@@ -1193,6 +1193,22 @@ class Pipeline:
                 out["clickup_error"] = str(e)[-300:]
         return out
 
+    def reel_task_text(self, ep: Episode, n: int, item: dict) -> None:
+        """Only the bot's block of a filed reel's ClickUp task written again (new captions / collab invites): no
+        status, date, name, Drive or cover change."""
+        from . import share
+        tid = item.get("clickup_task")
+        if not tid:
+            return
+        cu = share.ClickUp(share.Secrets(self.cfg.data_dir).get("clickup_token"))
+        task = cu.task(tid)
+        old = task.get("markdown_description") or task.get("description") or ""
+        today = (re.search(r"\*\*Reel validé le ([^*]+?)\*\*", old) or [None, share.today_str()])[1]
+        cu.update(tid, markdown_content=share.description(
+            old, item.get("links") or {}, item, item.get("title") or f"Reel {n}",
+            f"https://www.youtube.com/watch?v={ep.video_id}", today, item.get("instagram", True),
+            item.get("file_base") or ""))
+
     # ---- YouTube Shorts of the filed reels (btrbot/shorts.py) ------------------------------------------------
     def shorts_lookup(self, rows: list[tuple[str, dict]]) -> dict:
         """rows = [(key, item)] → key → {"task_at": ClickUp date as a publishing time or None,
@@ -1293,7 +1309,8 @@ class Pipeline:
         sec = share.Secrets(self.cfg.data_dir)
         ig = instagram.Instagram(sec)
         guest = ep.get("guest_name") or ""
-        caps = share.apply_handle(item.get("captions") or {}, guest, share.guest_handle(guest))   # latest @ known
+        caps = share.apply_handle(item.get("captions") or {}, guest, share.guest_handle(guest),   # latest @ known
+                                  share.extra_collabs(guest, ep))
         grid = self.ig_grid(item)
         cover_id = (item.get("drive_ids") or {}).get("cover")
         cover = f"https://drive.usercontent.google.com/download?id={cover_id}&export=download" if cover_id else None

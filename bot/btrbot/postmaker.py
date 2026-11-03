@@ -769,7 +769,7 @@ class Maker:
             else:
                 handle = share.guest_handle(guest)
                 it["captions"] = posts.captions(kind, c, guest, handle, part_number(ep))
-                it["collab"] = [h for h in (handle, "mariusiepure") if h]
+                it["collab"] = share.collab_list(handle, share.extra_collabs(guest, ep))
             it.update(status="draft", v=posts.V, made=posts.stamp())
             it.pop("sent", None)
             out[k] = it

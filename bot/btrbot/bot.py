@@ -27,6 +27,7 @@ reg = Registry(cfg.data_dir)
 pipe = Pipeline(cfg)
 from . import share as _share  # noqa: E402
 _share.load_handles(cfg.data_dir)                 # guests' Instagram @ confirmed by Loïc
+_share.load_collabs(cfg.data_dir)                 # extra Instagram collaborators per guest
 LOCK = asyncio.Lock()
 RUNNING: dict = {}          # the heavy job running now (label, since), for « c'est fait ? »
 LAST: dict = {}             # the last heavy job finished (label, at, ok)
@@ -1215,6 +1216,11 @@ def tool_handlers(ctx, images: list) -> dict:
         await set_guest_handle(ctx, g, "" if str(handle).lower() in ("", "none", "aucun") else str(handle))
         return "fait (message envoyé)"
 
+    async def instagram_collab(add=None, remove=None, scope="episode", video=None):
+        m = re.search(r"(?:v=|youtu\.be/|^)([\w-]{11})", (video or "").strip())
+        ep = reg.episode(m.group(1)) if m else (reel_ep() or need())
+        return await set_collabs(ctx, add or [], remove or [], ep, scope="guest" if scope == "guest" else "episode")
+
     async def covers_ok_t(nums=None):
         ep = reels_or_fail()
         await covers_ok(ctx, ep, [int(x) for x in nums or []] or None)
@@ -1516,6 +1522,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "teaser_make": teaser_t, "teaser_show": teaser_show_t,
             "youtube_community": youtube_community,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
+            "instagram_collab": instagram_collab,
             "reel_validate": reel_validate, "reel_drop": reel_drop,
             "get_status": get_status, "title_chat": title_chat, "choose_axis": choose_axis, "other_frames": other_frames,
             "validate": validate, "reopen": reopen, "redo_thumbnails": redo_thumbnails, "set_design": set_design,
@@ -2497,6 +2504,13 @@ def cover_sig(it: dict) -> str:
         return ""
 
 
+def caps_sig(it: dict) -> str:
+    """Instagram caption + collab invites, so a container made before a change is made again before publishing."""
+    import zlib
+    caps = it.get("captions") or {}
+    return str(zlib.crc32(((caps.get("instagram") or "") + "|" + ",".join(caps.get("collab") or [])).encode()))
+
+
 def ig_items() -> list:
     out = []
     for f in sorted((reg.root / "episodes").glob("*/reels.json")):
@@ -2567,15 +2581,16 @@ async def ig_job(ctx, ep, n: int, it: dict, step: str):
     try:
         if step == "prepare":
             res = await run(pipe.ig_prepare, ep, n, dict(it))
-            ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it))
+            ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it), caps_sig=caps_sig(it))
             ig.pop("tries", None)
             if res.get("note"):
                 await say(ctx, f"📸 {name} : {esc(res['note'])}")
         else:
             if (await run(pipe.ig_grid, dict(it)) != bool(ig.get("grid"))      # placement changed in ClickUp meanwhile
-                    or ig.get("cover_sig", "") != cover_sig(it)):                # or a new cover
+                    or ig.get("cover_sig", "") != cover_sig(it)                  # or a new cover
+                    or ig.get("caps_sig", caps_sig(it)) != caps_sig(it)):        # or new caption / collab invites
                 res = await run(pipe.ig_prepare, ep, n, dict(it))
-                ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it))
+                ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it), caps_sig=caps_sig(it))
                 RS(ep).save()
             res = await run(pipe.ig_publish, dict(it))
             ig.update(posted=True, id=res["id"], permalink=res.get("permalink", ""))
@@ -2646,7 +2661,7 @@ async def set_guest_handle(ctx, guest: str, handle: str):
             continue
         for k, it in RS(ep).data.get("items", {}).items():
             if it.get("captions") and not (it.get("ig_post") or {}).get("posted"):
-                it["captions"] = share.apply_handle(it["captions"], guest, handle or None)
+                it["captions"] = share.apply_handle(it["captions"], guest, handle or None, share.extra_collabs(guest, ep))
                 if it.get("filed"):
                     todo.append((ep, int(k)))
         RS(ep).save()
@@ -2660,6 +2675,90 @@ async def set_guest_handle(ctx, guest: str, handle: str):
             await share_reel(ctx, ep, n, quiet=True, cover=False)
     if todo:
         bg(ctx, "Légendes ClickUp (@ du guest)", refresh())
+
+
+async def set_collabs(ctx, add=None, remove=None, ep=None, guest: str = "", scope: str = "episode") -> str:
+    """Extra Instagram collaborators (Loïc 03.11: « ajoute @xxx comme collaborateur »), kept with the episode
+    (ep["ig_collabs"]) or the guest (data/collabs.json); the guest's own @ and @mariusiepure stay. Every Instagram post
+    of the episode(s) not yet out follows: reel captions « @guest & @xxx on … » + invites (only the ClickUp text
+    block rewritten: no status / date change), carousel invites. Beyond IG_MAX_COLLAB invites, Loïc is told."""
+    from . import share
+    add, remove = share.clean_handles(add), {h.lower() for h in share.clean_handles(remove)}
+    guest = guest or (ep.get("guest_name") if ep else "") or ""
+    if not guest:
+        return "quel épisode / guest ?"
+    gl = share.COLLABS.get(share.guest_key(guest)) or []
+    if scope == "guest":
+        share.set_collabs(cfg.data_dir, guest, [h for h in gl if h.lower() not in remove] + add)
+        eps = [reg.episode(d.name) for d in sorted((reg.root / "episodes").iterdir()) if d.is_dir()]
+        eps = [e for e in eps if share.guest_key(e.get("guest_name") or "") == share.guest_key(guest)]
+    else:
+        if not ep:
+            return "quel épisode ?"
+        if any(h.lower() in remove for h in gl):          # taken out at both levels
+            share.set_collabs(cfg.data_dir, guest, [h for h in gl if h.lower() not in remove])
+        ep["ig_collabs"] = share.clean_handles([h for h in ep.get("ig_collabs") or [] if h.lower() not in remove] + add)
+        ep.save()
+        eps = [ep]
+    todo, posted, carousels = [], [], 0
+    for e in eps:
+        g = e.get("guest_name") or guest
+        handle, extra = share.guest_handle(g), share.extra_collabs(g, e)
+        if e.file("reels.json").exists():
+            for k, it in RS(e).data.get("items", {}).items():
+                if not it.get("captions"):
+                    continue
+                if (it.get("ig_post") or {}).get("posted"):
+                    posted.append(f"reel {k}")
+                    continue
+                new = share.apply_handle(it["captions"], g, handle, extra)
+                if new != it["captions"]:
+                    it["captions"] = new
+                    if it.get("filed") and it.get("clickup_task") and it.get("instagram", True):
+                        todo.append((e, int(k)))
+            RS(e).save()
+        if e.file("posts.json").exists():
+            st = _posts.PostState(e)
+            for k, it in st.items.items():
+                if it.get("kind") not in _posts.CAROUSELS or not it.get("captions"):
+                    continue
+                if (it.get("ig") or {}).get("done"):
+                    posted.append(post_name(e, k))
+                else:
+                    it["collab"] = share.collab_list(handle, extra)
+                    carousels += 1
+            st.save()
+    first = eps[0] if eps else ep
+    g = (first.get("guest_name") if first else "") or guest
+    full = share.collab_list(share.guest_handle(g), share.extra_collabs(g, first))
+    msg = (f"✅ Invitations collab Instagram {'de ' + esc(guest) if scope == 'guest' else 'de cet épisode'} : "
+           + esc(", ".join("@" + h for h in full)) + ".")
+    if len(full) > share.IG_MAX_COLLAB:
+        cut = ", ".join("@" + h for h in full[share.IG_MAX_COLLAB:])
+        msg += (f"\n⚠️ Instagram n'accepte que {share.IG_MAX_COLLAB} invitations par post : {esc(cut)} ne sera pas "
+                "invité (son @ reste dans la légende). Retire un compte si tu préfères.")
+    if todo:
+        msg += f" Légendes Instagram de {len(todo)} reel(s) mises à jour, je refais le texte dans ClickUp."
+    if carousels:
+        msg += f" Carrousels : {carousels} à jour."
+    if posted:
+        msg += f" Déjà publiés, pas touchés : {esc(', '.join(posted))}."
+    await say(ctx, msg)
+
+    async def refresh():
+        bad = []
+        for e, n in todo:
+            it = reel_item(e, n)
+            try:
+                await run(pipe.reel_task_text, e, n, dict(it, title=(reel_cand(e, n) or {}).get("title") or f"Reel {n}"))
+            except Exception:  # noqa: BLE001
+                log.exception("reel task text")
+                bad.append(str(n))
+        await say(ctx, "✅ Légendes à jour dans ClickUp (statuts et dates inchangés)." if not bad else
+                  f"⚠️ ClickUp n'a pas pris la nouvelle légende des reels {', '.join(bad)}.")
+    if todo:
+        bg(ctx, "Légendes ClickUp (collaborateurs)", refresh())
+    return "fait (message envoyé)"
 
 
 async def handle_reply(ctx, text: str) -> bool:
@@ -3415,7 +3514,7 @@ async def igtest_cmd(update: Update, ctx):
     try:
         res = await run(pipe.ig_prepare, ep, n, dict(it))
         ig = it.setdefault("ig_post", {})
-        ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it))
+        ig.update(container=res["container"], made=res["made"], grid=res["grid"], cover_sig=cover_sig(it), caps_sig=caps_sig(it))
         RS(ep).save()
         collab = " et ".join("@" + h for h in (it.get("captions") or {}).get("collab") or [])
         await say(ctx, f"✅ Test OK : vidéo acceptée et traitée par Instagram"
@@ -3801,6 +3900,19 @@ async def on_boot(app):
                 finally:
                     topics.TOPIC.reset(tok)
             app.job_queue.run_once(_trever, when=60, name="trever")
+    if not reg.data.get("dpa_collab_1103"):      # Loïc 03.11: Hannah's association invited too on EP14's posts
+        reg.data["dpa_collab_1103"] = True
+        reg.save()
+
+        async def _dpa(ctx):
+            tok = topics.TOPIC.set("reels")
+            try:
+                await set_collabs(ctx, ["dpa_dance_promotersassociation"], [], reg.episode("O_ZdYlKrdwU"))
+            except Exception:  # noqa: BLE001
+                log.exception("dpa collab")
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_dpa, when=90, name="dpa_collab")
     if not reg.data.get("cm_poll_img_1103"):     # Loïc 03.11: the poll gets its image, Hannah's first (then cm_make)
         reg.data["cm_poll_img_1103"] = True
         reg.save()
@@ -4739,7 +4851,9 @@ async def posts_tick(ctx):
                             if kind in _posts.CAROUSELS:
                                 cap = (it.get("captions") or {}).get("instagram", "")
                                 try:
-                                    ig["cid"] = await run(I.carousel, urls, cap, it.get("collab") or [])
+                                    g = ep.get("guest_name") or ""
+                                    col = _share.collab_list(_share.guest_handle(g), _share.extra_collabs(g, ep))
+                                    ig["cid"] = await run(I.carousel, urls, cap, col)
                                 except Exception:  # noqa: BLE001
                                     ig["cid"] = await run(I.carousel, urls, cap, [])       # without the collab invite
                             else:

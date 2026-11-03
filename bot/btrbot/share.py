@@ -487,15 +487,65 @@ def set_handle(data_dir: Path, guest: str, handle: str) -> None:
     HANDLES[_norm(guest)] = d[_norm(guest)]
 
 
-def apply_handle(caps: dict, guest: str, handle: str | None) -> dict:
-    """Instagram caption « Guest on … » → « @handle on … » and the collab invites (guest + Marius)."""
+# Extra Instagram collaborators on top of the guest's @ and Marius (Loïc 03.11: Hannah's association
+# @dpa_dance_promotersassociation on EP14): per guest in data/collabs.json, per episode in ep["ig_collabs"].
+IG_MAX_COLLAB = 3          # Graph API: up to 3 collaborators per post (instagram.container / carousel cut the rest)
+COLLABS: dict[str, list[str]] = {}
+
+
+def load_collabs(data_dir: Path) -> None:
+    try:
+        COLLABS.update(json.loads((Path(data_dir) / "collabs.json").read_text()))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def set_collabs(data_dir: Path, guest: str, handles: list[str]) -> None:
+    path = Path(data_dir) / "collabs.json"
+    try:
+        d = json.loads(path.read_text())
+    except Exception:  # noqa: BLE001
+        d = {}
+    d[_norm(guest)] = clean_handles(handles)
+    if not d[_norm(guest)]:
+        d.pop(_norm(guest))
+    path.write_text(json.dumps(d, ensure_ascii=False, indent=1))
+    COLLABS.clear()
+    COLLABS.update(d)
+
+
+def clean_handles(handles) -> list[str]:
+    out = [str(h).strip().lstrip("@").strip().rstrip("/").split("/")[-1].split("?")[0] for h in handles or []]
+    return list(dict.fromkeys(h for h in out if re.fullmatch(r"[A-Za-z0-9._]{2,30}", h)))
+
+
+def extra_collabs(guest: str, ep=None) -> list[str]:
+    """The extra collaborators of this guest + this episode (guest's own @ and Marius left out)."""
+    own = {(HANDLES.get(_norm(guest)) or "").lower(), "mariusiepure"}
+    out = list(COLLABS.get(_norm(guest)) or []) + list((ep.get("ig_collabs") if ep is not None else None) or [])
+    return [h for h in clean_handles(out) if h.lower() not in own]
+
+
+def collab_list(handle: str | None, extra=()) -> list[str]:
+    """Invites in priority order: guest, Marius, then the extras (Instagram keeps the first IG_MAX_COLLAB)."""
+    return list(dict.fromkeys(h for h in (handle, "mariusiepure", *extra) if h))
+
+
+def apply_handle(caps: dict, guest: str, handle: str | None, extra=()) -> dict:
+    """Instagram caption « Guest on … » → « @handle & @extra on … » and the collab invites (guest + Marius + extras).
+    Idempotent; an extra taken out of the list leaves the caption too."""
     caps = dict(caps or {})
     ig = caps.get("instagram") or ""
     if handle and guest:
         ig = re.sub(r"(^|\n)" + re.escape(guest) + r"(?= on )", lambda m: m.group(1) + "@" + handle, ig, count=1)
+    who = "@" + handle if handle else guest
+    if ig and who:
+        tail = "".join(" & @" + x for x in extra)
+        ig = re.sub(r"(^|\n)(" + re.escape(who) + r")(?: & @[A-Za-z0-9._]+)*(?= on )",
+                    lambda m: m.group(1) + m.group(2) + tail, ig, count=1)
     if ig:
         caps["instagram"] = ig
-    caps["collab"] = [h for h in (handle, "mariusiepure") if h]
+    caps["collab"] = collab_list(handle, extra)
     return caps
 
 

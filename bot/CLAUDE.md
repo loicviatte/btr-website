@@ -76,7 +76,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   "" = no Instagram); unknown → `bot.ask_handle` (at « Ranger » with feed reels and at cover OK: Sonnet + web search
   `llm.guest_instagram`, buttons igh:ok / igh:none, or Loïc types the @ → `handle_reply`; tool guest_instagram);
   `share.apply_handle` puts « @handle on … » in the Instagram caption + collab [guest, mariusiepure], applied again at
-  posting time. /igtest = dry run on the next IG reel (container only, kept if still fresh). Test: `tests/ig_flow.py`.
+  posting time. Extra collaborators (Loïc 03.11, EP14 + @dpa_dance_promotersassociation): tool instagram_collab →
+  `bot.set_collabs` (ep["ig_collabs"] or per guest data/collabs.json, `share.extra_collabs`); invites = guest, Marius,
+  extras (`share.collab_list`, Instagram keeps IG_MAX_COLLAB 3, Loïc warned beyond); reel caption « @guest & @extra on … »
+  (`apply_handle(extra=)`, idempotent), ClickUp block only rewritten (`Pipeline.reel_task_text`, no status / date),
+  carousels invite them at posting time; a prepared container is made again if caption / invites changed (`caps_sig`).
+  Boot one-shot dpa_collab_1103. /igtest = dry run on the next IG reel (container only, kept if still fresh). Test: `tests/ig_flow.py`.
   TikTok (semi-auto until the API audit): `bot.tt_tick` every minute; at the Short's time it sends the video, the cover
   and the TikTok caption (<pre>, tap to copy) with « ✅ Posté sur TikTok » (ttok:vid:n → `tt_posted`); ClickUp TikTok
   field Scheduled → Posted. Test: `tests/tt_flow.py`.

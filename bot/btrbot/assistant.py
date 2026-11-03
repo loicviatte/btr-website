@@ -173,6 +173,18 @@ TOOLS = [
                                               "dans la légende et à l'invitation collab.",
      "input_schema": {"type": "object", "properties": {"handle": {"type": "string"}, "guest": {"type": "string",
                       "description": "nom complet du guest ; vide = le guest en cours"}}, "required": ["handle"]}},
+    {"name": "instagram_collab", "description": "Comptes Instagram collaborateurs EN PLUS du @ du guest et de "
+                                               "@mariusiepure (« ajoute @xxx comme collaborateur », « retire @xxx des "
+                                               "collabs »). Invitation collab sur les posts Instagram pas encore publiés "
+                                               "(reels feed, carrousels) + « @guest & @xxx on … » dans les légendes des "
+                                               "reels (ClickUp mis à jour). Ne remplace jamais le @ du guest "
+                                               "(guest_instagram pour ça).",
+     "input_schema": {"type": "object", "properties": {
+         "add": {"type": "array", "items": {"type": "string"}, "description": "@ à ajouter"},
+         "remove": {"type": "array", "items": {"type": "string"}, "description": "@ à retirer"},
+         "scope": {"type": "string", "enum": ["episode", "guest"],
+                   "description": "episode (défaut) = cet épisode seulement ; guest = tous les épisodes de ce guest"},
+         "video": {"type": "string", "description": "lien / id de l'épisode ; vide = l'épisode en cours"}}}},
     {"name": "covers_ok", "description": "Loïc VALIDE des covers de reels (« je valide les covers », « cover 3 ok ») : "
                                         "tâche ClickUp → « ready », ce qui programme le Short YouTube. Sans nums = "
                                         "toutes les covers rangées pas encore validées.",
