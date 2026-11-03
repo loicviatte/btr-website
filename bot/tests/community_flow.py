@@ -105,6 +105,16 @@ async def main():
     ctx = NS(bot=NS(send_photo=None, send_media_group=None))
     bot.CM_SCAN["at"] = 0
     await bot.community_tick(ctx)
+    # Loïc 03.11: no World Atlas carousel of the episode in the calendar → no YouTube Atlas post, told once
+    a0 = cm.State(ep).items["atlas"]
+    assert a0.get("blocked") == "no_atlas" and "text" not in a0 and a0.get("told_blocked"), a0
+    told = [t for t, k in sent if "pas de carrousel World Atlas" in t]
+    assert len(told) == 1, sent
+    bot.CU_CACHE["tasks"].append({"id": "C", "name": "Carousel · World Atlas 13 Italy · Ep Nov 3",
+                                  "status": {"status": "scheduled"}, "due_date": ms(NOW + timedelta(days=2)), "custom_fields": []})
+    assert bot.cm_atlas_planned({"no": 13, "display": "Italy", "name": "Italy"})
+    bot.CM_SCAN["at"] = 0
+    await bot.community_tick(ctx)
     st = cm.State(ep)
     poll, tom, atl = st.items["poll"], st.items["tomorrow"], st.items["atlas"]
     assert "Nov 24" not in str(st.items) and len(st.items) == 3

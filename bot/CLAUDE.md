@@ -238,7 +238,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   status scheduled, thumbnail attached; yc:done → YouTube Posted + close_if_posted. « À valider » shows them (`cm_dash`,
   /oti2_yt_poll resends); tool youtube_community (kind, feedback, show, unvalidate). The « validé » message carries
   « ↩️ Annuler la validation » (yc:undo → `cm_unvalidate`: draft again, ClickUp « generated », YouTube field To do, block
-  below MARK removed, preview sent again; never once posted). Test: `tests/community_flow.py`.
+  below MARK removed, preview sent again; never once posted). The Atlas post is only made when the guest's own World
+  Atlas carousel is in the calendar (`cm_atlas_planned`: « World Atlas » + country or « 13 », not a catch-up, not the
+  Community task; Loïc 03.11: none for Hannah this week) — else item["blocked"]="no_atlas", told once, « À valider »
+  says « rien à poster », retried every scan. Boot one-shot cm_atlas_1103 undid Hannah's (Nauru) validation.
+  Test: `tests/community_flow.py`.
 - « BTR Data » for Simone (Loïc 02.11; ClickUp agent, weekly review Tuesday evening): `btrbot/insights.py` writes the
   ClickUp doc BTR Data (DOC 2kypxhv3-5115, pages in insights.PAGES, API v3 `Docs`): « Épisodes » = one sub-page per
   episode (`episode_pages`: Opus digest prompts.EPISODE_DIGEST + transcript sub-pages of 30k chars; transcripts from the
