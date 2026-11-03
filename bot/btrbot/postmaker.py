@@ -432,8 +432,8 @@ class Maker:
         nd = next((x for x in posts.needs(kind, (st.data.get("content") or {}).get(k) or {}) if x["id"] == pid), {})
         if who not in ("guest", "marius", "both", "wide", "noface"):
             who = cur.get("who") or nd.get("who") or "guest"
-        if who == "prev":
-            raise RuntimeError("la photo du guest précédent vient de son épisode : pas de sélection pour celle-là")
+        if who == "prev" or pid == "prev":
+            return self.prev_choices(ep, st, sid, n)
         fr = self._scan(ep)
         if not fr:
             raise RuntimeError("pas d'images de l'épisode")
@@ -531,11 +531,11 @@ class Maker:
             raise ValueError(f"la photo n° {num} n'est plus là : refais une sélection")
         shots = st.data.setdefault("shots", {})
         old = shots.get(sid)
-        if old and old.get("t") != c["t"]:
+        if old and (old.get("t"), old.get("pt")) != (c.get("t"), c.get("pt")):
             hist = st.data.setdefault("history", {}).setdefault(sid, [])
             hist.append({k_: v for k_, v in old.items() if k_ != "ext"})
             del hist[:-6]
-        shots[sid] = {x: c[x] for x in ("file", "t", "size", "who", "face") if x in c}
+        shots[sid] = {x: c[x] for x in ("file", "t", "pt", "size", "who", "face", "video", "name") if x in c}
         st.save()
         return shots[sid]
 
@@ -605,49 +605,50 @@ class Maker:
         m = re.search(r"prev_[\w-]{11}_(\d+)\.jpg$", str(shot.get("file") or ""))
         return float(m.group(1)) if m else None
 
-    def prev_shot(self, ep, name: str, sdir: Path, avoid: list | None = None) -> dict:
-        """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question).
-        `avoid`: seconds of photos Loïc turned down (never within REJECT_GAP of them; all refused = the best one again)."""
-        avoid = avoid or []
+    def _prev_source(self, ep, name: str, sdir: Path, vid: str | None = None):
+        """The previous guest's episode (The Chain) and every close-up of them in its last 15 minutes (2 s apart, 720p):
+        (vid, name, start second of the clip, clip, candidates with « t » = second in the clip)."""
         from . import reels
         import cv2
-        vid = None
-        longs = [v for v in self.uploads(250) if v["status"].get("privacyStatus") == "public"
-                 and ("H" in v["contentDetails"].get("duration", "") or re.search(r"(\d+)M", v["contentDetails"].get("duration", ""))
-                      and int(re.search(r"(\d+)M", v["contentDetails"]["duration"]).group(1)) >= 15)]
-        if name:
-            last = name.split()[-1].lower()
-            vid = next((v["id"] for v in longs if v["id"] != ep.video_id and last in v["snippet"]["title"].lower()), None)
-        if not vid:                    # the Chain = the guest of the episode just before this guest's first one
-            me = (ep.get("guest_name") or "").lower()
-            mine = [v for v in longs if me and me in v["snippet"]["title"].lower()] or \
-                   [v for v in longs if v["id"] == ep.video_id]
-            olds = sorted(longs, key=lambda v: v["snippet"].get("publishedAt", ""))
-            first = min((v["snippet"].get("publishedAt", "") for v in mine), default="9999")
-            before = [v for v in olds if v["snippet"].get("publishedAt", "") < first and v not in mine]
-            if not before:
-                raise RuntimeError("épisode du guest précédent introuvable")
-            prev = before[-1]
-            vid = prev["id"]
-            from .state import Episode
-            name = Episode(self.data_dir, vid).get("guest_name") or ""
-            if not name:
-                try:
-                    name = str(self.pipe.llm._json(
-                        "Podcast episode title: " + prev["snippet"]["title"] + "\nWho is the guest (full name, not Marius "
-                        "Iepure, the host)? Return ONLY JSON: {\"guest\": \"...\"}", 200, tier="chat",
-                        task="guest précédent").get("guest") or "")
-                except Exception:  # noqa: BLE001
-                    name = ""
+        if not vid:
+            longs = [v for v in self.uploads(250) if v["status"].get("privacyStatus") == "public"
+                     and ("H" in v["contentDetails"].get("duration", "") or re.search(r"(\d+)M", v["contentDetails"].get("duration", ""))
+                          and int(re.search(r"(\d+)M", v["contentDetails"]["duration"]).group(1)) >= 15)]
+            if name:
+                last = name.split()[-1].lower()
+                vid = next((v["id"] for v in longs if v["id"] != ep.video_id and last in v["snippet"]["title"].lower()), None)
+            if not vid:                    # the Chain = the guest of the episode just before this guest's first one
+                me = (ep.get("guest_name") or "").lower()
+                mine = [v for v in longs if me and me in v["snippet"]["title"].lower()] or \
+                       [v for v in longs if v["id"] == ep.video_id]
+                olds = sorted(longs, key=lambda v: v["snippet"].get("publishedAt", ""))
+                first = min((v["snippet"].get("publishedAt", "") for v in mine), default="9999")
+                before = [v for v in olds if v["snippet"].get("publishedAt", "") < first and v not in mine]
+                if not before:
+                    raise RuntimeError("épisode du guest précédent introuvable")
+                prev = before[-1]
+                vid = prev["id"]
+                from .state import Episode
+                name = Episode(self.data_dir, vid).get("guest_name") or ""
+                if not name:
+                    try:
+                        name = str(self.pipe.llm._json(
+                            "Podcast episode title: " + prev["snippet"]["title"] + "\nWho is the guest (full name, not Marius "
+                            "Iepure, the host)? Return ONLY JSON: {\"guest\": \"...\"}", 200, tier="chat",
+                            task="guest précédent").get("guest") or "")
+                    except Exception:  # noqa: BLE001
+                        name = ""
         self._prev_name = name
         info = self.pipe.yt.video(vid)
         d = info["contentDetails"]["duration"]
         m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d)
         dur = int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + int(m.group(3) or 0)
         a, b = max(0, dur - 900), max(60, dur - 30)
-        clip = reels.download_section(vid, a, b, sdir / f"prev_{vid}.mp4", self.cfg.ytdlp_cookies, height=720)
+        clip = sdir / f"prev_{vid}.mp4"
+        if not clip.exists() or clip.stat().st_size < 1000:
+            clip = reels.download_section(vid, a, b, clip, self.cfg.ytdlp_cookies, height=720)
         fr = frames.sample(clip, sdir / f"prev_{vid}", 2.0)
-        best = fallback = None
+        cands = []
         for t, p in fr:
             img = cv2.imread(str(p))
             if img is None:
@@ -658,24 +659,83 @@ class Maker:
             if info_c["kind"] != "guest":
                 continue
             f = max(fs, key=lambda f: f.box[3])
-            c = {"t": t, **info_c, "sharp": sharpness(img, f.box)}
-            if any(abs(a + t - x) <= posts.REJECT_GAP for x in avoid):
-                if fallback is None or posts.score(c) > posts.score(fallback):
-                    fallback = c
-                continue
-            if best is None or posts.score(c) > posts.score(best):
-                best = c
-        best = best or fallback
-        if not best:
-            raise RuntimeError("pas de gros plan du guest précédent")
-        out = sdir / f"prev_{vid}_{int(a + best['t'])}.jpg"
+            cands.append({"t": t, "file": str(p), **info_c, "sharp": sharpness(img, f.box)})
+        return vid, name, a, clip, cands
+
+    def _prev_grab(self, vid: str, a: float, clip: Path, c: dict, out: Path) -> None:
         try:
-            frames.grab(frames.full_res_url(vid, self.cfg.ytdlp_cookies), a + best["t"], out)
+            frames.grab(frames.full_res_url(vid, self.cfg.ytdlp_cookies), a + c["t"], out)
         except Exception:  # noqa: BLE001
-            frames.grab(str(clip), best["t"], out)
+            frames.grab(str(clip), c["t"], out)
+
+    def prev_shot(self, ep, name: str, sdir: Path, avoid: list | None = None) -> dict:
+        """The previous guest (The Chain): a close-up from the end of their episode (where they leave the question).
+        `avoid`: seconds of photos Loïc turned down (never within REJECT_GAP of them; all refused = the best one again)."""
+        avoid = avoid or []
+        vid, name, a, clip, cands = self._prev_source(ep, name, sdir)
+        ok = [c for c in cands if all(abs(a + c["t"] - x) > posts.REJECT_GAP for x in avoid)]
+        if not (ok or cands):
+            raise RuntimeError("pas de gros plan du guest précédent")
+        best = max(ok or cands, key=posts.score)
+        out = sdir / f"prev_{vid}_{int(a + best['t'])}.jpg"
+        self._prev_grab(vid, a, clip, best, out)
         return {"file": str(out), "t": None, "pt": a + best["t"], "size": list(Image.open(out).size), "who": "prev",
                 "video": vid, "name": name,
                 "face": {x: best[x] for x in ("cx", "cy", "fh", "fw", "top") if x in best}}
+
+    def prev_choices(self, ep, st: posts.PostState, sid: str, n: int = 10) -> list[dict]:
+        """« 🎞️ Sélection » on The Chain's previous-guest photo (Loïc 03.11: « j'ai eu la sélection de Hannah, pas Oti »):
+        10 close-ups from the end of their episode, one per stretch, refused ones and the current one left out."""
+        shots = st.data.setdefault("shots", {})
+        cur = shots.get(sid) or {}
+        sdir = ep.dir / "posts" / "shots"
+        sdir.mkdir(parents=True, exist_ok=True)
+        k = sid.split(":", 1)[0]
+        name = cur.get("name") or ((st.data.get("content") or {}).get(k) or {}).get("prev_guest") or ""
+        vid, name, a, clip, cands = self._prev_source(ep, name, sdir, cur.get("video"))
+        avoid = list((st.data.get("rejected") or {}).get(sid) or [])
+        pt = self.prev_time(cur)
+        if pt is not None:
+            avoid.append(pt)
+        pool = [c for c in cands if all(abs(a + c["t"] - x) > posts.REJECT_GAP for x in avoid)]
+        if not pool:
+            raise RuntimeError("plus d'autre gros plan du guest précédent dans la fin de son épisode")
+        span = max(c["t"] for c in pool) + 1
+        bins, pre = 2 * n, []
+        for b in range(bins):
+            inb = [c for c in pool if span * b / bins <= c["t"] < span * (b + 1) / bins]
+            if inb:
+                pre.append(max(inb, key=posts.score))
+        pre = sorted(pre, key=posts.score, reverse=True)[:n]
+        cdir = ep.dir / "posts" / "choices"
+        cdir.mkdir(parents=True, exist_ok=True)
+        keep = {s_.get("file") for s_ in shots.values()}
+        for old in cdir.glob(f"{sid.replace(':', '_')}_*.jpg"):
+            if str(old) not in keep:
+                old.unlink(missing_ok=True)
+        out = []
+        for c in pre:
+            f = cdir / f"{sid.replace(':', '_')}_{int(a + c['t'])}.jpg"
+            try:
+                self._prev_grab(vid, a, clip, c, f)
+            except Exception:  # noqa: BLE001
+                log.exception("prev choice grab")
+                continue
+            shot = {"file": str(f), "t": None, "pt": a + c["t"], "size": list(Image.open(f).size), "who": "prev",
+                    "video": vid, "name": name, "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+            try:
+                self.refine(shot)
+            except Exception:  # noqa: BLE001
+                log.exception("prev choice refine")
+            out.append(shot)
+        out.sort(key=lambda s_: s_["pt"])
+        for i, s_ in enumerate(out, 1):
+            s_["n"] = i
+            s_["label"] = str(self._label(Path(s_["file"]), cdir / f"{Path(s_['file']).stem}_n.jpg", i, s_["pt"]))
+        st.data.setdefault("choices", {})[sid] = {"ts": posts.stamp(), "who": "prev", "items": out}
+        st.data["choices_last"] = sid
+        st.save()
+        return out
 
     # ------------------------------------------------------------ render
     def render(self, ep, st: posts.PostState, keys: list[str]) -> dict:

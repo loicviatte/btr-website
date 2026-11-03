@@ -213,7 +213,8 @@ TOOLS = [
                                                  "(post_photo_pick). key / slides (une seule) / part comme post_photos ; "
                                                  "who = guest | marius | both | wide pour un autre type de plan ; want = "
                                                  "ce qu'il cherche en plus (« elle rit », « regard caméra ») ; link = lien "
-                                                 "YouTube si un autre épisode.",
+                                                 "YouTube si un autre épisode. The Chain : part=gauche = photos du guest précédent (fin de SON épisode), "
+                                                 "part=droite = le guest de cet épisode.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"},
                       "slides": {"type": "array", "items": {"type": "integer"}}, "part": {"type": "string"},
                       "who": {"type": "string"}, "want": {"type": "string"}, "link": {"type": "string"}},

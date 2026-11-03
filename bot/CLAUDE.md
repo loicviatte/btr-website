@@ -206,7 +206,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   a moment Loïc names (at) wins over his old refusals; nothing left = a warning. Boot one-shot posts_rejected_1102
   turns the existing histories into refusals. The Chain's previous-guest photo too (03.11: « autre photo » on Oti gave
   the same frame): its second in their video (shot["pt"], else the file name) goes to rejected, `prev_shot(avoid=)`.
-  Test: `tests/posts_flow.py` (« refused photos »).
+  Test: `tests/posts_flow.py` (« refused photos »). « 🎞️ Sélection » works on it too (03.11): `Maker.prev_choices` (via
+  `choices` when the sid is :prev) = 10 close-ups from the end of the previous guest's episode (`_prev_source`, clip kept),
+  refused + current left out, numbered by their time in that video (shot["pt"]); the picker names the sides « Oti
+  (gauche) / Hannah (droite) ». Test: `tests/prev_choices.py`.
 - Fresh state per episode (Loïc 02.11): every message of the work topics Reels / Miniatures / Stories (the bot's in
   `_routed_post`, Loïc's in `set_origin`) is noted under its episode in reg.data["ep_msgs"][vid] (`ep_note`): the episode
   comes from `topics.EP`, set by `topics.within` from the wrapped function's Episode argument; else the topic's last

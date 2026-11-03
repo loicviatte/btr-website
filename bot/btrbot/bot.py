@@ -5187,7 +5187,7 @@ async def posts_photos(ctx, ep, k: str, slides: list[int], part: str | None = No
 
 
 CHOICE_PART = {"q": "Marius (haut)", "a": "guest (bas)", "face": "la photo", "band": "bandeau", "bg": "fond flou",
-               "hands": "la photo"}
+               "hands": "la photo", "prev": "guest précédent (gauche)"}
 
 
 async def choices_picker(ctx, ep, k: str):
@@ -5205,15 +5205,19 @@ async def choices_picker(ctx, ep, k: str):
         await say(ctx, "Sélection de photos pour quelle slide ? (↑ = photo du haut, ↓ = du bas)",
                   reply_markup=K([btns[j:j + 4] for j in range(0, len(btns), 4)]))
         return
-    pids = [x.split(":", 1)[1] for x in post_sids(st, k, None, None) if not x.endswith(":prev")]
+    pids = [x.split(":", 1)[1] for x in post_sids(st, k, None, None)]
     if len(pids) == 1:
         await say(ctx, bg(ctx, f"Sélection de photos · {post_name(ep, k)}", posts_choices(ctx, ep, k, [], sid=f"{k}:{pids[0]}")))
         return
     if not pids:
         await say(ctx, "Pas de photo de cet épisode sur ce post.")
         return
+    names = dict(CHOICE_PART)
+    if kind == "chain":
+        prev = (st.data.get("shots", {}).get(f"{k}:prev") or {}).get("name") or "guest précédent"
+        names.update(prev=f"{prev.split()[0]} (gauche)", face=f"{(ep.get('guest_name') or 'guest').split()[0]} (droite)")
     await say(ctx, "Sélection pour quelle photo ?", reply_markup=K([[
-        B(CHOICE_PART.get(p, p), callback_data=f"pst:sp:{vid}:{k}:{p}") for p in pids]]))
+        B(names.get(p, p), callback_data=f"pst:sp:{vid}:{k}:{p}") for p in pids]]))
 
 
 async def posts_choices(ctx, ep, k: str, slides: list[int], part: str | None = None, who: str | None = None,
@@ -5227,7 +5231,9 @@ async def posts_choices(ctx, ep, k: str, slides: list[int], part: str | None = N
         await say(ctx, "Ce post n'est pas encore fait.")
         return
     kind = it["kind"]
-    sids = [sid] if sid else [x for x in post_sids(st, k, slides, part) if not x.endswith(":prev")]
+    sids = [sid] if sid else post_sids(st, k, slides, part)
+    if len(sids) > 1 and not part:                       # « sélection » with no side named: this episode's photo
+        sids = [x for x in sids if not x.endswith(":prev")] or sids
     if len(sids) != 1:
         if kind == "moment" and slides and len(slides) == 1:
             s = slides[0]
@@ -5249,13 +5255,16 @@ async def posts_choices(ctx, ep, k: str, slides: list[int], part: str | None = N
         where = f"slide {slide}" + ((" (haut)" if int(pid[1:]) % 2 == 0 else " (bas)") if kind == "moment" else "")
     else:
         slide, where = 1, CHOICE_PART.get(pid, pid)
-    media = [P(Path(s["label"]).read_bytes(), caption=f"{s['n']} · {_posts.tc(s['t'])}" + (" · sourire" if s.get("smile") else ""))
-             for s in out[:10]]
+    media = [P(Path(s["label"]).read_bytes(), caption=f"{s['n']} · {_posts.tc(s['t'] if s.get('t') is not None else s.get('pt') or 0)}"
+               + (" · sourire" if s.get("smile") else "")) for s in out[:10]]
     await tg(ctx.bot.send_media_group, cfg.chat_id, media)
     btns = [B(str(s["n"]), callback_data=f"pst:pk:{ep.video_id}:{k}:{pid}:{s['n']}") for s in out]
     smiles = sum(1 for s in out if s.get("smile"))
-    who_txt = {"guest": "le guest", "marius": "Marius", "both": "les deux", "wide": "plan large"}.get(out[0]["who"], out[0]["who"])
-    await say(ctx, f"🎞️ {esc(post_name(ep, k))} · {esc(where)} : {len(out)} photos ({esc(who_txt)}), de tout l'épisode"
+    prev_name = out[0].get("name") or "le guest précédent"
+    who_txt = {"guest": "le guest", "marius": "Marius", "both": "les deux", "wide": "plan large",
+               "prev": prev_name}.get(out[0]["who"], out[0]["who"])
+    span = "de la fin de son épisode" if out[0]["who"] == "prev" else "de tout l'épisode"
+    await say(ctx, f"🎞️ {esc(post_name(ep, k))} · {esc(where)} : {len(out)} photos ({esc(who_txt)}), {span}"
                    + (f", {smiles} avec le sourire" if smiles else "") + ". Laquelle je pose ? (ou écris « la 4 »)",
               reply_markup=K([btns[j:j + 5] for j in range(0, len(btns), 5)]))
     MEMORY.add("assistant", f"[sélection de {len(out)} photos envoyée : {post_name(ep, k)} {where} ; « la 4 » → "
