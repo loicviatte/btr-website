@@ -1203,6 +1203,10 @@ def tool_handlers(ctx, images: list) -> dict:
         return bg(ctx, f"Cover du reel {n}", redo_cover(ctx, ep, n, text, int(photo) if photo else None,
                                                           float(zoom) if zoom else None, bool(exact)), limit=5 * 60)
 
+    async def teaser_file(link, guest=None):
+        ep = text_ep(guest, None) if guest else (reel_ep() or reels_or_fail())
+        return bg(ctx, "Teaser du Drive", teaser_import(ctx, ep, link), limit=40 * 60)
+
     async def reel_covers_name(show=False, everywhere=False):
         ep = reels_or_fail()
         return bg(ctx, "Covers " + ("avec" if show else "sans") + " le nom", covers_name(ctx, ep, bool(show), bool(everywhere)),
@@ -1514,7 +1518,7 @@ def tool_handlers(ctx, images: list) -> dict:
         await shorts_watch(ctx)
         return "lancé (seuls les reels en « ready » dans ClickUp, cover validée, sont programmés)"
 
-    return {"reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
+    return {"teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
@@ -2137,6 +2141,65 @@ async def covers_name(ctx, ep, show: bool, everywhere: bool = False):
                    + ("" if everywhere else "\nPour les prochains épisodes aussi, dis-moi « sans nom sur toutes les covers à l'avenir »."))
 
 
+async def teaser_import(ctx, ep, link: str):
+    """Loïc 03.11: « j'ai mis le teaser sur le Drive, fais en sorte qu'il soit lié et publié à la bonne heure ». His
+    file (shared by link: the bot's Drive access only sees its own files) becomes a reel of the episode filed on the
+    ClickUp « Reel teaser » task (its date = Instagram + Short time, TikTok sent to Loïc then): cover from the
+    teaser's stills, captions from its words, Drive « BTR Reels / guest », then the usual « ✅ Cover OK » → ready →
+    Short scheduled + Instagram posted by the bot at that time."""
+    m = re.search(r"(?:/d/|id=|^)([\w-]{25,})", (link or "").strip())
+    if not m:
+        await say(ctx, "Je n'ai pas trouvé d'identifiant de fichier Drive dans ce lien (Partager → copier le lien).")
+        return
+    items = RS(ep).data.setdefault("items", {})
+    n = next((int(k) for k, it in items.items() if it.get("teaser") and it.get("external")), None)
+    if n is None:
+        from .pipeline import TEASER_N
+        n = max([int(k) for k in items if int(k) < TEASER_N] + [0]) + 1
+    import time as _t
+    CU_CACHE.update(tasks=await run(maker().clickup().tasks), at=_t.time())
+    teasers = [t for t in ep_calendar(ep) if re.match(r"reel teaser", t.get("name", ""), re.I)]
+    if not teasers:                                  # the next « Reel teaser » not done yet
+        teasers = sorted((t for t in CU_CACHE["tasks"] if re.match(r"reel teaser", t.get("name", ""), re.I)
+                          and ((t.get("status") or {}).get("status") or "").lower() not in _dash.DONE and _posts.due(t)),
+                         key=_posts.due)
+    task = teasers[0] if teasers else None
+    await say(ctx, f"📥 Je récupère ton teaser sur le Drive (reel {n})…")
+    try:
+        res = await run(pipe.teaser_import, ep, m.group(1), n)
+    except Exception as e:  # noqa: BLE001
+        log.exception("teaser import")
+        await say(ctx, "⚠️ Je n'arrive pas à télécharger le fichier. Vérifie qu'il est partagé « Tous les utilisateurs "
+                       f"disposant du lien » (lecteur). <code>{esc(str(e)[-200:])}</code>")
+        return
+    item = reel_item(ep, n)
+    item.update(res)
+    if task:
+        item.update(clickup_task=task["id"], clickup_kind="teaser")
+    RS(ep).save()
+    try:
+        item.update(await run(pipe.reel_cover, ep, n, dict(item)))
+        RS(ep).save()
+    except Exception:  # noqa: BLE001
+        log.exception("teaser cover")
+    caps = await run(pipe.reel_captions, ep, item.get("said") or "")
+    if caps:
+        item["captions"] = caps
+        RS(ep).save()
+    with open(item["file"], "rb") as f:
+        await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎬 Teaser (reel {n}) récupéré du Drive", supports_streaming=True,
+                                 width=1080, height=1920, duration=int(item.get("duration") or 0),
+                                 read_timeout=300, write_timeout=300)
+    line = await share_reel(ctx, ep, n, quiet=True)
+    item["filed"] = True
+    RS(ep).save()
+    due = _posts.due(task) if task else None
+    await say(ctx, line + "\n\n" + (f"🗓 Prévu {esc(_posts.label_time(due))} (tâche « {esc(task['name'])} ») : "
+                                      if due else "") +
+              "valide la cover (« ✅ Cover OK ») et je programme le Short YouTube + la publication Instagram à "
+              "cette heure-là ; TikTok, je t'envoie la vidéo et le texte au même moment.")
+
+
 def pipe_cover_text(text: dict) -> dict:
     return {k: (v.upper() if k != "small" else v) for k, v in text.items()}
 
@@ -2282,7 +2345,7 @@ async def share_reel(ctx, ep, n: int, quiet: bool = False, cover: bool = True) -
             RS(ep).save()
     taken = reel_tasks_taken(ep, n)
     cand = reel_cand(ep, n) or {}
-    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or f"Reel {n}"), taken,
+    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or item.get("title") or f"Reel {n}"), taken,
                     item.get("instagram", True))
     item["links"] = res.get("links") or item.get("links") or {}
     for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig", "drive_ids", "file_base", "clickup_name"):
@@ -7197,7 +7260,7 @@ async def on_teaser_button(ctx, q, data: str):
 
 topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate on_cm_button community_tick
     cm_image_changed cm_image_redo cm_choices cm_pick""")
-topics.assign(globals(), "reels", """covers_name teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
+topics.assign(globals(), "reels", """teaser_import covers_name teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok

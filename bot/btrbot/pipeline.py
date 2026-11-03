@@ -415,6 +415,34 @@ class Pipeline:
             self._asr = Transcriber(self.cfg.models_dir)
         return self._asr
 
+    def teaser_import(self, ep: Episode, file_id: str, n: int) -> dict:
+        """Loïc's own teaser (03.11: « Teaser_Ep14_HannahTrever_SUBS » put on Drive, shared by link) → reel n, like a
+        validated reel: the file as is (subtitles burned in), the words heard (Parakeet) for the captions, stills of
+        the guest for the cover (edit.json of one piece)."""
+        from . import drive, reels as R
+        work = self.reel_work(ep, n)
+        work.mkdir(parents=True, exist_ok=True)
+        src = work / "base.mp4"
+        if not src.exists() or src.stat().st_size < 1000:
+            drive.download(file_id, src)
+        info = R.probe(src)
+        (work / "edit.json").write_text(json.dumps({"frames": int(info["duration"] * info["fps"]), "fps": info["fps"],
+                                                    "layout": [], "external": True}))
+        final = work / f"BTR_reel_{n:02d}_teaser.mp4"
+        if not final.exists():
+            import shutil
+            shutil.copy(src, final)
+        said = ""
+        try:
+            wav = R.extract_wav(src, work / "teaser_audio.wav")
+            said = " ".join(w.text for w in self.asr().words(wav)).strip()
+        except Exception:  # noqa: BLE001
+            log.exception("teaser words")
+        finally:
+            self.asr_release()
+        return {"file": str(final), "said": said, "duration": round(info["duration"], 2), "status": "ok",
+                "title": "Teaser", "teaser": True, "external": True, "instagram": True}
+
     def asr_release(self) -> None:
         """The speech model takes ~1 GB of RAM: freed as soon as a clip is transcribed (the words are cached)."""
         self._asr = None

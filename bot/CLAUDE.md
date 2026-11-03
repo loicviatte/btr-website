@@ -285,6 +285,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `teaser.json`. Bot (topic reels): /teaser [lien], tools teaser_make (feedback keeps the previous moments in the request)
   / teaser_show, buttons tz:ok / tz:redo. Not wired yet: Drive + ClickUp « Reel teaser » task + publishing. Test:
   `tests/teaser_flow.py`.
+- Loïc's own teaser from Drive (03.11, « Teaser_Ep14_HannahTrever_SUBS »): the bot's Drive scope only sees its own
+  files, so Loïc shares the file by link; tool teaser_file(link) → `bot.teaser_import`: `Pipeline.teaser_import`
+  (gdown download to reels/rNN/base.mp4 + copy as the reel file, one-piece edit.json for `_cover_from_edit`, words by
+  Parakeet → said) → reel n (next free number, item teaser/external) on the ClickUp « Reel teaser » task (clickup_kind
+  teaser = name kept), cover + captions, `share_reel`; then the usual « ✅ Cover OK » → Short + Instagram at the task's
+  time, TikTok sent to Loïc. Test: `tests/teaser_import.py`.
 - Solid cut-outs (Loïc 03.11, Hannah: « on voit le gradient jaune à travers elle »): `imaging.cutout` = isnet outline +
   u2net_human_seg body (counted only where isnet saw something: it grabs chairs), silhouette filled (holes and small
   gaps against the bottom / side edges where a model saw the person or the colour is dark / like the clothes), outline smoothed, opaque inside, isnet soft alpha only where the human model agrees (hair).

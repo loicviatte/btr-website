@@ -364,6 +364,14 @@ TOOLS = [
                                                                  "additionalProperties": {"type": "string"}}}}},
     {"name": "reel_drop", "description": "Jeter le reel n.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
+    {"name": "teaser_file", "description": "Le TEASER monté par Loïc lui-même, mis sur Google Drive : link = le lien de "
+                                          "partage du fichier (drive.google.com/file/d/…). Le bot le télécharge, en fait "
+                                          "un reel de l'épisode rangé sur la tâche ClickUp « Reel teaser » (cover, "
+                                          "légendes, Drive), puis publication Instagram + Short à l'heure de la tâche "
+                                          "après « Cover OK ». S'il n'a pas de lien : lui dire de partager le fichier « tous "
+                                          "les utilisateurs disposant du lien » et de coller le lien.",
+     "input_schema": {"type": "object", "properties": {"link": {"type": "string"}, "guest": {"type": "string"}},
+                      "required": ["link"]}},
     {"name": "reel_covers_name", "description": "Le NOM ET PRÉNOM du guest affiché SOUS la phrase des covers de reels "
                                                 "(pas un nom dans l'accroche) : show=false = l'enlever, true = le remettre. "
                                                 "Refait TOUTES les covers de l'épisode avec la même photo, le même cadrage et "
