@@ -303,11 +303,13 @@ TOOLS = [
                                                  "· New episode tomorrow / Poll / World Atlas »). Le bot les écrit tout seul 3 "
                                                  "jours avant ; ici : kind = tomorrow | poll | atlas ; feedback = retour de Loïc "
                                                  "sur le texte (« plus court », « autre question ») → réécrit et renvoyé pour "
-                                                 "validation ; show=true = renvoyer tel quel. guest / link si ce n'est pas "
+                                                 "validation ; show=true = renvoyer tel quel ; unvalidate=true = annuler une validation "
+                                                 "(« c'est pas ça », « il l'a planifié par erreur »). guest / link si ce n'est pas "
                                                  "l'épisode en cours.",
      "input_schema": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["tomorrow", "poll", "atlas"]},
                                                        "feedback": {"type": "string"}, "guest": {"type": "string"},
-                                                       "link": {"type": "string"}, "show": {"type": "boolean"}},
+                                                       "link": {"type": "string"}, "show": {"type": "boolean"},
+                                                       "unvalidate": {"type": "boolean"}},
                       "required": ["kind"]}},
     {"name": "teaser_make", "description": "TEASER de l'épisode : 4-5 moments clés courts montés ensemble comme des reels "
                                            "(sous-titres v3) + écran de fin « Episode out now », envoyé dans le fil Reels. "

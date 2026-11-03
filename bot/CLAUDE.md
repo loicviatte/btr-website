@@ -236,7 +236,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Opus (prompts.COMMUNITY, quotes checked with said_exactly + limits, one retry)). Draft → ClickUp « generated »,
   preview in Stories (yc:ok / yc:redo); validated (`cm_validate`) → MARK block with the text, YouTube field Scheduled,
   status scheduled, thumbnail attached; yc:done → YouTube Posted + close_if_posted. « À valider » shows them (`cm_dash`,
-  /oti2_yt_poll resends); tool youtube_community (kind, feedback, show). Test: `tests/community_flow.py`.
+  /oti2_yt_poll resends); tool youtube_community (kind, feedback, show, unvalidate). The « validé » message carries
+  « ↩️ Annuler la validation » (yc:undo → `cm_unvalidate`: draft again, ClickUp « generated », YouTube field To do, block
+  below MARK removed, preview sent again; never once posted). Test: `tests/community_flow.py`.
 - « BTR Data » for Simone (Loïc 02.11; ClickUp agent, weekly review Tuesday evening): `btrbot/insights.py` writes the
   ClickUp doc BTR Data (DOC 2kypxhv3-5115, pages in insights.PAGES, API v3 `Docs`): « Épisodes » = one sub-page per
   episode (`episode_pages`: Opus digest prompts.EPISODE_DIGEST + transcript sub-pages of 30k chars; transcripts from the

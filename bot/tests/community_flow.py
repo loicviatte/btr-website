@@ -122,6 +122,15 @@ async def main():
     q = NS(edit_message_reply_markup=lambda *a, **k: asyncio.sleep(0))
     await bot.on_cm_button(ctx, q, "yc:ok:VIDCOMM0001:tomorrow")
     assert ("update", "T", "scheduled") in calls and ("field", "T", share.YT_SCHEDULED) in calls and ("attach", "T") in calls
+    undo = [k for t, k in sent if k and "validé" in t]
+    assert undo and undo[-1].inline_keyboard[0][0].callback_data == "yc:undo:VIDCOMM0001:tomorrow"
+    # undone (Loïc 03.11): draft again, ClickUp « generated » + YouTube To do, preview back; then validated again
+    await bot.on_cm_button(ctx, q, "yc:undo:VIDCOMM0001:tomorrow")
+    assert cm.State(ep).items["tomorrow"]["status"] == "draft"
+    assert ("update", "T", "generated") in calls and ("field", "T", share.YT_TODO) in calls
+    assert sent[-1][1].inline_keyboard[0][0].callback_data == "yc:ok:VIDCOMM0001:tomorrow"
+    await bot.on_cm_button(ctx, q, "yc:ok:VIDCOMM0001:tomorrow")
+    assert cm.State(ep).items["tomorrow"]["status"] == "ok"
     # its time comes: sent ready to copy with « Posté sur YouTube »
     posts.now = lambda: NOW + timedelta(minutes=31)
     sent.clear()

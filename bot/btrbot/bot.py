@@ -1425,12 +1425,15 @@ def tool_handlers(ctx, images: list) -> dict:
                        f"Le reste : {_json.dumps(extra, ensure_ascii=False, default=str)}")
         return "\n\n".join(out)[:8000]
 
-    async def youtube_community(kind=None, feedback=None, guest=None, link=None, show=False):
+    async def youtube_community(kind=None, feedback=None, guest=None, link=None, show=False, unvalidate=False):
         if kind not in _cm.KINDS:
             return "kind = tomorrow, poll ou atlas"
         ep = text_ep(guest, link)
         st = _cm.State(ep)
         it = st.items.get(kind) or {}
+        if unvalidate:
+            asyncio.create_task(within_stories(cm_unvalidate(ctx, ep, kind)))
+            return "validation annulée, l'aperçu revient dans Stories & carrousels avec ses boutons"
         if show:
             asyncio.create_task(within_stories(cm_send(ctx, ep, kind)))
             return "je renvoie le post tel quel dans Stories & carrousels"
@@ -6560,7 +6563,33 @@ async def cm_validate(ctx, ep, kind: str):
     it.update(status="ok", at=due.isoformat() if due else it.get("at"))
     st.save()
     await say(ctx, f"📅 {esc(cm_name(ep, kind))} validé · {esc(_posts.label_time(due) if due else 'sans date')} : je "
-                   "t'envoie le texte et l'image à ce moment-là.")
+                   "t'envoie le texte et l'image à ce moment-là.",
+              reply_markup=K([[B("↩️ Annuler la validation", callback_data=f"yc:undo:{ep.video_id}:{kind}")]]))
+
+
+async def cm_unvalidate(ctx, ep, kind: str):
+    """Loïc 03.11 (« pourquoi il a planifié alors que c'est pas ça ? »): a validation undone. The post goes back to a
+    draft, ClickUp back to « generated » with the YouTube field To do and the BTR Studio block removed; the preview
+    comes back with its buttons."""
+    st = _cm.State(ep)
+    it = st.items.get(kind) or {}
+    if it.get("status") == "posted":
+        await say(ctx, "Déjà publié sur YouTube : je n'y touche pas.")
+        return
+    if it.get("task"):
+        cu = maker().clickup()
+        try:
+            t = await run(cu.task, it["task"])
+            keep = (t.get("markdown_description") or t.get("text_content") or "").split(_share.MARK)[0].rstrip()
+            await run(cu.update, it["task"], markdown_content=keep, status="generated")
+            await run(cu.set_field, it["task"], _share.F_YT, _share.YT_TODO)
+        except Exception:  # noqa: BLE001
+            log.exception("community unvalidate")
+    it["status"] = "draft"
+    st.save()
+    await say(ctx, f"↩️ {esc(cm_name(ep, kind))} n'est plus validé (ClickUp repassé en « generated »). Dis-moi ce qui ne va "
+                   "pas, ou « ✍️ Autre texte » pour une autre version.")
+    await cm_send(ctx, ep, kind)
 
 
 async def on_cm_button(ctx, q, data: str):
@@ -6572,6 +6601,8 @@ async def on_cm_button(ctx, q, data: str):
         pass
     if act == "ok":
         await cm_validate(ctx, ep, kind)
+    elif act == "undo":
+        await cm_unvalidate(ctx, ep, kind)
     elif act == "redo":
         t = {"id": (_cm.State(ep).items.get(kind) or {}).get("task")}
         try:
@@ -6785,7 +6816,7 @@ async def on_teaser_button(ctx, q, data: str):
         bg(ctx, "Teaser", teaser_make(ctx, ep, "Pick completely different moments from the previous ones."))
 
 
-topics.assign(globals(), "stories", """cm_make cm_send cm_validate on_cm_button community_tick""")
+topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate on_cm_button community_tick""")
 topics.assign(globals(), "reels", """teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
