@@ -31,7 +31,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
 - `llm._json` (03.11, empty answer on the reel moments): no JSON → asked again with twice the max_tokens, then once on
   the work model; the error names the stop reasons. Boot one-shot reels_retry_1103 relaunched Hannah's reel moments.
 - Models (`llm.MODELS`, `usage.py`): chat Opus (Loïc 01.11: « un bot intelligent comme Claude »; was Haiku), creative Opus (axes, title, description), work Sonnet (chapters, frames),
-  vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Opus, fresh session.
+  vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Sonnet (Loïc 04.11, cost), /opus for one request on Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
 - Reels (workflow: claude/btr-reels-workflow.md in the Claude project): `btrbot/reels.py` (section download in 4K,
   word timings with Parakeet via sherpa-onnx in `models/`, silence cuts, shot-by-shot framing from the source edit:

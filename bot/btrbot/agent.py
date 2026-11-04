@@ -137,7 +137,7 @@ class Agent:
         pending = bool(self.pending_files())
         self.sync()
         st = self._state()
-        model = "opus" if strong else os.environ.get("DEV_MODEL", "opus")   # Opus acts: fewer broken attempts
+        model = "opus" if strong else os.environ.get("DEV_MODEL", "sonnet")   # Loïc 04.11: Sonnet (half the price); /opus = Opus
         cmd = ["claude", "-p", "--output-format", "json", "--model", model, "--permission-mode", "acceptEdits",
                "--append-system-prompt", SYSTEM, "--add-dir", "/opt/btr-bot/data", "--max-turns", "40"]
         if st.get("session") and pending and time.time() - st.get("at", 0) < 7200:
