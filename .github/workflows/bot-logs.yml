@@ -22,6 +22,23 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: API cost by task (2 days)
+        run: |
+          ssh root@"$HOST" 'python3 - <<"PY"
+          import json, time, collections
+          since = time.time() - 2 * 86400
+          by = collections.defaultdict(lambda: [0.0, 0, 0, 0, 0])
+          for ln in open("/opt/btr-bot/data/usage.jsonl"):
+              try: r = json.loads(ln)
+              except ValueError: continue
+              if r.get("t", 0) < since: continue
+              k = (r.get("task", "?"), r.get("model", "?"))
+              b = by[k]; b[0] += r.get("usd", 0); b[1] += 1; b[2] += r.get("inp", 0); b[3] += r.get("out", 0); b[4] += r.get("cache_read", 0)
+          tot = sum(v[0] for v in by.values())
+          print("TOTAL usd", round(tot, 2))
+          for (t, m), v in sorted(by.items(), key=lambda x: -x[1][0])[:25]:
+              print(f"{v[0]:8.2f} usd  {v[1]:5d} calls  in {v[2]:>10,}  out {v[3]:>9,}  cache_read {v[4]:>10,}  {t}  {m}")
+          PY'
       - name: Teaser texts
         run: |
           ssh root@"$HOST" "journalctl -u btr-bot --since '-4min' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A2 "teaser|instagram|Traceback|ERROR|textes|ig_|publish" | tail -60
