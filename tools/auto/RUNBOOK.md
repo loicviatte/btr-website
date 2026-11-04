@@ -20,23 +20,9 @@ git clone -q https://github.com/loicviatte/btr-media.git ../btr-media   # public
 python3 tools/auto/btr_auto.py atlas-sync ../btr-media
 ```
 If it filled something: compile, build, smoke test (any existing slug), commit "Atlas: <country> cards", push.
-Also, once a day (when `data/stats/metricool.json` has an older `date` than today), refresh the About > Partners
-figures. Metricool (brandId `7665642`, `getAnalyticsDataByMetrics`, `to` = now):
-- (YouTube: `data/stats/youtube.json`; the average counts only full episodes out for 7+ days.)
-- `IGEV01`, `TKEV07`, `YTEV01` from 7 days ago → the latest non-null value of each = Instagram followers, TikTok
-  followers, YouTube subscribers;
-- `IGRE01`, `IGRE06`, `IGRE23` from `2024-01-01` → one row per reel `[date, url, views]`;
-- `TKPO01`, `TKPO03`, `TKPO07` from `2024-01-01` → one row per TikTok video (often empty: fine).
-- `IGRE06`, `IGRE05` from `2024-01-01` → `[reel url, cover image url]` rows: save them as `reelCovers`; the GitHub
-  Action uses them to fill reels without a cover on the episode pages (`tools/auto/reel_covers.py`).
-Write them to `data/stats/metricool.json` as `{"date": "<YYYY-MM-DD>", "instagramFollowers": n, "tiktokFollowers": n,
-"youtubeSubscribers": n, "reels": [rows], "tiktokVideos": [rows], "reelCovers": [rows]}` (rows exactly as returned), then
-`python3 tools/auto/btr_auto.py stats`. YouTube views come from `data/stats/youtube.json` (the Action), Spotify from
-`data/stats/base.json` (by hand). If it prints "About updated": compile, build, smoke test, commit
-"About: figures <date>", push. Always commit `data/stats/metricool.json` (no deploy for it alone).
-Metricool failing is not a reason to stop: the figures stay as they are.
+The About > Partners figures update on their own (Telegram bot + GitHub Action): nothing to do here.
 
-Nothing to process, nothing synced and no figures changed → stop, say nothing.
+Nothing to process and nothing synced → stop, say nothing.
 
 Process folders in publishing order (oldest `publishedAt` first), one at a time, steps 1 to 6 each.
 
@@ -111,7 +97,7 @@ Only when the episode has a World Atlas draw (and it is a new country for this g
    (BREAKTHEROUTINE/SRT), `textContent` = the captions.srt text, `contentMimeType` `text/plain`,
    `disableConversionToGoogleType` true. Keep the returned file id.
 2. Only if Loïc has the carousel task switched on (`list_triggers`: "BTR World Atlas auto-carousel" `enabled: true`; he pauses it
-   when he prefers to run it himself): start it now (`fire_trigger`, trigger `trig_0151tdHEtCDERz4pbqP4nJDi`, "BTR World Atlas auto-carousel")
+   when he prefers to run it himself): start it now (`fire_trigger`, with the id `list_triggers` gives for "BTR World Atlas auto-carousel")
    with text: `Signal du site BTR : nouvel épisode « <title> », guest <Name>, publié le <date>. Pays tiré (vu par
    le site) : <country>, à <m:ss> dans la vidéo <url>. SRT dans Google Drive BREAKTHEROUTINE/SRT, file id <id>.`
    It researches and verifies the 8 slides, adds them to the BTR Designs canvas, sends Loïc the images and captions
