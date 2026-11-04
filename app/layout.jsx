@@ -9,7 +9,7 @@ export const metadata = {
   metadataBase: new URL(process.env.SITE_URL || 'https://www.breaktheroutinepodcast.com'),
   openGraph: { siteName: 'Break The Routine', type: 'website', images: [{ url: '/og-btr.jpg', width: 1200, height: 630, alt: 'BTR, The Dancesport Podcast' }] },
   twitter: { card: 'summary_large_image', images: ['/og-btr.jpg'] },
-  icons: { icon: '/assets/745152d7135187f4378802fc563253b5.png' },
+  icons: { icon: [{ url: '/favicon.ico', sizes: 'any' }, { url: '/icon-btr.png', type: 'image/png', sizes: '512x512' }], apple: '/apple-icon-btr.png' },
   // Indexed by Google. Set SITE_LIVE=0 in Vercel to hide it again.
   robots: process.env.SITE_LIVE === '0' ? { index: false, follow: false } : { index: true, follow: true },
 };
