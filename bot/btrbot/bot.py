@@ -4297,6 +4297,22 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_teaser_caps, when=30, name="teaser-caps-1103")
+    if not reg.data.get("tt_photo_1104"):           # 04.11: /api/tt-photo was missing on the site (403 url_ownership_
+        reg.data["tt_photo_1104"] = True              # unverified): carousel TikTok drafts that failed in the last 12 h
+        reg.save()                                    # are tried again by posts_tick now that the route exists
+        from datetime import datetime as _dt, timedelta as _td
+        for _st in _posts.all_states(cfg.data_dir):
+            _ch = False
+            for _it in _st.items.values():
+                _tt = _it.get("tt") or {}
+                _at = _it.get("tt_at")
+                if (_tt.get("draft_error") and not _tt.get("done") and _at
+                        and _posts.now() - _dt.fromisoformat(_at) < _td(hours=12)):
+                    _tt.pop("draft_error", None)
+                    _tt.pop("sent", None)
+                    _ch = True
+            if _ch:
+                _st.save()
     if not reg.data.get("teaser_ig_1103"):          # 03.11 18:26: Meta refused Loïc's own export (ProcessingFailed):
         reg.data["teaser_ig_1103"] = True             # tries forgotten, the Instagram-spec copy is sent instead
         reg.save()

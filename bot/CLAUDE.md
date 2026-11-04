@@ -319,6 +319,12 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `tests/guest_rename.py`. Dev mode: a deploy whose rebase conflicts is aborted (never left mid-rebase), « Annuler »
   and the next request abort a stuck rebase.
 - Server logs without SSH: push anything to the branch `bot-logs` → workflow « Bot logs » (journal last 6 h with the bot token and secrets masked, posts.json summary). httpx INFO logs are off (they carry the token in the URL).
+- Prompt caching (Loïc 04.11: Console « cache hit rate is low », ~$49 in 2 days, chat $18 with 0 cache read):
+  `assistant.converse` sends the tools with a 1 h breakpoint on the last one (`cached_tools`), the fixed SYSTEM text as
+  its own 1 h block before « État actuel » (`cached_system`), and a top-level automatic 5-min cache for the tool loop's
+  steps (extra_body); if the API refuses the cache fields, `_create` falls back to plain requests (NO_CACHE). Ledger
+  records cache_write. TikTok carousels: the site route app/api/tt-photo now exists (was missing → 403
+  url_ownership_unverified); boot one-shot tt_photo_1104 retries drafts that failed in the last 12 h.
 - `btrbot/agent.py` — this dev mode. `btrbot/check.py` — `/check` health check.
 
 ## Rules

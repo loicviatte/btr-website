@@ -57,7 +57,8 @@ class Ledger:
         usd = cost(model, getattr(resp, "usage", None))
         u = getattr(resp, "usage", None)
         self.add(task, model, usd, inp=int(getattr(u, "input_tokens", 0) or 0), out=int(getattr(u, "output_tokens", 0) or 0),
-                 cache_read=int(getattr(u, "cache_read_input_tokens", 0) or 0))
+                 cache_read=int(getattr(u, "cache_read_input_tokens", 0) or 0),
+                 cache_write=int(getattr(u, "cache_creation_input_tokens", 0) or 0))
         return usd
 
     def summary(self, days: float = 1.0) -> str:

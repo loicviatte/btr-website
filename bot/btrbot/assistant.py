@@ -9,6 +9,7 @@ import asyncio
 import json
 import re
 import time
+import anthropic
 
 SYSTEM = """Tu es BTR Studio, l'assistant Telegram du podcast Break The Routine (DanceSport, hôte Marius Iepure). Tu parles
 avec Loïc (producteur) : français, tutoiement, 1 à 4 phrases, texte brut (pas de Markdown, pas de listes à rallonge).
@@ -438,17 +439,54 @@ CLAIMS = re.compile(r"arrière-plan|je (re)?lance|je mets|je refais|je cherche|j
                     r"c'est lancé|je m'en occupe|je passe à", re.I)
 
 
+CACHE_1H = {"type": "ephemeral", "ttl": "1h"}
+
+
+def cached_tools() -> list[dict]:
+    """Prompt caching (Loïc 04.11, Console: « cache hit rate is low, up to 32 % of the API spend »): the ~10k tokens
+    of tool definitions never change between messages → one 1-hour breakpoint on the last tool."""
+    tools = [dict(t) for t in TOOLS]
+    tools[-1]["cache_control"] = CACHE_1H
+    return tools
+
+
+def cached_system(context: str) -> list[dict]:
+    """The fixed instructions (cached 1 h, read at 5 % of the price) and the « État actuel » that changes with every
+    message, after the breakpoint. The tool loop's own steps reuse the whole conversation (top-level automatic cache)."""
+    head, _, tail = SYSTEM.partition("{context}")
+    return [{"type": "text", "text": head, "cache_control": CACHE_1H},
+            {"type": "text", "text": (context or "—") + tail}]
+
+
+NO_CACHE = {"off": False}
+
+
+def _create(llm, model, system, tools, messages):
+    """One step of the tool loop with caching; if the API ever refuses the cache fields, the chat keeps working
+    without them (plain system text, plain tools) and caching stays off until the next restart."""
+    if not NO_CACHE["off"]:
+        try:
+            return llm.create("discussion", model=model, max_tokens=1200, system=system, tools=tools,
+                              messages=messages, extra_body={"cache_control": {"type": "ephemeral"}})
+        except anthropic.BadRequestError as e:
+            if "cache" not in str(e).lower() and "ttl" not in str(e).lower():
+                raise
+            NO_CACHE["off"] = True
+    plain = "".join(b["text"] for b in system) if isinstance(system, list) else system
+    return llm.create("discussion", model=model, max_tokens=1200, system=plain, tools=TOOLS, messages=messages)
+
+
 async def converse(llm, model: str, context: str, history: list[dict], user_content, handlers: dict,
                    max_steps: int = 12) -> tuple[str, list[str]]:
     """Runs the tool loop. Returns (final text for Loïc, list of actions done)."""
-    system = SYSTEM.format(context=context)
+    system = cached_system(context)
+    tools = cached_tools()
     messages = list(history) + [{"role": "user", "content": user_content}]
     actions: list[str] = []
     text = ""
     nudged = False
     for _ in range(max_steps):
-        msg = await asyncio.to_thread(lambda: llm.create("discussion", model=model, max_tokens=1200, system=system,
-                                                         tools=TOOLS, messages=messages))
+        msg = await asyncio.to_thread(_create, llm, model, system, tools, messages)
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
         uses = [b for b in msg.content if getattr(b, "type", "") == "tool_use"]
         if not uses and not actions and not nudged and CLAIMS.search(text):
