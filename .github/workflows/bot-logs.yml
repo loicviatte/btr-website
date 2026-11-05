@@ -22,6 +22,18 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: TikTok carousels
+        run: |
+          ssh root@"$HOST" "journalctl -u btr-bot --since '-26h' --no-pager -o cat" | grep -v "getUpdates\|Running job\|executed successfully\|HTTP Request\|net_impl_backend" | grep -iE -A12 "tiktok photo|tiktok|atlas" | grep -v "^  File\|^    " | tail -60
+          ssh root@"$HOST" 'python3 - <<"PY"
+          import json, glob
+          for p in glob.glob("/opt/btr-bot/data/episodes/*/posts.json"):
+              d = json.load(open(p))
+              for k, it in (d.get("items") or {}).items():
+                  if it.get("tt") or it.get("tt_at"):
+                      print(p.split("/")[-2], k, it.get("kind"), it.get("status"), "at", it.get("at"), "tt_at", it.get("tt_at"), "tt", {x: it["tt"][x] for x in it.get("tt", {}) if x in ("sent","done","draft","draft_error","draft_at")})
+          PY'
+          ssh root@"$HOST" 'ls /opt/btr-bot/data/*atlas* /opt/btr-bot/data/atlas* 2>/dev/null; python3 -c "import json;d=json.load(open(\"/opt/btr-bot/data/registry.json\"));a=d.get(\"atlas\") or d.get(\"atlas_posts\") or {};print(json.dumps({k:{x:v.get(x) for x in (\"tt\",\"tt_at\",\"ig\",\"status\")} if isinstance(v,dict) else v for k,v in a.items()}, default=str)[:3000])" 2>&1 | tail -5'
       - name: API cost by task (2 days)
         run: |
           ssh root@"$HOST" 'python3 - <<"PY"
