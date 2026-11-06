@@ -413,6 +413,28 @@ def update_episodes_list(spec, is_part2):
     s = re.sub(r'\b\d+ conversations since July', f'{n} conversations since July', s)
     write('Episodes.dc.html', s)
 
+HOF_ROT = ['-3deg', '2deg', '-1.5deg', '3deg', '-2.5deg', '1.5deg', '-2deg', '2.5deg', '-1deg']
+
+def update_hof(spec):
+    """Episodes > Hall of Fame wall: add the guest's signed polaroid at the end (once)."""
+    if not spec.get('polaroid'): return False
+    s = read('Episodes.dc.html')
+    page = page_of(spec['slug'])
+    m = re.search(r'(<section aria-labelledby="hof".*?<ul[^>]*>)(.*?)(\n      </ul>)', s, re.S)
+    if not m or f'{{{{lp}}}}{page}"' in m.group(2): return False
+    n = m.group(2).count('<li ')
+    name = esc(spec['name'])
+    li = f'''
+        <li style="min-width: 0;">
+          <a href="{{{{lp}}}}{page}" aria-label="{name}: signed polaroid, open the episode" style="display: flex; flex-direction: column; align-items: center; gap: 14px; color: #ffffff; text-decoration: none;">
+            <img src="/_blob/{spec["polaroid"]}" alt="Signed polaroid of {name} with Marius Iepure on the Break The Routine set" style="display: block; width: 100%; max-width: 260px; height: auto; transform: rotate({HOF_ROT[n % len(HOF_ROT)]}); box-shadow: 0 14px 30px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);">
+            <span style="{MONO} font-size: 13px; font-weight: 800; letter-spacing: 0.04em; color: #fcdf9a; text-align: center;">{esc(spec["name"].upper())}</span>
+          </a>
+        </li>'''
+    s = s[:m.end(2)] + li + s[m.end(2):]
+    write('Episodes.dc.html', s)
+    return True
+
 def update_search(spec):
     s = read('Search.dc.html')
     m = re.search(r'\n    const EPS = (\[.*?\]);\n', s, re.S)
@@ -489,6 +511,7 @@ def apply(spec_path):
         spec_full['slug'] = slug
         update_episodes_list(dict(spec_full, parts=spec['parts'], _part_index=len(old['parts'])), True)
         update_search(dict(spec_full, parts=spec['parts']))
+        if update_hof(spec_full): notes.append('Hall of Fame: polaroid added to the Episodes wall.')
         import btr_pages as BP
         BP.update_main(spec_full, True)
         BP.update_chain(spec_full, True)
@@ -509,6 +532,7 @@ def apply(spec_path):
         update_episodes_list(spec, False)
         update_search(spec)
         update_prev_page(prev_page, spec)
+        if update_hof(spec): notes.append('Hall of Fame: polaroid added to the Episodes wall.')
         import btr_pages as BP
         BP.update_main(spec, False)
         BP.update_chain(spec, False)
@@ -537,6 +561,9 @@ if __name__ == '__main__':
     elif cmd == 'thumb': print(add_thumb(sys.argv[2]))
     elif cmd == 'apply': apply(sys.argv[2])
     elif cmd == 'country': country(sys.argv[2])
+    elif cmd == 'hof':   # catch up: put an already-released guest's polaroid on the Hall of Fame wall
+        sp = spec_from_page(sys.argv[2]); sp['slug'] = sys.argv[2]
+        print('Hall of Fame:', 'added' if update_hof(sp) else 'nothing to add (no polaroid, or already there)')
     elif cmd == 'atlas-sync':
         import btr_pages as BP
         done = BP.atlas_sync(sys.argv[2])
