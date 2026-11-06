@@ -29,7 +29,9 @@ jobs:
       - name: Fill missing reel covers on the episode pages, refresh the About figures every 6 h
         run: |
           python3 tools/auto/reel_covers.py
-          if { [ $(( 10#$(date -u +%H) % 6 )) -eq 0 ] && [ 10#$(date -u +%M) -lt 30 ]; } || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then python3 tools/auto/btr_auto.py stats; fi
+          # GitHub starts scheduled runs late and at random minutes, so go by the time since the last refresh, not the clock
+          last=$(cat data/stats/about-at 2>/dev/null || echo 0); now=$(date -u +%s)
+          if [ $(( now - last )) -ge 19800 ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then python3 tools/auto/btr_auto.py stats && echo $now > data/stats/about-at; fi
           if ! git diff --quiet -- design; then npm ci --no-audit --no-fund && npm run compile; fi
       - name: Save what was found
         run: |
