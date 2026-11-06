@@ -80,6 +80,10 @@ window.fit = () => {
       break;
     }
   }
+  // The guest's name always fits the width, with a margin on the right.
+  const nm = document.querySelector('.name');
+  let ns = 69;
+  while (nm.getBoundingClientRect().width > 1080 - 161 - 60 && ns > 30) { ns -= 1; nm.style.fontSize = ns + 'px'; }
   return {key: k, small: s, split};
 };
 </script>
