@@ -1,6 +1,6 @@
 """Home page, The Chain and World Atlas updates for a new episode (used by btr_auto.py apply)."""
 import json, os, re, subprocess
-from btr_auto import (ROOT, MONO, esc, read, write, yt, fmt, human_len, poss, episodes_rows, js_array, set_js_array, add_thumb)
+from btr_auto import (ROOT, MONO, esc, read, write, yt, fmt, human_len, poss, episodes_rows, js_array, set_js_array, add_thumb, page_of)
 
 
 def short_date(d):            # "4 Nov 2026" -> "4 Nov"
@@ -17,6 +17,8 @@ def update_main(spec, is_part2):
     b = m.group(0)
     b = re.sub(r'(<img src=")[^"]*(" alt=")[^"]*(")', lambda x: x.group(1) + '/_blob/' + latest['thumb'] + x.group(2) + esc(name + ' and Marius Iepure on set') + x.group(3), b, count=1)
     b = re.sub(r'(<a class="m-hero-btn" href=")[^"]*(")', lambda x: x.group(1) + yt(latest['vid']) + x.group(2), b, count=1)
+    # the hero picture opens the episode page on the site (the yellow button still goes to YouTube)
+    b = re.sub(r'(<a data-ep-link="" href=")[^"]*(" aria-label=")[^"]*(")', lambda x: x.group(1) + '{{lp}}' + page_of(spec['slug']) + x.group(2) + esc(f'Open the {name} episode page') + x.group(3), b, count=1)
     s = s[:m.start()] + b + s[m.end():]
     m = re.search(r'(<p style="margin: 0 0 14px;[^>]*>)LATEST EPISODE · [^<]*(</p>\s*<h1[^>]*>)[^<]*(</h1>\s*<p[^>]*>)[^<]*(</p>\s*</div>\s*<div style="display: flex; flex-wrap: wrap; gap: 12px;">\s*<a href=")[^"]*(")', s, re.S)
     lab = f'LATEST EPISODE · {latest["date"].upper()} · {human_len(latest["secs"]).upper()}' + (f' · PART {len(parts)}' if is_part2 else '')
