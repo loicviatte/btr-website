@@ -317,6 +317,43 @@ class Pipeline:
         self.yt.update_metadata(ep.video_id, ep["final"]["title"], desc)
         self.yt.set_thumbnail(ep.video_id, ep.dir / "render" / "thumb_youtube.jpg")
 
+    # ---- a re-uploaded episode (btrbot/twins.py): the V1's YouTube text and thumbnail go on the V2 ----------
+    def twin_youtube_source(self, old_vid: str) -> dict:
+        """What the V1 shows on YouTube now (title, description, tags… and the thumbnail URL), read before the move."""
+        v = self.yt.video(old_vid)
+        sn = v["snippet"]
+        th = sn.get("thumbnails") or {}
+        best = th.get("maxres") or th.get("standard") or th.get("high") or {}
+        return {"snippet": sn, "thumb_url": best.get("url")}
+
+    def carry_to_twin(self, ep: Episode, on_yt: dict | None, badge_jpg: str | None = None) -> list[str]:
+        """Title, description, tags and thumbnail of the V1 on the V2 (ep = the moved episode, V2 id). The V2 must not
+        be public. The V1's text as it is on YouTube wins (it has Loïc's last edits); the bot's own state otherwise."""
+        import urllib.request
+        self._guard(ep)
+        done = []
+        sn = (on_yt or {}).get("snippet")
+        if sn:
+            title, desc = sn.get("title") or "", sn.get("description") or ""
+        else:
+            title, desc = (ep.get("final") or {}).get("title") or "", self.description_for_youtube(ep)
+        if title or desc:
+            self.yt.update_metadata(ep.video_id, title or None, desc if desc else None, snippet_from=sn)
+            done.append("le titre, la description et les tags")
+        thumb = None
+        for p in (badge_jpg, str(ep.dir / "render" / "thumb_youtube.jpg")):
+            if p and Path(p).is_file():
+                thumb = Path(p)
+                break
+        if not thumb and (on_yt or {}).get("thumb_url"):
+            thumb = ep.dir / "render" / "thumb_from_v1.jpg"
+            thumb.parent.mkdir(parents=True, exist_ok=True)
+            urllib.request.urlretrieve(on_yt["thumb_url"], thumb)
+        if thumb:
+            self.yt.set_thumbnail(ep.video_id, thumb)
+            done.append("la miniature")
+        return done
+
     def update_thumb(self, ep: Episode) -> None:
         """The thumbnail made again after the publication (guest name fixed), while the video is not public yet."""
         self._guard(ep)

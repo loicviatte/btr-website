@@ -18,6 +18,7 @@ STAGES = [
     "published",
     "chapters_proposed",
     "done",
+    "replaced",     # a re-uploaded video took its place (btrbot/twins.py): data["replaced_by"]
 ]
 
 

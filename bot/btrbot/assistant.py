@@ -422,6 +422,12 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"days": {"type": "number", "description": "1 = dernières 24 h, 7, 30…"}}}},
     {"name": "health_check", "description": "Lancer le test complet de l'installation (YouTube, téléchargement, Drive, IA…). Résultat envoyé à la fin.",
      "input_schema": {"type": "object", "properties": {}}},
+    {"name": "reupload_choice", "description": "Réponse de Loïc à la question « nouvelle version d'un épisode déjà travaillé ? » "
+     "(vidéo remise en ligne, même titre ou même durée). Étape 1 : new = utiliser la nouvelle (V2), old = garder l'ancienne (V1), "
+     "different = deux épisodes différents. Étape 2 (après new) : keep = reprendre miniatures / titre / description / chapitres "
+     "de la V1, regen = tout regénérer sur la V2. Seulement quand cette question est en attente.",
+     "input_schema": {"type": "object", "properties": {"choice": {"type": "string", "enum": ["new", "old", "different", "keep", "regen"]}},
+                      "required": ["choice"]}},
 ]
 
 

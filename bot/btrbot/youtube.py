@@ -106,17 +106,20 @@ class YouTube:
         return None, None
 
     # ---- writing ----------------------------------------------------------
-    def update_metadata(self, vid: str, title: str | None = None, description: str | None = None) -> None:
+    def update_metadata(self, vid: str, title: str | None = None, description: str | None = None,
+                        snippet_from: dict | None = None) -> None:
+        """`snippet_from`: another video's snippet whose category, tags and languages are copied (a re-upload)."""
         v = self.svc.videos().list(part="snippet", id=vid).execute()["items"][0]
         sn = v["snippet"]
+        src = snippet_from or sn
         body = {"id": vid, "snippet": {
             "title": (title or sn["title"])[:100],
             "description": (description if description is not None else sn.get("description", ""))[:5000],
-            "categoryId": sn["categoryId"],
+            "categoryId": src.get("categoryId") or sn["categoryId"],
         }}
         for keep in ("tags", "defaultLanguage", "defaultAudioLanguage"):
-            if keep in sn:
-                body["snippet"][keep] = sn[keep]
+            if keep in src:
+                body["snippet"][keep] = src[keep]
         self.svc.videos().update(part="snippet", body=body).execute()
 
     def set_thumbnail(self, vid: str, jpg: Path) -> None:

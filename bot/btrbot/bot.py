@@ -15,7 +15,7 @@ from telegram.constants import ParseMode
 from telegram.ext import (Application, ApplicationHandlerStop, CallbackQueryHandler, CommandHandler, ContextTypes,
                           ExtBot, MessageHandler, MessageReactionHandler, TypeHandler, filters)
 
-from . import assistant, design, drive, imaging, topics
+from . import assistant, design, drive, imaging, topics, twins
 from .agent import Agent
 from .config import Settings
 from .pipeline import DryRun, Pipeline, clean_quote
@@ -397,6 +397,8 @@ async def on_badge_button(ctx, data: str):
         return
     # explicit go from Loïc on this exact image: allowed even on a public video (only the thumbnail changes)
     await run(pipe.yt.set_thumbnail, vid, jpg)
+    reg.data.setdefault("badges_applied", {})[vid] = str(jpg)      # the thumbnail now on YouTube (for a V2: twins)
+    reg.save()
     await say(ctx, f"✅ Miniature mise à jour sur https://youtu.be/{vid} (YouTube peut mettre quelques minutes à l'afficher).")
 
 
@@ -480,23 +482,20 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
         reg.mark_seen(vid)
         if first_run:
             continue
-        if (reg.data.get("pending") or {}).pop(vid, None):
+        was_pending = bool((reg.data.get("pending") or {}).pop(vid, None))
+        if was_pending:
             reg.save()
-            await say(ctx, f"✅ YouTube a fini de traiter <b>{esc(v['snippet']['title'])}</b>, je m'y mets.")
-        ep = reg.episode(vid)
-        ep["title"] = v["snippet"]["title"]
-        ep.stage = "waiting_transcript"
-        ep.save()
-        reg.active = vid
-        srt_file = pick_pending(ep["title"])
-        if srt_file:
-            srt_file.replace(ep.file("captions_davinci.srt"))
-            await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\nhttps://youtu.be/{vid}\n"
-                           f"J'utilise ton SRT <code>{esc(srt_file.name)}</code>, pas besoin d'attendre YouTube.")
-            await guarded(ctx, "Proposition des axes", propose_axes(ctx, ep))
+        try:
+            twin = await run(find_twin, vid, v)
+        except Exception:  # noqa: BLE001  (never block a new episode on this check)
+            log.exception("twin check")
+            twin = None
+        if twin:
+            await ask_twin(ctx, vid, v, twin)
             continue
-        await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\n"
-                       f"https://youtu.be/{vid}\nJe récupère le transcript dès que YouTube l'a généré.")
+        if was_pending:
+            await say(ctx, f"✅ YouTube a fini de traiter <b>{esc(v['snippet']['title'])}</b>, je m'y mets.")
+        await start_new_video(ctx, vid, v)
     if first_run:
         reg.data["initialised"] = True
         reg.save()
@@ -504,6 +503,190 @@ async def poll_youtube(ctx: ContextTypes.DEFAULT_TYPE):
             await say(ctx, "Bot prêt. Les vidéos déjà non répertoriées sont ignorées ; "
                            "pour en traiter une : <code>/episode ID</code>.")
     await poll_transcripts(ctx)
+
+
+async def start_new_video(ctx, vid: str, v: dict):
+    """A new unlisted video becomes an episode: transcript (or Loïc's SRT), then the axes."""
+    ep = reg.episode(vid)
+    ep["title"] = v["snippet"]["title"]
+    ep["duration_s"] = twins.iso_seconds((v.get("contentDetails") or {}).get("duration", ""))
+    ep.stage = "waiting_transcript"
+    ep.save()
+    reg.active = vid
+    srt_file = pick_pending(ep["title"])
+    if srt_file:
+        srt_file.replace(ep.file("captions_davinci.srt"))
+        await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\nhttps://youtu.be/{vid}\n"
+                       f"J'utilise ton SRT <code>{esc(srt_file.name)}</code>, pas besoin d'attendre YouTube.")
+        await guarded(ctx, "Proposition des axes", propose_axes(ctx, ep))
+        return
+    await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(ep['title'])}</b>\n"
+                   f"https://youtu.be/{vid}\nJe récupère le transcript dès que YouTube l'a généré.")
+
+
+# ---- a video uploaded again (Loïc 07.11, EP15 Lene: same content, sound fixed) — btrbot/twins.py
+def find_twin(vid: str, v: dict) -> dict | None:
+    secs = twins.iso_seconds((v.get("contentDetails") or {}).get("duration", ""))
+    dur = lambda old: twins.iso_seconds(pipe.yt.video(old)["contentDetails"].get("duration", ""))  # noqa: E731
+    return twins.find(reg.root, vid, v["snippet"]["title"], secs, dur)
+
+
+async def ask_twin(ctx, vid: str, v: dict, twin: dict):
+    old = reg.episode(twin["vid"])
+    old_title = (old.get("final") or {}).get("title") or old.get("title") or twin["vid"]
+    reg.data.setdefault("twins", {})[vid] = {"old": twin["vid"], "title": v["snippet"]["title"], "why": twin["why"],
+                                             "secs": twins.iso_seconds((v.get("contentDetails") or {}).get("duration", ""))}
+    reg.save()
+    why = "le même titre" if twin["why"] == "titre" else "exactement la même durée"
+    kb = [[B("La nouvelle (V2)", callback_data=f"tw:new:{vid}"), B("L'ancienne (V1)", callback_data=f"tw:old:{vid}")],
+          [B("Ce sont deux épisodes différents", callback_data=f"tw:diff:{vid}")]]
+    await say(ctx, f"🎬 Nouvelle vidéo non répertoriée : <b>{esc(v['snippet']['title'])}</b>\nhttps://youtu.be/{vid}\n\n"
+                   f"🤔 Elle a {why} que <b>{esc(old_title)}</b> (https://youtu.be/{twin['vid']}), sur lequel j'ai "
+                   f"déjà travaillé. C'est une nouvelle version de cet épisode ? Laquelle j'utilise ?",
+              reply_markup=K(kb))
+
+
+async def on_twin_button(ctx, q, data: str):
+    _, act, vid = data.split(":", 2)
+    t = (reg.data.get("twins") or {}).get(vid)
+    if not t:
+        await say(ctx, "C'est déjà réglé pour cette vidéo.")
+        return
+    if q is not None:
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+    old = t["old"]
+    old_ep = reg.episode(old)
+    v = {"snippet": {"title": t["title"]}, "contentDetails": {"duration": f"PT{int(t.get('secs') or 0)}S"}}
+    if act == "old":
+        reg.data["twins"].pop(vid, None)
+        reg.save()
+        await say(ctx, f"OK, je garde la V1 et j'ignore https://youtu.be/{vid}. Tu peux la supprimer de YouTube.")
+        return
+    if act == "diff":
+        reg.data["twins"].pop(vid, None)
+        reg.save()
+        await say(ctx, "OK, c'est un nouvel épisode.")
+        await start_new_video(ctx, vid, v)
+        return
+    if act == "new":
+        if old_ep.stage in ("new", "waiting_transcript"):           # nothing made on the V1 yet: just start on the V2
+            await run(twins.retire_episode, reg.root, old, vid)
+            reg.data["twins"].pop(vid, None)
+            twins.move_registry(reg.data, old, vid)
+            reg.save()
+            await say(ctx, "OK, je travaille sur la V2 (rien n'était encore fait sur la V1).")
+            await start_new_video(ctx, vid, v)
+            return
+        made = []
+        if old_ep.get("final"):
+            made.append("le titre et la citation")
+        if old_ep.file("render/thumb_youtube.jpg").exists():
+            made.append("les 3 miniatures")
+        if old_ep.get("description"):
+            made.append("la description")
+        if old_ep.get("chapters"):
+            made.append("les chapitres")
+        if old_ep.file("posts.json").exists():
+            made.append("les stories / carrousels")
+        if old_ep.file("reels.json").exists():
+            made.append("les reels")
+        kb = [[B("Reprendre ceux de la V1", callback_data=f"tw:keep:{vid}")],
+              [B("Tout regénérer sur la V2", callback_data=f"tw:regen:{vid}")]]
+        await say(ctx, "OK, la V2. Sur la V1 j'ai déjà fait : " + (", ".join(made) or "le début du travail") + ".\n"
+                       "Je les reprends tels quels pour la V2, ou je regénère tout ?", reply_markup=K(kb))
+        return
+    if act == "regen":
+        await run(twins.retire_episode, reg.root, old, vid)
+        reg.data["twins"].pop(vid, None)
+        twins.move_registry(reg.data, old, vid)
+        reg.save()
+        await say(ctx, "OK, je repars de zéro sur la V2. Le travail de la V1 est mis de côté (pas supprimé).")
+        await start_new_video(ctx, vid, v)
+        return
+    if act == "keep":
+        bg(ctx, "Reprise de la V1", carry_twin(ctx, old, vid, t))
+
+
+async def carry_twin(ctx, old: str, vid: str, t: dict):
+    """Everything made on the V1 now belongs to the V2; what was already on YouTube goes on the V2 too."""
+    if not (reg.data.get("twins") or {}).get(vid):                  # a second click while the first one waited
+        return
+    old_ep = reg.episode(old)
+    published = old_ep.stage in ("published", "chapters_proposed", "done")
+    on_yt = None
+    if published:                                                    # read the V1 before anything moves
+        try:
+            on_yt = await run(pipe.twin_youtube_source, old)
+        except Exception:  # noqa: BLE001
+            log.exception("twin source")
+    await run(twins.move_episode, reg.root, old, vid, t.get("title", ""))
+    twins.move_registry(reg.data, old, vid)
+    reg.data["twins"].pop(vid, None)
+    reg.save()
+    ep = reg.episode(vid)
+    if t.get("secs"):
+        ep["duration_s"] = int(t["secs"])
+        ep.save()
+    lines = [f"✅ Tout le travail de la V1 est repris pour la V2 : https://youtu.be/{vid}"]
+    if published:
+        try:
+            done = await run(pipe.carry_to_twin, ep, on_yt, (reg.data.get("badges_applied") or {}).get(vid))
+            lines.append("Sur YouTube, la V2 a maintenant " + ", ".join(done) + " de la V1.")
+        except DryRun as e:
+            lines.append(f"⚠️ {esc(str(e))}")
+        except Exception as e:  # noqa: BLE001
+            log.exception("carry to twin")
+            lines.append(f"⚠️ Je n'ai pas pu tout recopier sur YouTube ({esc(str(e))[:200]}). Les fichiers sont "
+                         "bien repris : copie le titre, la description et la miniature dans Studio.")
+        lines.append("La V2 reste non répertoriée. Passe la V1 en privé (ou supprime-la) dans YouTube Studio.")
+    else:
+        lines.append(f"On reprend où on en était (étape : {esc(ep.stage)}), sur la V2.")
+    lines.append("Les sous-titres et l'écran de fin ne suivent pas : si tu en avais sur la V1, remets-les dans Studio.")
+    kb = None
+    if published and not ep.file("reels.json").exists():
+        kb = K([[B("🎞️ Proposer les reels", callback_data="reels:propose")]])
+    await say(ctx, "\n".join(lines), **({"reply_markup": kb} if kb else {}))
+
+
+async def twin_lene_1107(ctx):
+    """EP15 Lene V2 already taken as a new episode by the old bot (07.11): its fresh work is put aside (data/replaced/
+    <id>_fresh) and the V1 / V2 question is asked."""
+    import shutil as _sh
+    import time as _t
+    tok = topics.TOPIC.set("thumbs")
+    try:
+        v2 = twin = v = None
+        for d in sorted((reg.root / "episodes").iterdir(), key=lambda p: -p.stat().st_mtime):
+            e = reg.episode(d.name)
+            if (not d.is_dir() or "lene" not in (e.get("title") or "").lower() or e.get("replaces")
+                    or _t.time() - float(e.get("created") or 0) > 24 * 3600):
+                continue
+            v = {**(await run(pipe.yt.video, d.name)), "id": d.name}
+            twin = await run(find_twin, d.name, v)
+            if twin:
+                v2 = d.name
+                break
+        if not v2:
+            log.warning("twin lene 1107: no V2 found")
+            return
+        if (reg.data.get("twins") or {}).get(v2):
+            return
+        d = reg.root / "episodes" / v2
+        if d.is_dir():
+            arch = reg.root / "replaced" / f"{v2}_fresh"
+            arch.parent.mkdir(parents=True, exist_ok=True)
+            _sh.rmtree(arch, ignore_errors=True)
+            d.rename(arch)
+        if reg.active == v2:
+            reg.active = twin["vid"]
+        await ask_twin(ctx, v2, v, twin)
+    except Exception:  # noqa: BLE001
+        log.exception("twin lene 1107")
+    finally:
+        topics.TOPIC.reset(tok)
 
 
 async def poll_pending(ctx):
@@ -1523,7 +1706,15 @@ def tool_handlers(ctx, images: list) -> dict:
         await shorts_watch(ctx)
         return "lancé (seuls les reels en « ready » dans ClickUp, cover validée, sont programmés)"
 
-    return {"teaser_captions": teaser_captions, "teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
+    async def reupload_choice(choice):
+        waiting = list((reg.data.get("twins") or {}).keys())
+        if not waiting:
+            return "aucune question de nouvelle version en attente"
+        act = {"different": "diff"}.get(choice, choice)
+        await on_twin_button(ctx, None, f"tw:{act}:{waiting[-1]}")
+        return "fait (la suite est dans le chat, n'annonce rien de plus)"
+
+    return {"reupload_choice": reupload_choice,"teaser_captions": teaser_captions, "teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
@@ -1610,6 +1801,7 @@ async def start_video(ctx, vid: str):
     reg.mark_seen(vid)
     ep = reg.episode(vid)
     ep["title"] = v["snippet"]["title"]
+    ep["duration_s"] = twins.iso_seconds((v.get("contentDetails") or {}).get("duration", ""))
     ep.stage = "waiting_transcript"
     ep.save()
     reg.active = vid
@@ -3525,6 +3717,9 @@ async def on_button(update: Update, ctx):
     if q.data.startswith("badge:"):
         await guarded(ctx, "Badge PART", on_badge_button(ctx, q.data))
         return
+    if q.data.startswith("tw:"):
+        await on_twin_button(ctx, q, q.data)
+        return
     if q.data.startswith("ytfix:"):
         await on_ytfix_button(ctx, q, q.data)
         return
@@ -4204,6 +4399,11 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_cm_atlas, when=70, name="cm-atlas-1103b")
+    if not reg.data.get("twin_lene_1107"):          # Loïc 07.11: EP15 Lene V2 picked up as a new episode by the old
+        reg.data["twin_lene_1107"] = True           # bot (axes started): its fresh work put aside, then the V1/V2 question
+        reg.save()
+
+        app.job_queue.run_once(twin_lene_1107, when=40, name="twin-lene-1107")
     if not reg.data.get("reels_retry_1103"):        # Hannah's reel moments failed (empty model answer): asked again
         reg.data["reels_retry_1103"] = True
         reg.save()
