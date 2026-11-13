@@ -4830,6 +4830,31 @@ async def on_boot(app):
                 except Exception:  # noqa: BLE001
                     log.exception("file linked boot")
         app.job_queue.run_once(_fix, when=40, name="file-linked-1101")
+    if not reg.data.get("lene_tasks_1113"):         # Loïc 13.11: Lene's posts sat on Hannah's « Ep Nov 3 » tasks (Topics validated
+        reg.data["lene_tasks_1113"] = True            # « 12 h late »): back on the « Ep Nov 10 » tasks, filed with their dates
+        reg.save()
+
+        async def _lene(ctx):
+            tok = topics.TOPIC.set("stories")
+            try:
+                ep = reg.episode("5Tujgy0WfJw")
+                done = await posts_file_linked(ep)
+                st = _posts.PostState(ep)
+                lines = []
+                for k, it in st.items.items():
+                    at = await post_when(it) if it.get("task") else None
+                    state = {"draft": "à valider", "ok": "validé", "posted": "publié"}.get(it.get("status"), "pas encore fait")
+                    lines.append(f"- {esc(post_name(ep, k))} : {state}, "
+                                 + (esc(_posts.label_time(at)) + " (Londres)" if at else "pas de date"))
+                await say(ctx, "🔗 Posts de Lene rattachés à leurs tâches « Ep Nov 10 »"
+                               + (" (rangés : " + esc(", ".join(done)) + ")" if done else "") + " :\n" + "\n".join(lines))
+                if not (st.items.get("teaser") or {}).get("files"):
+                    bg(ctx, "Story Teaser share · Lene", posts_make(ctx, ep, ["teaser"]), limit=30 * 60)
+            except Exception:  # noqa: BLE001
+                log.exception("lene tasks boot")
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_lene, when=50, name="lene-tasks-1113")
     if reg.data.get("plan_msgs"):
         plan_schedule(60)
     if cfg.chat_id:
@@ -5773,6 +5798,11 @@ async def posts_file_linked(ep, only: list[str] | None = None) -> list[str]:
     e.g. a story type switched in « Posts planning » onto content already validated): filed now → « scheduled »."""
     M, out = maker(), []
     st = _posts.PostState(ep)
+    try:                                              # a post on another guest's task goes back to its own episode's
+        if await run(M.relink, st, await run(M.episode_tasks, ep)):
+            st.save()
+    except Exception:  # noqa: BLE001
+        log.exception("posts relink")
     for k, it in st.items.items():
         if (only and k not in only) or it.get("status") != "ok" or not it.get("task") or _dash.post_locked(it):
             continue

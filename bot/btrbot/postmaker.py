@@ -67,12 +67,31 @@ class Maker:
             if cur.get("status") in ("ok", "posted"):
                 continue
             cur.update(kind=v["kind"], task=v.get("task") or cur.get("task"), name=v["name"])
-        for k, cur in st.items.items():                # link what was made before the task was found
-            t = all_t.get(cur.get("kind", k))
-            if t and not cur.get("task") and (t.get("status") or {}).get("status", "").lower() != "posted":
-                cur["task"] = t["id"]
+        self.relink(st, all_t)
         st.save()
         return items
+
+    @staticmethod
+    def relink(st: posts.PostState, all_t: dict) -> list[str]:
+        """A post always sits on its own episode's task (label Ep + date), never on the same type of another guest
+        (Lene 13.11: Topics validated on « Ep Nov 3 », Hannah's, already posted → « 12 h late »). A task missing is
+        linked; a wrong one is replaced, even when validated: its date and platform state are dropped so the next
+        `file` redoes the ClickUp side. → keys changed (validated ones need `file` again)."""
+        changed = []
+        for k, cur in st.items.items():
+            t = all_t.get(cur.get("kind", k))
+            if not t or cur.get("task") == t["id"]:
+                continue
+            if cur.get("status") == "posted" or (cur.get("ig") or {}).get("done"):
+                continue                                # live on Instagram: never moved
+            if not cur.get("task") and (t.get("status") or {}).get("status", "").lower() == "posted":
+                continue
+            cur["task"], cur["name"] = t["id"], t.get("name") or cur.get("name")
+            for f in ("at", "tt_at", "attached", "need_date", "late"):
+                cur.pop(f, None)
+            cur["ig"], cur["tt"] = {}, {}
+            changed.append(k)
+        return changed
 
     # ------------------------------------------------------------ content
     def _avoid(self, ep) -> str:
@@ -804,6 +823,10 @@ class Maker:
     # ------------------------------------------------------------ filing (Drive + ClickUp)
     def file(self, ep, st: posts.PostState, key: str) -> dict:
         it = st.items[key]
+        try:                                             # its own episode's task, whatever was linked before
+            self.relink(st, self.episode_tasks(ep))
+        except Exception:  # noqa: BLE001
+            log.exception("posts relink")
         sec = share.Secrets(self.data_dir)
         guest = ep.get("guest_name") or "Guest"
         links = []
