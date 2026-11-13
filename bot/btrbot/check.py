@@ -52,6 +52,16 @@ def main():
     from telegram import Bot
     step("Telegram", lambda: asyncio.run(Bot(cfg.telegram_token).get_me()).username)
 
+    def instagram_token():
+        from . import instagram, share
+        state, info = instagram.token_status(share.Secrets(cfg.data_dir))
+        if state is None:
+            raise RuntimeError(f"token non vérifiable ({info})")
+        if not state:
+            raise RuntimeError(f"token Instagram invalide ou absent ({info}) → /connect sur Telegram")
+        return f"token valide (@{info})"
+    step("Instagram (token réellement testé)", instagram_token)
+
     step("Face models + Marius reference", lambda: (lambda f: "ready")(__import__("btrbot.faces", fromlist=["Faces"]).Faces(cfg.models_dir)))
     step("LaMa model", lambda: f"{(cfg.models_dir / 'big-lama.pt').stat().st_size // 2**20} MB")
 

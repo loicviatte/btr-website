@@ -2897,7 +2897,17 @@ async def ig_tick(ctx):
         return
     now = datetime.now(timezone.utc)
     sec = share.Secrets(cfg.data_dir)
-    connected = bool(sec.get("ig_token"))
+    from . import instagram
+    if instagram.INVALID.pop("msg", None) is not None and not sec.get("ig_invalid"):   # any caller hit a token error
+        await ig_token_invalid(ctx)
+    elif sec.get("ig_token") and not sec.get("ig_invalid"):                              # real test every 30 min
+        last = shorts.parse(reg.data.get("ig_checked"))
+        if not last or now - last > timedelta(minutes=30):
+            reg.data["ig_checked"] = now.isoformat()
+            state, info = await run(instagram.token_status, sec)
+            if state is False:
+                await ig_token_invalid(ctx, info)
+    connected = bool(sec.get("ig_token")) and not sec.get("ig_invalid")
     exp = shorts.parse(sec.get("ig_expires"))
     if connected and exp and exp - now < timedelta(days=7) and reg.data.get("ig_expiry_warned") != now.date().isoformat():
         reg.data["ig_expiry_warned"] = now.date().isoformat()
@@ -2925,6 +2935,8 @@ async def ig_tick(ctx):
             if not ig.get("warned"):
                 ig["warned"] = True
                 RS(ep).save()
+                if sec.get("ig_invalid"):                  # already told with the button: wait for the reconnection
+                    continue
                 await say(ctx, f"📸 Instagram n'est pas connecté : publie toi-même {short_name({'ep': ep, 'n': n})} à "
                                f"{shorts.label(at)} (Londres), légende dans ClickUp. /connect pour que je le fasse.")
             continue
@@ -2974,6 +2986,12 @@ async def ig_job(ctx, ep, n: int, it: dict, step: str):
     except Exception as e:  # noqa: BLE001
         log.exception("instagram %s", step)
         msg = str(e)
+        from . import instagram
+        if isinstance(e, instagram.TokenInvalid):          # not the reel's fault: wait for the reconnection, no tries used
+            ig.pop("container", None)
+            await ig_token_invalid(ctx, msg)
+            RS(ep).save()
+            return
         if "EXPIRED" in msg or step == "publish" and "container" in msg.lower():
             ig.pop("container", None)
         ig["tries"] = ig.get("tries", 0) + 1
@@ -3760,6 +3778,9 @@ async def on_button(update: Update, ctx):
             return
         await set_guest_handle(ctx, ask["guest"], ask.get("cand", "") if q.data == "igh:ok" else "")
         return
+    if q.data == "igc:steps":
+        await say(ctx, "<b>Reconnecter Instagram</b>\n" + ig_steps())
+        return
     if q.data == "ysch":
         await shorts_watch(ctx)
         return
@@ -3953,18 +3974,92 @@ async def connect_cmd(update: Update, ctx):
     if reg.data.get("tt_en"):
         await say(ctx, "\n".join(msg).strip())
         return
+    from datetime import datetime, timezone
     from . import instagram
-    ig_ok = sec.get("ig_username")
-    msg.append(f"\n<b>Instagram</b> {'✅ @' + esc(ig_ok) if ig_ok else '❌'}")
-    if not ig_ok:
-        msg.append("Sur ordinateur, une seule fois (API officielle de Meta, app « BTR - Short ») :\n"
-                   "1. developers.facebook.com → app BTR - Short → Paramètres → Général : copie l'<b>ID de l'app</b> et "
-                   "la <b>clé secrète</b>.\n"
-                   "2. <a href=\"https://developers.facebook.com/tools/explorer/\">Explorateur de l'API Graph</a> : app "
-                   "BTR - Short, « Get User Access Token », permissions <code>" + esc(instagram.SCOPES) + "</code>, "
-                   "« Generate Access Token », coche la page Facebook BTR et le compte Instagram BTR. Copie le token (EAA…).\n"
-                   "3. Colle ici en un seul message : <code>ID clé_secrète token</code>. J'efface ton message tout de suite.")
-    await say(ctx, "\n".join(msg))
+    state, info = await run(instagram.token_status, sec)       # real test of the token, not just « present »
+    if state is False and sec.get("ig_token") and not sec.get("ig_invalid"):
+        sec.set(ig_invalid=datetime.now(timezone.utc).isoformat())
+    elif state:
+        sec.set(ig_invalid="")
+    if state:
+        ig_line = f"✅ @{esc(info)} (token vérifié)"
+    elif state is False:
+        ig_line = f"❌ {'token refusé par Meta : à renouveler' if sec.get('ig_token') else 'pas connecté'}"
+    else:
+        ig_line = f"⚠️ je n'ai pas pu vérifier le token ({esc(info)})"
+    ig_block = [f"<b>Instagram</b> {ig_line}"]
+    if state is not True:
+        ig_block.append(ig_steps())
+    ig_block = "\n".join(ig_block)
+    kb = K([[B("🔄 Connecter / reconnecter Instagram", callback_data="igc:steps")]]) if state is True else None
+    if state is True:
+        await say(ctx, "\n".join(msg) + "\n\n" + ig_block, reply_markup=kb)
+    else:                                                    # invalid / missing: Instagram first
+        await say(ctx, ig_block + "\n\n" + "\n".join(msg))
+
+
+def ig_steps() -> str:
+    from . import instagram
+    return ("Sur ordinateur (API officielle de Meta, app « BTR - Short ») :\n"
+            "1. developers.facebook.com → app BTR - Short → Paramètres → Général : copie l'<b>ID de l'app</b> et "
+            "la <b>clé secrète</b>.\n"
+            "2. <a href=\"https://developers.facebook.com/tools/explorer/\">Explorateur de l'API Graph</a> : app "
+            "BTR - Short, « Get User Access Token », permissions <code>" + esc(instagram.SCOPES) + "</code>, "
+            "« Generate Access Token », coche la page Facebook BTR et le compte Instagram BTR. Copie le token (EAA…).\n"
+            "3. Colle ici en un seul message : <code>ID clé_secrète token</code>. J'efface ton message tout de suite.")
+
+
+def ig_reconnect_kb():
+    return K([[B("🔄 Reconnecter Instagram", callback_data="igc:steps")]])
+
+
+async def ig_token_invalid(ctx, why: str = ""):
+    """Meta refused the token: remembered (ig_tick waits instead of burning tries), Loïc told once with the button."""
+    from datetime import datetime, timezone
+    from . import share
+    sec = share.Secrets(cfg.data_dir)
+    if sec.get("ig_invalid") and reg.data.get("ig_invalid_warned"):
+        return
+    sec.set(ig_invalid=datetime.now(timezone.utc).isoformat())
+    reg.data["ig_invalid_warned"] = True
+    reg.save()
+    await say(ctx, "📸 <b>Le token Instagram n'est plus valide</b> (Meta a invalidé la session"
+              + (f" : <code>{esc(why[-160:])}</code>" if why else "") + "). Je ne peux plus publier tant qu'il n'est pas "
+              "renouvelé. Les reels prévus attendent : dès que tu te reconnectes, je relance ceux dont l'heure n'est "
+              "pas passée.", reply_markup=ig_reconnect_kb())
+
+
+async def ig_resume(ctx):
+    """After a reconnection: Instagram reels that failed or waited, their time not yet passed, are started again
+    (container made again). Past their time = Loïc is told and nothing goes out without his word."""
+    from datetime import datetime, timezone
+    from . import share, shorts
+    now = datetime.now(timezone.utc)
+    again, late = [], []
+    for f in sorted((reg.root / "episodes").glob("*/reels.json")):
+        ep = reg.episode(f.parent.name)
+        for k, it in RS(ep).data.get("items", {}).items():
+            ig = it.get("ig_post") or {}
+            at = shorts.parse((it.get("yt_short") or {}).get("at"))
+            if not (it.get("status") == "ok" and it.get("filed") and it.get("instagram", True) and it.get("file")
+                    and at and not ig.get("posted")) or ig.get("failed") == "trop tard":
+                continue
+            ig = it.setdefault("ig_post", {})
+            name = short_name({"ep": ep, "n": int(k)})
+            if at > now:
+                for key in ("failed", "tries", "container", "made", "warned", "token_wait"):
+                    ig.pop(key, None)
+                again.append(f"{name} ({shorts.label(at)})")
+            else:
+                ig["failed"] = "heure passée pendant le token invalide"
+                late.append(f"{name} (prévu {shorts.label(at)})")
+        RS(ep).save()
+    if again:
+        await say(ctx, "📸 Je relance sur Instagram : " + ", ".join(again) + ". Légende ClickUp et invitations collab "
+                       "repris, publication à l'heure prévue.")
+    if late:
+        await say(ctx, "📸 Heure déjà passée, je ne publie rien sans ton accord : " + ", ".join(late)
+                  + ". Dis-moi « publie-le maintenant » ou publie-le toi-même.")
 
 
 async def on_secret(update: Update, ctx, text: str) -> bool:
@@ -4043,11 +4138,16 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
         from . import instagram
         try:
             user = await run(instagram.connect, sec, app_id.group(0), secret.group(0), meta.group(0))
+            sec.set(ig_invalid="")
+            reg.data.pop("ig_invalid_warned", None)
+            reg.data.pop("ig_checked", None)
+            reg.save()
             kind = sec.get("ig_kind")
             await say(ctx, f"✅ Instagram connecté (@{esc(user)}). J'ai effacé ton message. Les reels feed en « ready » "
                            "seront publiés par moi à leur heure, avec la cover et les invitations collab."
                       + (" Accès valable 60 jours : je te préviens une semaine avant pour le renouveler (même manip)."
                          if kind == "user" else " Accès sans expiration." if kind == "system" else ""))
+            await ig_resume(ctx)
         except Exception as e:  # noqa: BLE001
             await say(ctx, f"⚠️ Connexion Instagram refusée : {esc(str(e)[-250:])}")
         return True

@@ -17,6 +17,14 @@ GRAPH = "https://graph.facebook.com/v23.0"
 SCOPES = "instagram_basic,instagram_content_publish,pages_read_engagement,instagram_manage_insights"
 
 
+class TokenInvalid(RuntimeError):
+    """Meta refused the access token (code 190: password changed, session invalidated, expired…): Loïc reconnects."""
+
+
+# set by _check when a token error is seen, read by bot.ig_tick (any caller: reels, carousels, stories, Atlas)
+INVALID: dict = {}
+
+
 def _check(r: requests.Response) -> dict:
     try:
         d = r.json()
@@ -25,8 +33,27 @@ def _check(r: requests.Response) -> dict:
     if r.status_code >= 400 or "error" in d:
         e = d.get("error") or {}
         msg = e.get("error_user_msg") or e.get("message") or r.text[:300]
+        if e.get("code") == 190 or "access token" in msg.lower() and "validating" in msg.lower():
+            INVALID["msg"] = msg
+            raise TokenInvalid(f"Instagram {r.status_code} : {msg}")
         raise RuntimeError(f"Instagram {r.status_code} : {msg}")
     return d
+
+
+def token_status(secrets: Secrets) -> tuple[bool | None, str]:
+    """Real test of the stored token (not just « present »): True = valid, False = refused / missing, None = could not
+    tell (network, Meta down). Returns (state, @username or reason)."""
+    s = secrets.load()
+    if not s.get("ig_token") or not s.get("ig_user"):
+        return False, "pas connecté"
+    try:
+        u = _check(requests.get(f"{GRAPH}/{s['ig_user']}", timeout=30, params={
+            "access_token": s["ig_token"], "fields": "id,username"}))
+        return True, u.get("username") or s.get("ig_username", "")
+    except TokenInvalid as e:
+        return False, str(e)
+    except Exception as e:  # noqa: BLE001
+        return None, str(e)[-200:]
 
 
 def connect(secrets: Secrets, app_id: str, app_secret: str, user_token: str) -> str:
