@@ -4670,7 +4670,27 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_noname, when=60, name="covers-noname-1103")
-    if not reg.data.get("teaser_link_1103b"):       # Loïc 03.11 18:12: his EP14 teaser, shared by link (again: the
+    if not reg.data.get("ycpoll_white_1113"):       # Loïc 13.11: poll image, text under the question in white (Lene)
+        reg.data["ycpoll_white_1113"] = True
+        reg.save()
+
+        async def _ycwhite(ctx):
+            ep = reg.episode("5Tujgy0WfJw")
+            st = _cm.State(ep)
+            it = st.items.get("poll")
+            if not it or it.get("status") == "done":
+                return
+            tok = topics.TOPIC.set("stories")
+            try:
+                async def go():
+                    it["warn"] = await run(cm_poll_image, ep, st, it)
+                    st.save()
+                    await cm_image_changed(ctx, ep, st, it, "texte du bas en blanc (même photo, mêmes mots)")
+                bg(ctx, "Image du sondage", go(), limit=10 * 60)
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_ycwhite, when=45, name="ycpoll-white-1113")
+    if not reg.data.get("teaser_link_1103b"):     # Loïc 03.11 18:12: his EP14 teaser, shared by link (again: the
         reg.data["teaser_link_1103b"] = True          # first try stopped on Telegram's 50 MB limit for the preview)
         reg.save()
 
