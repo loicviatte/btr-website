@@ -61,8 +61,52 @@ def _store(secrets: Secrets, tok: dict) -> None:
                 tt_open_id=tok.get("open_id") or secrets.get("tt_open_id"))
 
 
+SECRET_KEYS = ("tt_client_key", "tt_client_secret", "tt_access", "tt_access_exp", "tt_refresh", "tt_refresh_exp",
+               "tt_open_id")
+
+
+def swap_app(secrets: Secrets, key: str, secret: str) -> bool:
+    """New TikTok developer app: the old credentials + tokens are kept in tt_prev (rollback), the tokens of the old
+    app are dropped (they don't work with another app). False = same app as before, nothing changed."""
+    cur = secrets.load()
+    if cur.get("tt_client_key") == key and cur.get("tt_client_secret") == secret:
+        return False
+    if cur.get("tt_client_key"):
+        secrets.set(tt_prev={k: cur.get(k) for k in SECRET_KEYS})
+    secrets.set(tt_client_key=key, tt_client_secret=secret, tt_access="", tt_access_exp=0, tt_refresh="",
+                tt_refresh_exp=0, tt_open_id="", tt_new_app=True)
+    return True
+
+
+def restore_app(secrets: Secrets) -> bool:
+    """Back to the app saved by swap_app."""
+    prev = secrets.get("tt_prev")
+    if not prev:
+        return False
+    secrets.set(tt_prev={k: secrets.get(k) for k in SECRET_KEYS}, tt_new_app=False,
+                **{k: (v if v is not None else "") for k, v in prev.items()})
+    return True
+
+
+def explain(err: str) -> str:
+    """TikTok error → what to do, in French."""
+    e = err.lower()
+    if "client_key" in e or "invalid_client" in e or "client_secret" in e:
+        return ("Client Key ou Client Secret invalide. Sur developers.tiktok.com → ton app → Basic information, "
+                "recopie les deux sans espace, et colle « tiktok client_key client_secret » à nouveau.")
+    if "redirect" in e:
+        return (f"L'URL de redirection n'est pas autorisée par l'app. Dans l'app → Login Kit → Redirect URI, ajoute "
+                f"exactement {REDIRECT} puis refais le lien de connexion (/connect).")
+    if "scope" in e:
+        return (f"Un scope manque. Dans l'app → Products, ajoute Login Kit + Content Posting API (scopes {SCOPES}), "
+                "puis refais le lien de connexion (/connect).")
+    if "code" in e and ("invalid" in e or "expired" in e or "used" in e):
+        return "Le code TikTok a expiré ou déjà servi : refais le lien de connexion (/connect) et recolle le nouveau message."
+    return "Vérifie la Client Key / le Client Secret et l'URL de redirection de l'app, puis refais /connect."
+
+
 def connect(secrets: Secrets, code: str) -> dict:
-    """Authorisation code → tokens; returns the account's display name / avatar."""
+    """Authorisation code → tokens; returns the account's display name / avatar (+ « missing » = scopes not granted)."""
     key, secret = secrets.get("tt_client_key"), secrets.get("tt_client_secret")
     if not key or not secret:
         raise RuntimeError("colle d'abord « tiktok CLIENT_KEY CLIENT_SECRET »")
@@ -70,7 +114,10 @@ def connect(secrets: Secrets, code: str) -> dict:
         "client_key": key, "client_secret": secret, "code": urllib.parse.unquote(code),
         "grant_type": "authorization_code", "redirect_uri": REDIRECT}))
     _store(secrets, tok)
-    return TikTok(secrets).user()
+    granted = {x for x in (tok.get("scope") or "").replace(" ", ",").split(",") if x}
+    user = dict(TikTok(secrets).user())                       # test call: the token really works
+    user["missing"] = [x for x in SCOPES.split(",") if granted and x not in granted]
+    return user
 
 
 class TikTok:

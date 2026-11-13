@@ -3781,6 +3781,17 @@ async def on_button(update: Update, ctx):
     if q.data == "igc:steps":
         await say(ctx, "<b>Reconnecter Instagram</b>\n" + ig_steps())
         return
+    if q.data == "ttapp:steps":
+        await say(ctx, "<b>Changer d'app TikTok</b>\n" + tt_app_steps(),
+                  reply_markup=tt_app_kb(_share.Secrets(cfg.data_dir)))
+        return
+    if q.data == "ttapp:back":
+        from . import tiktok
+        if await run(tiktok.restore_app, _share.Secrets(cfg.data_dir)):
+            await say(ctx, "↩️ Ancienne app TikTok remise (clés + connexion d'avant). Les publications reprennent avec elle.")
+        else:
+            await say(ctx, "Pas de sauvegarde de l'ancienne app.")
+        return
     if q.data == "ysch":
         await shorts_watch(ctx)
         return
@@ -3991,11 +4002,33 @@ async def connect_cmd(update: Update, ctx):
     if state is not True:
         ig_block.append(ig_steps())
     ig_block = "\n".join(ig_block)
-    kb = K([[B("🔄 Connecter / reconnecter Instagram", callback_data="igc:steps")]]) if state is True else None
+    tt_rows = tt_app_kb(sec).inline_keyboard
+    kb = K([[B("🔄 Connecter / reconnecter Instagram", callback_data="igc:steps")]] + [list(r) for r in tt_rows])
     if state is True:
         await say(ctx, "\n".join(msg) + "\n\n" + ig_block, reply_markup=kb)
     else:                                                    # invalid / missing: Instagram first
-        await say(ctx, ig_block + "\n\n" + "\n".join(msg))
+        await say(ctx, ig_block + "\n\n" + "\n".join(msg), reply_markup=K([list(r) for r in tt_rows]))
+
+
+def tt_app_steps() -> str:
+    from . import tiktok
+    return ("Sur ordinateur, developers.tiktok.com :\n"
+            "1. Ouvre la nouvelle app → Basic information : copie la <b>Client Key</b> et le <b>Client Secret</b>.\n"
+            "2. Login Kit → Redirect URI : l'URL doit être déclarée exactement :\n"
+            f"<code>{esc(tiktok.REDIRECT)}</code>\n"
+            "3. Scopes demandés par le bot (Login Kit + Content Posting API) : <code>"
+            + esc(tiktok.SCOPES.replace(",", ", ")) + "</code>. Le domaine breaktheroutinepodcast.com doit être "
+            "vérifié dans l'app (photos).\n"
+            "4. Colle ici en un seul message : <code>tiktok client_key client_secret</code>. J'efface ton message tout de "
+            "suite, je garde l'ancienne app en sauvegarde et je t'envoie le lien de connexion.\n"
+            "5. Connecte-toi avec le compte TikTok BTR, puis colle ici le message « tiktok … » affiché par la page BTR.")
+
+
+def tt_app_kb(sec):
+    rows = [[B("🔁 Changer d'app TikTok", callback_data="ttapp:steps")]]
+    if sec.get("tt_prev"):
+        rows.append([B("↩️ Revenir à l'ancienne app", callback_data="ttapp:back")])
+    return K(rows)
 
 
 def ig_steps() -> str:
@@ -4105,19 +4138,26 @@ async def on_secret(update: Update, ctx, text: str) -> bool:
             pass
         from . import tiktok
         if m_tt.group(2):                                  # client key + client secret of the app BTR Studio
-            sec.set(tt_client_key=m_tt.group(1), tt_client_secret=m_tt.group(2))
-            await say(ctx, f"✅ App TikTok enregistrée, message effacé. Maintenant : <a href=\"{esc(tiktok.auth_url(m_tt.group(1)))}\">"
+            changed = await run(tiktok.swap_app, sec, m_tt.group(1), m_tt.group(2))
+            await say(ctx, f"✅ {'Nouvelle app' if changed else 'App'} TikTok enregistrée"
+                           + (" (l'ancienne est sauvegardée, « Revenir à l'ancienne app » dans /connect)" if changed and sec.get("tt_prev") else "")
+                           + f", message effacé. Maintenant : <a href=\"{esc(tiktok.auth_url(m_tt.group(1)))}\">"
                            "ouvre ce lien TikTok</a>, accepte avec le compte BTR, puis copie le message affiché par la page "
                            "BTR (« tiktok … ») et colle-le ici.")
         else:
             try:
                 u = await run(tiktok.connect, sec, m_tt.group(1))
-                await say(ctx, T(f"✅ TikTok connecté ({esc(u.get('display_name') or 'compte')}). Message effacé. "
-                                 "/tiktok = l'écran de publication du prochain reel.",
+                new_app = bool(sec.get("tt_new_app"))
+                sec.set(tt_new_app=False)
+                if u.get("missing"):
+                    await say(ctx, "⚠️ Connecté, mais TikTok n'a pas accordé : <code>" + esc(", ".join(u["missing"]))
+                              + "</code>. " + tiktok.explain("scope"))
+                await say(ctx, T(f"✅ TikTok connecté{' (nouvelle app)' if new_app else ''} ({esc(u.get('display_name') or 'compte')}). Message effacé. "
+                                 "Les publications prévues utilisent cette app. /tiktok = l'écran de publication du prochain reel.",
                                  f"✅ TikTok connected ({esc(u.get('display_name') or 'account')}). /tiktok opens the posting "
                                  "screen of the next clip."))
             except Exception as e:  # noqa: BLE001
-                await say(ctx, f"⚠️ Connexion TikTok refusée : {esc(str(e)[-250:])}")
+                await say(ctx, f"⚠️ Connexion TikTok refusée : {esc(str(e)[-250:])}\n{esc(tiktok.explain(str(e)))}")
         return True
     meta = re.search(r"\bEAA[A-Za-z0-9]{40,}\b", text)
     if meta:
