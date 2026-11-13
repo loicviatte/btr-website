@@ -1,6 +1,6 @@
 {
  "date": "2026-11-13",
- "at": "2026-11-13T09:13Z",
+ "at": "2026-11-13T11:13Z",
  "instagram_error": "Instagram 400 : Error validating access token: The session has been invalidated because the user changed their password or Facebook has changed the session for security reasons.",
  "tiktok": {
   "followers": 57,
@@ -19,7 +19,7 @@
    [
     "20261107",
     "7705522299255967009",
-    283
+    284
    ],
    [
     "20261106",
@@ -74,7 +74,7 @@
    [
     "20261102",
     "7703560546838154518",
-    3632
+    3634
    ],
    [
     "20261102",
@@ -89,7 +89,7 @@
    [
     "20261101",
     "7703196174710246678",
-    31525
+    31553
    ],
    [
     "20261031",
