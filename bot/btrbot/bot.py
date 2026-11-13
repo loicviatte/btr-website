@@ -1492,6 +1492,16 @@ def tool_handlers(ctx, images: list) -> dict:
             return "pas de sélection envoyée pour cette slide : propose d'abord post_photo_choices"
         return await post_change(key, "pick", {"sid": found[2], "n": int(choice)}, found[1])
 
+    async def post_moment_choices(key="moment"):
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        return bg(ctx, f"Moments candidats · {post_name(ep, key)}", posts_moments(ctx, ep, key))
+
+    async def post_moment_pick(key="moment", choice=1):
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        return await post_change(key, "moment_pick", {"n": int(choice)}, ep)
+
     async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
         move = [float(shift_x or 0), float(shift_y or 0)] if (shift_x or shift_y) else None
         return await post_change(str(key).lower().strip(), "zoom", {
@@ -1720,6 +1730,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
             "post_text_move": post_text_move, "post_text_size": post_text_size, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
+            "post_moment_choices": post_moment_choices, "post_moment_pick": post_moment_pick,
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
             "posts_status": posts_status_t, "posts_show": posts_show_t,
@@ -5048,7 +5059,7 @@ def post_name(ep, k: str) -> str:
 
 
 async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "", photos: bool = False,
-                     reset: bool = False):
+                     reset: bool = False, moment: dict | None = None):
     """Content → shots → render → previews (one item at a time to Loïc, in the Stories & carrousels topic)."""
     M = maker()
     st = _posts.PostState(ep)
@@ -5076,7 +5087,7 @@ async def posts_make(ctx, ep, only: list[str] | None = None, feedback: str = "",
     need_text = [k for k in keys if reset or feedback or not st.data.get("content", {}).get(k)]
     warn = []
     if need_text:
-        warn += await run(M.content, ep, st, need_text, feedback)
+        warn += await run(M.content, ep, st, need_text, feedback, moment)
         for k in need_text:                     # new texts: a photo whose moment moved is chosen again, the others stay
             kind = st.items[k]["kind"]
             new = {f"{k}:{n['id']}": n for n in _posts.needs(kind, st.data.get("content", {}).get(k) or {})}
@@ -5120,6 +5131,8 @@ def post_buttons(vid: str, k: str, kind: str, b: bool) -> K:
     rows = [[B("✅ Valider", callback_data=f"pst:ok:{vid}:{k}"), B("📷 Autres photos", callback_data=f"pst:ph:{vid}:{k}"),
              B("🎞️ Sélection", callback_data=f"pst:sel:{vid}:{k}")],
             [B("✍️ Autres textes", callback_data=f"pst:tx:{vid}:{k}")]]
+    if kind == "moment":
+        rows.append([B("🎯 Choisir un autre moment", callback_data=f"pst:mm:{vid}:{k}")])
     if kind in _posts.B_OK:
         rows[1].append(B("🔀 Avec sticker" if b else "🔀 Version b (lien)", callback_data=f"pst:b:{vid}:{k}"))
     return K(rows)
@@ -5167,6 +5180,37 @@ async def send_post(ctx, ep, k: str, warn: list[str] | None = None):
     except Exception:  # noqa: BLE001
         pass
     st.save()
+
+
+async def posts_moments(ctx, ep, k: str):
+    """« Autre Key moment »: 6-8 numbered candidates (time, angle, the guest's exact line) sent to Loïc; nothing is redone
+    until he answers with a number (`posts_moment_pick`)."""
+    st = _posts.PostState(ep)
+    if (st.items.get(k) or {}).get("kind") != "moment":
+        await say(ctx, "Ça ne marche que pour le carrousel Key moment.")
+        return
+    cands = await run(maker().moment_candidates, ep, st, k)
+    st.data.setdefault("moment_cands", {})[k] = {"list": cands}
+    st.save()
+    lines = [f"{i}. {_posts.tc(c['t'])} · {c['title']}\n« {c['quote']} »" for i, c in enumerate(cands, 1)]
+    btns = [B(str(i), callback_data=f"pst:mp:{ep.video_id}:{k}:{i}") for i in range(1, len(cands) + 1)]
+    await say(ctx, f"🎯 <b>{esc(post_name(ep, k))}</b> : autres moments possibles (ni l'actuel, ni les refusés, ni les reels rangés)\n\n"
+              + esc("\n\n".join(lines)) + "\n\nRéponds par un numéro (« le 3 »).",
+              reply_markup=K([btns[j:j + 4] for j in range(0, len(btns), 4)]))
+
+
+async def posts_moment_pick(ctx, ep, k: str, n: int):
+    """Candidate n of the last list: the current moment is refused for good, then texts + photos + caption on the new one
+    (same ClickUp date: the task is untouched)."""
+    st = _posts.PostState(ep)
+    cands = (st.data.get("moment_cands") or {}).get(k, {}).get("list") or []
+    if not 1 <= n <= len(cands):
+        await say(ctx, "Pas de moment avec ce numéro : demande d'abord la liste (« autre key moment »).")
+        return
+    maker().refuse_moment(st, k)
+    st.data["moment_cands"].pop(k, None)
+    st.save()
+    await posts_make(ctx, ep, [k], reset=True, moment=cands[n - 1])
 
 
 async def post_validate(ctx, ep, k: str):
@@ -5222,6 +5266,8 @@ def post_op(ctx, ep, k: str, op: str, a: dict):
         if not sl and not any(a.get(x) for x in ("part", "at", "who", "size")):
             return f"Photos {name}", posts_make(ctx, ep, [k], photos=True)
         return f"Photos {name}", posts_photos(ctx, ep, k, sl or [0], a.get("part"), a.get("at"), a.get("who"), a.get("size"))
+    if op == "moment_pick":
+        return f"Key moment n° {a.get('n')} · {name}", posts_moment_pick(ctx, ep, k, int(a["n"]))
     if op == "pick":
         return f"Photo n° {a.get('n')} · {name}", posts_pick(ctx, ep, k, a["sid"], int(a["n"]))
     if op == "zoom":
@@ -5404,13 +5450,15 @@ async def on_post_button(ctx, q, d: str):
     if not it:
         await say(ctx, "Ce post n'existe plus.")
         return
-    guard = post_guard(ep, k) if act in ("ok", "ph", "tx", "b", "ps", "pk") else None
+    guard = post_guard(ep, k) if act in ("ok", "ph", "tx", "b", "ps", "pk", "mp") else None
     if guard == "posted" and act == "ok":
         await say(ctx, f"🔒 {esc(post_name(ep, k))} est déjà publié.")
         return
     if guard and act != "ok" and not (act == "ph" and it["kind"] in _posts.CAROUSELS):   # ph on a carousel = slide picker
         if act == "pk":
             await post_confirm(ctx, ep, k, "pick", {"sid": f"{k}:{parts[4]}", "n": int(parts[5])})
+        elif act == "mp":
+            await post_confirm(ctx, ep, k, "moment_pick", {"n": int(parts[4])})
         elif act == "ps":
             slide = int(parts[4]) if len(parts) > 4 else 0
             await post_confirm(ctx, ep, k, "photos", {"slides": [slide] if slide else [],
@@ -5462,6 +5510,14 @@ async def on_post_button(ctx, q, d: str):
                           posts_pick(ctx, ep, k, f"{k}:{parts[4]}", int(parts[5]))))
     elif act == "tx":
         await say(ctx, bg(ctx, f"Textes {post_name(ep, k)}", posts_make(ctx, ep, [k], reset=True)))
+    elif act == "mm":                                    # « Choisir un autre moment »: the numbered list, nothing changes yet
+        await say(ctx, bg(ctx, f"Moments candidats · {post_name(ep, k)}", posts_moments(ctx, ep, k)))
+    elif act == "mp":
+        try:
+            await q.edit_message_reply_markup(None)
+        except Exception:  # noqa: BLE001
+            pass
+        await say(ctx, bg(ctx, f"Key moment n° {parts[4]} · {post_name(ep, k)}", posts_moment_pick(ctx, ep, k, int(parts[4]))))
     elif act == "b":
         it["b"] = not it.get("b")
         st.save()

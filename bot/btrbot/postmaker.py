@@ -94,21 +94,90 @@ class Maker:
         return changed
 
     # ------------------------------------------------------------ content
-    def _avoid(self, ep) -> str:
+    def _avoid(self, ep, st: posts.PostState | None = None, k: str | None = None) -> str:
+        from .state import Reels
+        out = []
+        try:
+            rs = Reels.of(ep)
+            cands = {c["n"]: c for c in rs.data.get("cands", [])}
+            for key, it in rs.data.get("items", {}).items():
+                c = cands.get(int(key)) or {}
+                if it.get("status") == "ok" or it.get("filed"):
+                    out.append(f"- {c.get('title', '')}: {c.get('start', c.get('start_s', ''))} → {c.get('end', c.get('end_s', ''))}")
+        except Exception:  # noqa: BLE001
+            pass
+        if st is not None and k:                         # Loïc 13.11: a Key moment turned down never comes back
+            for r in (st.data.get("moments_refused") or {}).get(k, []):
+                out.append(f"- REFUSED by Loïc, never again ({posts.tc(r['t0'])} → {posts.tc(r['t1'])}): « {r.get('hook', '')} »")
+        return "\n".join(out) or "(none)"
+
+    @staticmethod
+    def moment_span(c: dict | None) -> dict | None:
+        """The passage of a Key moment's content: first / last sentence time + its hook."""
+        ts = [s["t"] for s in (c or {}).get("sentences") or [] if s.get("t") is not None]
+        if not ts:
+            return None
+        return {"t0": min(ts), "t1": max(ts) + 8, "hook": posts.clean((c or {}).get("hook")) or ""}
+
+    @staticmethod
+    def refuse_moment(st: posts.PostState, k: str) -> None:
+        """The current Key moment of post `k` goes to the refused list (never proposed or written again)."""
+        sp = Maker.moment_span((st.data.get("content") or {}).get(k))
+        if not sp:
+            return
+        ref = st.data.setdefault("moments_refused", {}).setdefault(k, [])
+        if not any(abs(r["t0"] - sp["t0"]) < 20 for r in ref):
+            ref.append(sp)
+        st.save()
+
+    def _used_spans(self, ep, st: posts.PostState, k: str) -> list[tuple[float, float]]:
+        """Passages not to offer: refused, current, and the reels already filed."""
+        spans = [(r["t0"], r["t1"]) for r in (st.data.get("moments_refused") or {}).get(k, [])]
+        sp = self.moment_span((st.data.get("content") or {}).get(k))
+        if sp:
+            spans.append((sp["t0"], sp["t1"]))
         from .state import Reels
         try:
             rs = Reels.of(ep)
             cands = {c["n"]: c for c in rs.data.get("cands", [])}
-            out = []
-            for k, it in rs.data.get("items", {}).items():
-                c = cands.get(int(k)) or {}
-                if it.get("status") == "ok" or it.get("filed"):
-                    out.append(f"- {c.get('title', '')}: {c.get('start', c.get('start_s', ''))} → {c.get('end', c.get('end_s', ''))}")
-            return "\n".join(out) or "(none)"
+            for key, it in rs.data.get("items", {}).items():
+                c = cands.get(int(key)) or {}
+                a = posts.secs(c.get("start", c.get("start_s")))
+                b = posts.secs(c.get("end", c.get("end_s")))
+                if (it.get("status") == "ok" or it.get("filed")) and a is not None:
+                    spans.append((a, b if b is not None else a + 60))
         except Exception:  # noqa: BLE001
-            return "(none)"
+            pass
+        return spans
 
-    def content(self, ep, st: posts.PostState, keys: list[str], feedback: str = "") -> list[str]:
+    def moment_candidates(self, ep, st: posts.PostState, k: str, n: int = 8) -> list[dict]:
+        """6-8 candidate passages for « autre Key moment »: short angle title, time, an exact line of the guest (SRT)."""
+        cues = self.pipe.cues(ep)
+        if not cues:
+            raise RuntimeError("pas de transcription pour cet épisode (SRT DaVinci ou sous-titres YouTube)")
+        said = srt.plain_text(cues)
+        spans = self._used_spans(ep, st, k)
+        text = prompts.MOMENT_CANDIDATES.format(
+            n=n + 4, title=(ep.get("final") or {}).get("title") or ep.get("title", ""), guest=ep.get("guest_name") or "the guest",
+            chapters="\n".join(f"{i}: {t} {c}" for i, (t, c) in enumerate(ep.get("chapters") or [])) or "(no chapters)",
+            avoid=self._avoid(ep, st, k))
+        res = self.pipe.llm.moment_candidates(srt.timed_text(cues, 20), text)
+        out = []
+        for c in res.get("moments") or []:
+            q = posts.clean(c.get("quote"))
+            if not q or not said_exactly(q, said):
+                continue
+            t = posts.find_time(cues, q)
+            t = t if t is not None else posts.secs(c.get("t"))
+            if t is None or any(a - 30 <= t <= b + 30 for a, b in spans) or any(abs(t - o["t"]) < 90 for o in out):
+                continue
+            out.append({"title": posts.clean(c.get("title")) or "", "t": t, "quote": q})
+        out = sorted(out[:n], key=lambda o: o["t"])
+        if len(out) < 3:
+            raise RuntimeError("pas assez de moments exacts trouvés dans la transcription")
+        return out
+
+    def content(self, ep, st: posts.PostState, keys: list[str], feedback: str = "", moment: dict | None = None) -> list[str]:
         """Opus writes the texts; every EXACT field is checked against the transcript (one retry). Returns warnings."""
         cues = self.pipe.cues(ep)
         if not cues:
@@ -119,12 +188,23 @@ class Maker:
         part = part_number(ep)
         chapters = ep.get("chapters") or []
         kinds = [st.items[k]["kind"] for k in keys]
+        for k in keys:                       # Loïc 13.11: a Key moment's texts stay on its CURRENT moment (or the one he picked)
+            if st.items[k]["kind"] != "moment":
+                continue
+            cur = self.moment_span((st.data.get("content") or {}).get(k))
+            if moment:
+                feedback += (f"\nTHE KEY MOMENT MUST BE the passage starting at {posts.tc(moment['t'])} around the line "
+                             f"« {moment['quote']} » ({moment.get('title', '')}): 8 sentences following each other from there.")
+            elif cur:
+                feedback += (f"\nKEEP THE SAME KEY MOMENT: the passage from {posts.tc(cur['t0'])} to {posts.tc(cur['t1'])} "
+                             f"(hook « {cur['hook']} »). Never switch to another moment; only the wording / the lines chosen "
+                             "inside this passage may change.")
         blocks = ",\n".join(prompts.POSTS_BLOCKS[k] for k in kinds if prompts.POSTS_BLOCKS.get(k))
         text = prompts.POSTS.format(
             title=(ep.get("final") or {}).get("title") or ep.get("title", ""), guest=guest,
             part_line=f" This is Part {part}." if part else "",
             chapters="\n".join(f"{i}: {t} {n}" for i, (t, n) in enumerate(chapters)) or "(no chapters)",
-            avoid=self._avoid(ep), feedback=f"Loïc's feedback to apply: {feedback}\n" if feedback else "", blocks=blocks)
+            avoid=self._avoid(ep, st, next((k for k in keys if st.items[k]["kind"] == "moment"), None)), feedback=f"Loïc's feedback to apply: {feedback}\n" if feedback else "", blocks=blocks)
         res = self.pipe.llm.posts_content(timed, text) if blocks else {}
         errs = self._check(res, kinds, said, chapters)
         if errs:

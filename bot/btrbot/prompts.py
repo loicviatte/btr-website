@@ -271,6 +271,28 @@ Return ONLY JSON with:
 {blocks}
 """
 
+MOMENT_CANDIDATES = """List {n} different candidate passages for the Instagram carousel "Key moment" of this episode. Episode:
+"{title}". Guest: {guest}.
+YouTube chapters (index: start time title):
+{chapters}
+Do NOT propose these (already used, refused, or taken by the reels):
+{avoid}
+Each candidate = ONE strong moment of the guest (emotion, confession, a stand taken), at least 2 minutes apart from the
+others, rich enough for 8 consecutive sentences. Times "mm:ss" read from the nearest [mm:ss] marker before the words.
+Return ONLY JSON: {{"moments": [{{"title": short angle title in French (max 40 chars), "t": "mm:ss", "quote": EXACT, the
+strongest line of the guest in that passage (consecutive words really said, 6 to 22 words, never added or fixed)}}]}}"""
+
+MOMENT_CANDIDATES = """List {n} different candidate passages for the Instagram carousel "Key moment" of this episode. Episode:
+"{title}". Guest: {guest}.
+YouTube chapters (index: start time title):
+{chapters}
+Do NOT propose these (already used, refused, or taken by the reels):
+{avoid}
+Each candidate = ONE strong moment of the guest (emotion, confession, a stand taken), at least 2 minutes apart from the
+others, rich enough for 8 consecutive sentences. Times "mm:ss" read from the nearest [mm:ss] marker before the words.
+Return ONLY JSON: {{"moments": [{{"title": short angle title in French (max 40 chars), "t": "mm:ss", "quote": EXACT, the
+strongest line of the guest in that passage (consecutive words really said, 6 to 22 words, never added or fixed)}}]}}"""
+
 POSTS_BLOCKS = {
     "moment": """"moment": {{"sentences": [8 objects {{"text": EXACT, one sentence (or part) said by the guest, 4 to 16 words,
    "gold": [1 to 3 words of that text that carry the emotion, copied exactly], "t": "mm:ss"}}] — 8 sentences following

@@ -201,6 +201,7 @@ TOOLS = [
                                             "topics, change le titre 3 », « la story poll : question trop longue », "
                                             "« autre photo pour la citation »). key = moment, topics, poll, … ; "
                                             "photos=true s'il veut d'autres photos partout (une slide précise = post_photos) ; feedback = sa demande telle quelle. "
+                                            "Key moment : les textes restent sur le moment ACTUEL ; changer de moment = post_moment_choices. "
                                             "Monter / descendre le texte d'une story = post_text_move, le texte plus grand / plus petit = post_text_size, "
                                             "pas cet outil (il réécrit les mots).",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "feedback": {"type": "string"},
@@ -239,6 +240,16 @@ TOOLS = [
                                               "si plusieurs sélections sont en cours pour ce post.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "choice": {"type": "integer"},
                       "slide": {"type": "integer"}, "part": {"type": "string"}}, "required": ["key", "choice"]}},
+    {"name": "post_moment_choices", "description": "« Autre key moment » / « change de moment » / « un autre passage » : envoie la LISTE "
+                                                  "numérotée de 6 à 8 moments candidats (timecode, angle, phrase exacte du guest), "
+                                                  "sans rien refaire. Hors actuel, refusés et reels rangés. Jamais post_feedback pour "
+                                                  "changer de moment.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}}}},
+    {"name": "post_moment_pick", "description": "Loïc choisit le moment n° choice de la DERNIÈRE liste (post_moment_choices) : « le 3 », "
+                                               "« prends le 5 ». Le moment actuel est refusé pour de bon, puis textes + photos + "
+                                               "légende du Key moment sont refaits sur ce passage (même date ClickUp).",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "choice": {"type": "integer"}},
+                      "required": ["choice"]}},
     {"name": "post_zoom", "description": "GARDER la même photo et changer seulement son cadrage : « moins zoomé », "
                                         "« dézoome », « recule », « plus serré », ou « reprends la photo d'avant ». "
                                         "factor < 1 = plus large (0.8 = un peu, 0.65 = beaucoup ; le décor autour est "
