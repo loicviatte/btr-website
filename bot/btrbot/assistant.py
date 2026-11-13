@@ -247,9 +247,12 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}}}},
     {"name": "post_moment_pick", "description": "Loïc choisit le moment n° choice de la DERNIÈRE liste (post_moment_choices) : « le 3 », "
                                                "« prends le 5 ». Le moment actuel est refusé pour de bon, puis textes + photos + "
-                                               "légende du Key moment sont refaits sur ce passage (même date ClickUp).",
-     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "choice": {"type": "integer"}},
-                      "required": ["choice"]}},
+                                               "légende du Key moment sont refaits sur ce passage (même date ClickUp). "
+                                               "PASSAGE DONNÉ PAR LOÏC (hors liste) : start + end à la place de choice, chacun = un timecode "
+                                               "(« 12:03 ») OU les mots exacts par lesquels le passage commence / finit "
+                                               "(« Walter Laird's book » … « Definitely. »). Les deux sont obligatoires ensemble.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "choice": {"type": "integer"},
+                      "start": {"type": "string"}, "end": {"type": "string"}}}},
     {"name": "post_zoom", "description": "GARDER la même photo et changer seulement son cadrage : « moins zoomé », "
                                         "« dézoome », « recule », « plus serré », ou « reprends la photo d'avant ». "
                                         "factor < 1 = plus large (0.8 = un peu, 0.65 = beaucoup ; le décor autour est "

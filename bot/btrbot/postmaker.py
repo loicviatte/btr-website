@@ -177,6 +177,24 @@ class Maker:
             raise RuntimeError("pas assez de moments exacts trouvés dans la transcription")
         return out
 
+    def forced_moment(self, ep, start: str, end: str) -> dict:
+        """The passage Loïc imposes: `start` / `end` = a timecode (« 12:03 ») or the words the passage begins / ends with.
+        Returns {t, t0, t1, start, end, quote, title} for `content(moment=)`; raises with a clear message if not found."""
+        cues = self.pipe.cues(ep)
+        if not cues:
+            raise RuntimeError("pas de transcription pour cet épisode (SRT DaVinci ou sous-titres YouTube)")
+        is_tc = lambda v: bool(re.fullmatch(r"\s*(\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d+)?\s*", str(v or "")))  # noqa: E731
+        start, end = str(start or "").strip(), str(end or "").strip()
+        t0 = posts.secs(start) if is_tc(start) else posts.find_time(cues, start)
+        if t0 is None:
+            raise RuntimeError(f"début introuvable dans la transcription : « {start} »")
+        t1 = posts.secs(end) if is_tc(end) else srt.find_quote_end(cues, end, after=t0, within=240.0)
+        if t1 is None or t1 <= t0:
+            raise RuntimeError(f"fin introuvable après le début dans la transcription : « {end} »")
+        said = srt.plain_text([c for c in cues if c.end > t0 and c.start < t1])
+        return {"t": t0, "t0": t0, "t1": t1, "start": "" if is_tc(start) else start, "end": "" if is_tc(end) else end,
+                "quote": said, "title": "passage choisi par Loïc"}
+
     def content(self, ep, st: posts.PostState, keys: list[str], feedback: str = "", moment: dict | None = None) -> list[str]:
         """Opus writes the texts; every EXACT field is checked against the transcript (one retry). Returns warnings."""
         cues = self.pipe.cues(ep)
@@ -192,7 +210,14 @@ class Maker:
             if st.items[k]["kind"] != "moment":
                 continue
             cur = self.moment_span((st.data.get("content") or {}).get(k))
-            if moment:
+            if moment and moment.get("t1"):        # Loïc 13.11: a passage he gives by start / end
+                feedback += (f"\nTHE KEY MOMENT IS IMPOSED by Loïc: exactly the passage from {posts.tc(moment['t0'])} to "
+                             f"{posts.tc(moment['t1'])}"
+                             + (f", starting at the words « {moment['start']} » (drop anything said before them)" if moment.get("start") else "")
+                             + (f" and ending at the words « {moment['end']} » (nothing after them)" if moment.get("end") else "")
+                             + f". Its text: « {moment['quote']} ». The 8 sentences cut THIS passage in order, from its first words to "
+                             "its last, nothing from outside it (split long sentences into parts of 4 to 16 words, copied exactly).")
+            elif moment:
                 feedback += (f"\nTHE KEY MOMENT MUST BE the passage starting at {posts.tc(moment['t'])} around the line "
                              f"« {moment['quote']} » ({moment.get('title', '')}): 8 sentences following each other from there.")
             elif cur:

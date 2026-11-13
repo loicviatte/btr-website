@@ -1497,9 +1497,15 @@ def tool_handlers(ctx, images: list) -> dict:
         ep = posts_ep_of(key)
         return bg(ctx, f"Moments candidats · {post_name(ep, key)}", posts_moments(ctx, ep, key))
 
-    async def post_moment_pick(key="moment", choice=1):
+    async def post_moment_pick(key="moment", choice=None, start=None, end=None):
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
+        if start or end:
+            if not (start and end):
+                return "il me faut le début ET la fin du passage (timecodes ou phrases)"
+            return await post_change(key, "moment_force", {"start": str(start), "end": str(end)}, ep)
+        if not choice:
+            return "dis-moi le numéro de la liste, ou le début et la fin du passage"
         return await post_change(key, "moment_pick", {"n": int(choice)}, ep)
 
     async def post_zoom(key, slides=None, part=None, factor=None, previous=False, shift_x=None, shift_y=None):
@@ -5213,6 +5219,25 @@ async def posts_moment_pick(ctx, ep, k: str, n: int):
     await posts_make(ctx, ep, [k], reset=True, moment=cands[n - 1])
 
 
+async def posts_moment_force(ctx, ep, k: str, start: str, end: str):
+    """The passage Loïc gives (start / end = timecodes or words): the current moment is refused for good, then texts +
+    photos + caption on that passage (same ClickUp date)."""
+    st = _posts.PostState(ep)
+    if (st.items.get(k) or {}).get("kind") != "moment":
+        await say(ctx, "Ça ne marche que pour le carrousel Key moment.")
+        return
+    try:
+        mom = await run(maker().forced_moment, ep, start, end)
+    except RuntimeError as e:
+        await say(ctx, f"⚠️ {esc(e)}")
+        return
+    maker().refuse_moment(st, k)
+    st.data.get("moment_cands", {}).pop(k, None)
+    st.save()
+    await say(ctx, f"🎯 Passage retenu : {_posts.tc(mom['t0'])} → {_posts.tc(mom['t1'])}. Je refais textes, photos et légende.")
+    await posts_make(ctx, ep, [k], reset=True, moment=mom)
+
+
 async def post_validate(ctx, ep, k: str):
     st = _posts.PostState(ep)
     it = st.items.get(k)
@@ -5266,6 +5291,8 @@ def post_op(ctx, ep, k: str, op: str, a: dict):
         if not sl and not any(a.get(x) for x in ("part", "at", "who", "size")):
             return f"Photos {name}", posts_make(ctx, ep, [k], photos=True)
         return f"Photos {name}", posts_photos(ctx, ep, k, sl or [0], a.get("part"), a.get("at"), a.get("who"), a.get("size"))
+    if op == "moment_force":
+        return f"Key moment imposé · {name}", posts_moment_force(ctx, ep, k, a["start"], a["end"])
     if op == "moment_pick":
         return f"Key moment n° {a.get('n')} · {name}", posts_moment_pick(ctx, ep, k, int(a["n"]))
     if op == "pick":
