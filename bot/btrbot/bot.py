@@ -2355,10 +2355,13 @@ async def teaser_import(ctx, ep, link: str):
     n = next((int(k) for k, it in items.items() if it.get("teaser") and it.get("external")), None)
     if n is None:
         from .pipeline import TEASER_N
-        n = max([int(k) for k in items if int(k) < TEASER_N] + [0]) + 1
+        # never a number already taken by a proposed moment (13.11: the teaser became « reel 6 » = « No shoe brush, mums »)
+        n = max([int(k) for k in items if int(k) < TEASER_N] + [int(c["n"]) for c in RS(ep).data.get("cands", [])
+                                                                  if int(c["n"]) < TEASER_N] + [0]) + 1
     import time as _t
     CU_CACHE.update(tasks=await run(maker().clickup().tasks), at=_t.time())
-    teasers = [t for t in ep_calendar(ep) if re.match(r"reel teaser", t.get("name", ""), re.I)]
+    teasers = [t for t in ep_calendar(ep) if re.match(r"reel teaser", t.get("name", ""), re.I)
+               and ((t.get("status") or {}).get("status") or "").lower() not in _dash.DONE]    # 13.11: the posted Nov 3 one
     if not teasers:                                  # the next « Reel teaser » not done yet
         teasers = sorted((t for t in CU_CACHE["tasks"] if re.match(r"reel teaser", t.get("name", ""), re.I)
                           and ((t.get("status") or {}).get("status") or "").lower() not in _dash.DONE and _posts.due(t)),
@@ -2374,6 +2377,7 @@ async def teaser_import(ctx, ep, link: str):
         return
     item = reel_item(ep, n)
     item.update(res)
+    item["title"] = "Teaser"
     if task:
         item.update(clickup_task=task["id"], clickup_kind="teaser")
     RS(ep).save()
@@ -2595,7 +2599,8 @@ async def share_reel(ctx, ep, n: int, quiet: bool = False, cover: bool = True) -
             RS(ep).save()
     taken = reel_tasks_taken(ep, n)
     cand = reel_cand(ep, n) or {}
-    res = await run(pipe.reel_share, ep, n, dict(item, title=cand.get("title") or item.get("title") or f"Reel {n}"), taken,
+    ttl = item.get("title") if item.get("teaser") else cand.get("title")
+    res = await run(pipe.reel_share, ep, n, dict(item, title=ttl or item.get("title") or f"Reel {n}"), taken,
                     item.get("instagram", True))
     item["links"] = res.get("links") or item.get("links") or {}
     for k in ("clickup_task", "clickup_url", "cover_sent", "clickup_kind", "clickup_orig", "drive_ids", "file_base", "clickup_name"):
@@ -2756,6 +2761,8 @@ async def shorts_plan(ready_only: bool = False) -> list:
 
 def short_name(p) -> str:
     cand = reel_cand(p["ep"], p["n"]) or {}
+    if (p.get("item") or {}).get("teaser"):
+        cand = {"title": "Teaser"}
     return f"Reel {p['n']} · {esc(cand.get('title') or '')}"
 
 
@@ -2810,7 +2817,7 @@ async def shorts_go(ctx, ready_only: bool = False, quiet: bool = False):
             lines.append(f"{short_name(p)} : ⚠️ <code>{esc(msg[-200:])}</code>")
             continue
         it["yt_short"] = {"id": res["id"], "at": res["at"]}
-        if it.get("clickup_kind") == "short" and not res.get("clickup_error"):
+        if it.get("clickup_task") and not res.get("clickup_error"):
             it.pop("short_at", None)                 # the ClickUp date holds it now: changing it there moves the Short
         it.setdefault("links", {})["short"] = res["url"]
         RS(ep).save()
@@ -3110,7 +3117,7 @@ async def set_collabs(ctx, add=None, remove=None, ep=None, guest: str = "", scop
         for e, n in todo:
             it = reel_item(e, n)
             try:
-                await run(pipe.reel_task_text, e, n, dict(it, title=(reel_cand(e, n) or {}).get("title") or f"Reel {n}"))
+                await run(pipe.reel_task_text, e, n, dict(it, title=(it.get("title") if it.get("teaser") else (reel_cand(e, n) or {}).get("title")) or f"Reel {n}"))
             except Exception:  # noqa: BLE001
                 log.exception("reel task text")
                 bad.append(str(n))
@@ -3501,7 +3508,10 @@ async def covers_ok(ctx, ep, nums: list[int] | None = None):
             continue
         it["cover_ok"] = True
         try:
-            await run(pipe.reel_status, dict(it), "ready", ("to generate", "generated", "approved"))
+            was = await run(pipe.reel_status, dict(it), "ready", ("to generate", "generated", "approved"))
+            if was in ("posted", "complete", "completed", "closed", "done"):
+                await say(ctx, f"⚠️ Reel {n} : sa tâche ClickUp est déjà « {was} », donc pas « ready » : le Short ne sera pas "
+                               "programmé. Dis-moi de la déplacer sur la bonne tâche.")
         except Exception as e:  # noqa: BLE001
             log.exception("clickup ready")
             await say(ctx, f"⚠️ Reel {n} : ClickUp <code>{esc(str(e)[-150:])}</code>")
@@ -4281,6 +4291,56 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_dpa, when=90, name="dpa_collab")
+    if not reg.data.get("teaser_fix_1113"):      # Loïc 13.11: Lene's teaser was filed as « reel 6 » on the posted Nov 3 task
+        reg.data["teaser_fix_1113"] = True
+        reg.save()
+
+        async def _teaser_fix(ctx):
+            from datetime import datetime, timedelta, timezone
+            from pathlib import Path
+            from . import shorts
+            tok = topics.TOPIC.set("reels")
+            try:
+                ep = reg.episode("5Tujgy0WfJw")
+                rs = RS(ep).data
+                items = rs["items"]
+                it = items.get("6")
+                if not it or not it.get("teaser"):
+                    return
+                n = max([int(k) for k in items if int(k) < 1000] + [int(c["n"]) for c in rs.get("cands", [])] + [0]) + 1
+                items[str(n)] = items.pop("6")
+                if 6 in (rs.get("sel") or []):
+                    rs["sel"] = [x for x in rs["sel"] if x != 6]
+                it["title"] = "Teaser"
+                it.pop("yt_short", None)
+                it.pop("cover_ok", None)
+                t = datetime.now(timezone.utc).replace(second=0, microsecond=0) + timedelta(minutes=35)
+                at = t + timedelta(minutes=(30 - t.minute % 30) % 30)          # next :00 / :30, 35 min or more from now
+                it["short_at"] = shorts.iso(at)
+                tid = "1247bx0agwd"                                  # « Reel teaser · Ep Nov 10 »
+                it.update(clickup_task=tid, clickup_kind="teaser")
+                for k in ("clickup_name", "clickup_url", "cover_sent", "clickup_orig"):
+                    it.pop(k, None)
+                vert = ep.file("render/thumb_instagram.jpg")
+                if vert.exists():
+                    import shutil
+                    cov = Path(it["file"]).with_name(f"BTR_reel_{n:02d}_teaser_cover.jpg")
+                    shutil.copy(vert, cov)
+                    it.update(cover=str(cov), cover_text={}, cover_vertical=True)
+                RS(ep).save()
+                share_mod = _share
+                cu = share_mod.ClickUp(share_mod.Secrets(cfg.data_dir).get("clickup_token"))
+                await run(cu.update, tid, due_date=int(at.timestamp() * 1000), due_date_time=True)
+                await share_reel(ctx, ep, n, quiet=True, cover=False)
+                await covers_ok(ctx, ep, [n])
+                await say(ctx, f"✅ Teaser corrigé : reel {n}, tâche « Reel teaser · Ep Nov 10 », Short YouTube + "
+                               f"Instagram prévus <b>{shorts.label(at)}</b> (heure de Londres), TikTok envoyé ici au même moment.")
+            except Exception:  # noqa: BLE001
+                log.exception("teaser fix")
+                await say(ctx, "⚠️ Correction du teaser de Lene : échec, regarde les logs.")
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_teaser_fix, when=75, name="teaser_fix")
     if not reg.data.get("cm_poll_img_1103"):     # Loïc 03.11: the poll gets its image, Hannah's first (then cm_make)
         reg.data["cm_poll_img_1103"] = True
         reg.save()

@@ -1407,7 +1407,7 @@ class Pipeline:
                 cu = share.ClickUp(token)
                 cu.set_field(tid, share.F_YT, share.YT_SCHEDULED)
                 self.reel_status(item, "scheduled", only_from=("to generate", "generated", "approved", "ready"), cu=cu)
-                if item.get("clickup_kind") == "short":
+                if item.get("clickup_kind") in ("short", "teaser") or item.get("short_at"):   # the date chosen is kept in ClickUp
                     from . import shorts
                     ms = int(shorts.parse(publish_at).timestamp() * 1000)
                     cu.update(tid, due_date=ms, due_date_time=True)
