@@ -390,7 +390,7 @@ def matches_episode(t: dict, label: str, guest: str, part: str | None, ep_date: 
     if ep_date:
         for txt in (str(_field(t, F_EPISODE) or ""), t.get("name", "")):
             d = slot_date(txt, ep_date.year)
-            if d and abs((d - ep_date).days) <= 3:
+            if d and abs((d.date() - ep_date.date()).days) <= 3:     # calendar days (timedelta.days floors)
                 return True
     return False
 
@@ -596,6 +596,34 @@ def episode_date(video: dict) -> datetime | None:
             except ValueError:
                 pass
     return None
+
+
+def release_final(video: dict) -> bool:
+    """The release date can't move any more: the video is public or has its publishAt. An unlisted video's publishedAt
+    is only its upload date (Lene 13.11: uploaded Nov 5 → matched the « Ep Nov 3 » tasks)."""
+    st = video.get("status") or {}
+    return st.get("privacyStatus") == "public" or bool(st.get("publishAt"))
+
+
+def refresh_release(ep, video_of) -> datetime | None:
+    """ep["release_at"], read again from YouTube until it is final (`release_final`)."""
+    cur = None
+    if ep.get("release_at"):
+        try:
+            cur = datetime.fromisoformat(ep["release_at"])
+        except ValueError:
+            cur = None
+    if cur is not None and ep.get("release_final"):
+        return cur
+    try:
+        video = video_of(ep.video_id)
+    except Exception:  # noqa: BLE001
+        return cur
+    d = episode_date(video)
+    if d is not None:
+        ep["release_at"], ep["release_final"] = d.isoformat(), release_final(video)
+        ep.save()
+    return d or cur
 
 
 def today_str() -> str:

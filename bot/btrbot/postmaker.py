@@ -32,19 +32,7 @@ class Maker:
         part = part_number(ep)
         if tasks is None:
             tasks = self.clickup().tasks()
-        ep_date = None
-        if ep.get("release_at"):
-            try:
-                ep_date = datetime.fromisoformat(ep["release_at"])
-            except ValueError:
-                ep_date = None
-        if ep_date is None:
-            try:
-                ep_date = share.episode_date(self.pipe.yt.video(ep.video_id))
-                ep["release_at"] = ep_date.isoformat() if ep_date else ""
-                ep.save()
-            except Exception:  # noqa: BLE001
-                pass
+        ep_date = share.refresh_release(ep, self.pipe.yt.video)
         label = share.episode_label(guest, part)
         out = {}
         for t in sorted(tasks, key=lambda t: int(t.get("due_date") or 9e15)):

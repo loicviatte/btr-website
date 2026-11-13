@@ -6580,12 +6580,10 @@ async def dash_tick(ctx):
             CU_CACHE["at"] = _t.time()
         store = reg.data.setdefault("dash", {})
         for ep in dash_episodes(cleaned=False):
-            if not ep.get("release_at") and ep.get("guest_name"):     # to match the « Ep Nov 3 » tasks
+            if ep.get("guest_name") and not ep.get("release_final"):  # to match the « Ep Nov 3 » tasks
                 try:
                     from . import share
-                    d = share.episode_date(await run(pipe.yt.video, ep.video_id))
-                    ep["release_at"] = d.isoformat() if d else ""
-                    ep.save()
+                    await run(share.refresh_release, ep, pipe.yt.video)
                 except Exception:  # noqa: BLE001
                     pass
             try:
