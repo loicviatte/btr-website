@@ -285,11 +285,12 @@ TOOLS = [
                                              "Atlas), mêmes MOTS et mêmes photos : « plus grand le texte de la question », "
                                              "« texte plus gros », « écris plus petit ». factor multiplie la taille actuelle "
                                              "(1.15 = un peu, 1.3 = nettement, 1.5 = beaucoup ; 0.87 = plus petit). "
-                                             "part=question = la ligne de la question seule ; rien = tout le bloc. "
+                                             "part=question = la ligne de la question seule ; part=bas = SEULEMENT la phrase du bas (« Tap the link… » / « link in bio », "
+                                             "2x plus petit = factor 0.5) ; rien = tout le bloc. "
                                              "reset=true = taille d'origine. JAMAIS post_feedback pour une taille : "
                                              "il réécrirait les mots.",
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "factor": {"type": "number"},
-                      "part": {"type": "string", "enum": ["question", "tout"]}, "reset": {"type": "boolean"}},
+                      "part": {"type": "string", "enum": ["question", "bas", "tout"]}, "reset": {"type": "boolean"}},
                       "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "

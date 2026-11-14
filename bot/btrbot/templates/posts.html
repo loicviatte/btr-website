@@ -164,17 +164,17 @@ html,body{margin:0;background:#080403}
     <div class="col" data-fit="block" data-ts data-max-bottom="{{ (1180 if not b else 1440) + (dy or 0) }}" style="left:80px;top:{{ 960 + (dy or 0) }}px;width:920px;gap:{{ 30 if not b else 40 }}px">
       <p class="h c" style="font-size:50px;line-height:1.12">{{ line|safe }}</p>
       {% if not b %}<p class="h c lg" data-q style="font-size:40px;line-height:1.12">{{ question }}</p>
-      {% else %}<p class="h c" style="font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> {{ tap }}</p>{% endif %}
+      {% else %}<p class="h c" style="font-size:{{ (44 * (fs or 1))|round(1) }}px;line-height:1.12"><span class="lg">Tap the link</span> {{ tap }}</p>{% endif %}
     </div>
-    {% if not b %}<p class="foot" style="top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
+    {% if not b %}<p class="foot" style="font-size:{{ (24 * (fs or 1))|round(1) }}px;top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
   {% elif kind == "rapid" %}
     <div class="col" data-fit="block" data-ts data-max-bottom="{{ (1210 if not b else 1440) + (dy or 0) }}" style="left:80px;top:{{ 965 + (dy or 0) }}px;width:920px;gap:24px">
       <p class="lab c">RAPID FIRE{% if rapid_count %} · {{ rapid_count }} QUESTIONS{% endif %}</p>
       <p class="h c" data-q style="font-size:46px;line-height:1.12">{{ q(question) }}</p>
       {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:38px;line-height:1.12">Guess {{ first }}’s answer.</p>
-      {% else %}<p class="h c" style="margin-top:20px;font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
+      {% else %}<p class="h c" style="margin-top:20px;font-size:{{ (44 * (fs or 1))|round(1) }}px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
     </div>
-    {% if not b %}<p class="foot" style="top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
+    {% if not b %}<p class="foot" style="font-size:{{ (24 * (fs or 1))|round(1) }}px;top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
   {% elif kind == "quote" %}
     <div class="col" data-fit="block" data-min-top="1000" style="left:64px;bottom:370px;width:960px">
       <p class="h" style="font-size:92px;line-height:1.04">{{ q(quote) }}</p>
@@ -187,7 +187,7 @@ html,body{margin:0;background:#080403}
       <p class="h c" data-q style="font-size:52px;line-height:1.12">The next guest is a mystery.</p>
       <p class="r c" style="margin-top:6px;font-size:28px;line-height:1.32">Ask them anything. Marius picks one question from the audience for every episode and reads your name on air.</p>
     </div>
-    <p class="foot" style="top:{{ 1600 + (fdy or 0) }}px">Your question could be on air.</p>
+    <p class="foot" style="font-size:{{ (24 * (fs or 1))|round(1) }}px;top:{{ 1600 + (fdy or 0) }}px">Your question could be on air.</p>
   {% endif %}
 
 {% elif kind == "chain" %}
@@ -203,9 +203,9 @@ html,body{margin:0;background:#080403}
     <p class="lab c">THE CHAIN</p>
     <p class="h c" data-q style="font-size:40px;line-height:1.12">{{ q(question) }}</p>
     {% if not b %}<p class="h c lg" style="margin-top:4px;font-size:36px;line-height:1.12">Guess {{ first }}’s answer.</p>
-    {% else %}<p class="h c" style="margin-top:26px;font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
+    {% else %}<p class="h c" style="margin-top:26px;font-size:{{ (44 * (fs or 1))|round(1) }}px;line-height:1.12"><span class="lg">Tap the link</span> to hear {{ first }}’s answer.</p>{% endif %}
   </div>
-  {% if not b %}<p class="foot" style="top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
+  {% if not b %}<p class="foot" style="font-size:{{ (24 * (fs or 1))|round(1) }}px;top:{{ 1600 + (fdy or 0) }}px">{{ footer }}</p>{% endif %}
 
 {% elif kind == "link" %}
   {{ photo(p1) }}
@@ -250,9 +250,9 @@ html,body{margin:0;background:#080403}
     <p class="lab c">WORLD ATLAS</p>
     <p class="h c" data-q style="font-size:52px;line-height:1.12">{{ first }} opened the atlas.<br>Where did {{ pronoun }} land?</p>
     {% if not b %}<p class="h c lg" style="font-size:38px;line-height:1.12">Take a guess.</p>
-    {% else %}<p class="h c" style="font-size:44px;line-height:1.12"><span class="lg">Tap the link</span> to find out.</p>{% endif %}
+    {% else %}<p class="h c" style="font-size:{{ (44 * (fs or 1))|round(1) }}px;line-height:1.12"><span class="lg">Tap the link</span> to find out.</p>{% endif %}
   </div>
-  {% if not b %}<p class="foot" style="top:{{ 1600 + (fdy or 0) }}px">The answer is on our grid today.</p>{% endif %}
+  {% if not b %}<p class="foot" style="font-size:{{ (24 * (fs or 1))|round(1) }}px;top:{{ 1600 + (fdy or 0) }}px">The answer is on our grid today.</p>{% endif %}
 {% endif %}
 </div>
 <script>

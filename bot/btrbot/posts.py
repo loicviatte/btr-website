@@ -106,6 +106,18 @@ def text_scale(kind: str, f) -> float:
         return 1.0
 
 
+FOOT_SCALE = (0.4, 1.6)   # « la phrase du bas 2x plus petite » (Loïc): item["foot_scale"] = the bottom line only (.foot, in version b the « Tap the link… » line)
+
+
+def foot_scale(kind: str, f) -> float:
+    if kind not in TEXT_MOVE:
+        return 1.0
+    try:
+        return round(max(FOOT_SCALE[0], min(FOOT_SCALE[1], float(f or 1))), 2)
+    except (TypeError, ValueError):
+        return 1.0
+
+
 def foot_dy(kind: str, dy) -> int:
     lo, hi = FOOT_MOVE if kind in TEXT_MOVE else (0, 0)
     return int(max(lo, min(hi, round(float(dy or 0)))))
@@ -498,7 +510,8 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     base = {"name": f"story-{kind}{'-b' if b else ''}", "H": 1920, "kind": kind, "b": b, "first": first,
             "first_upper": first.upper(), "footer": c.get("footer") or f"{'Part ' + part + ', link' if part else 'Link'} in bio.",
             "dy": text_dy(kind, ctx.get("dy")), "fdy": foot_dy(kind, ctx.get("fdy")),
-            "ts": text_scale(kind, ctx.get("ts")), "qs": text_scale(kind, ctx.get("qs"))}
+            "ts": text_scale(kind, ctx.get("ts")), "qs": text_scale(kind, ctx.get("qs")),
+            "fs": foot_scale(kind, ctx.get("fs"))}
     full = (0, 0, 1080, 1920)
     if kind == "teaser":
         base.update(p1=ph("bg", full, css="filter:blur(14px) brightness(.8);transform:scale(1.06)"),

@@ -865,6 +865,7 @@ class Maker:
             ctx["dy"] = dy
             fdy = ctx["fdy"] = posts.foot_dy(kind, it.get("foot_dy"))   # « descends seulement la partie du bas »
             ctx["ts"], ctx["qs"] = it.get("text_scale"), it.get("q_scale")   # « texte de la question plus grand »
+            ctx["fs"] = it.get("foot_scale")                 # « la phrase du bas plus petite »
             pg = posts.pages(kind, c, sh, ctx, b)
             if self.fill_gaps(pg, sh):                       # a photo pulled back: the set around it generated
                 st.save()

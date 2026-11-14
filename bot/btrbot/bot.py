@@ -6355,7 +6355,7 @@ async def posts_text_move(ctx, ep, k: str, dy=None, reset: bool = False, part=No
 async def posts_text_size(ctx, ep, k: str, factor=None, reset: bool = False, part=None):
     """Loïc 03.11 (« plus grand le texte de la question », the model rewrote the words instead): the story's text
     bigger / smaller, same words and photos. part « question » = the question line only (item["q_scale"]), else the
-    whole block (item["text_scale"]); multiplies the current size; the block grows upward so the sticker zone keeps
+    whole block (item["text_scale"]); part « bas » = the bottom line only (item["foot_scale"]); multiplies the current size; the block grows upward so the sticker zone keeps
     its place (templates/posts.html scaleText)."""
     st = _posts.PostState(ep)
     it = st.items.get(k) or {}
@@ -6368,15 +6368,17 @@ async def posts_text_size(ctx, ep, k: str, factor=None, reset: bool = False, par
                        "Rapid fire, Ask, Atlas).")
         return
     q = str(part or "").startswith(("q", "titre"))
-    field = "q_scale" if q else "text_scale"
-    old = _posts.text_scale(kind, it.get(field))
-    new = 1.0 if reset else _posts.text_scale(kind, old * float(factor or 1))
+    foot = str(part or "").startswith(("bas", "bottom", "foot", "pied"))
+    field = "foot_scale" if foot else "q_scale" if q else "text_scale"
+    fn = _posts.foot_scale if foot else _posts.text_scale
+    old = fn(kind, it.get(field))
+    new = 1.0 if reset else fn(kind, old * float(factor or 1))
     it[field] = new
     st.save()
     await run(maker().render, ep, st, [k])
-    lo, hi = _posts.SCALE
+    lo, hi = _posts.FOOT_SCALE if foot else _posts.SCALE
     edge = " (butée atteinte)" if new in (lo, hi) and not reset else ""
-    what = "la question" if q else "tout le texte"
+    what = "la phrase du bas" if foot else "la question" if q else "tout le texte"
     msg = (f"Taille de {what} remise d'origine" if reset else
            f"{what.capitalize()} {'agrandi' if new > old else 'réduit'} : {round(new * 100)} % de la taille d'origine{edge}")
     note = [msg + " ; mêmes mots, mêmes photos, le bloc grandit vers le haut (la zone du sticker ne bouge pas)."]
