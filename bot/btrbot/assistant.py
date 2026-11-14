@@ -292,6 +292,13 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"key": {"type": "string"}, "factor": {"type": "number"},
                       "part": {"type": "string", "enum": ["question", "bas", "tout"]}, "reset": {"type": "boolean"}},
                       "required": ["key"]}},
+    {"name": "post_publish_now", "description": "PUBLIER TOUT DE SUITE un carrousel / une story VALIDÉ(E) (« publie maintenant », "
+                                               "« je suis en retard, sors-le »). L'heure prévue devient maintenant (ClickUp aussi) : "
+                                               "Instagram par l'API (collab incluse) ou fichiers à poster à la main, brouillon TikTok "
+                                               "pour les carrousels. Ne republie jamais un post déjà sorti. À appeler directement, "
+                                               "sans passer par Claude Code.",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string", "description": "moment, topics, poll, qa…"}},
+                      "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
                                             "quoi que ce soit (seuls les carrousels / stories se changent ici).",

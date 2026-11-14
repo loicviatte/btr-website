@@ -1526,6 +1526,42 @@ def tool_handlers(ctx, images: list) -> dict:
         return await post_change(str(key).lower().strip(), "size", {"factor": float(factor or 1), "reset": bool(reset),
                                                                      "part": (part or "").lower() or None})
 
+    async def post_publish_now(key):
+        """Validated carousel / story out NOW (Loïc 14.11: late on the planning): the planned time becomes now, in ClickUp
+        too (posts_refresh follows ClickUp), then posts_tick does the usual (Instagram API, TikTok draft, files)."""
+        key = str(key).lower().strip()
+        ep = posts_ep_of(key)
+        st = _posts.PostState(ep)
+        it = st.items.get(key)
+        if not it or it.get("status") != "ok":
+            return "ce post n'est pas validé : valide-le d'abord (posts_validate)"
+        ig, tt = it.setdefault("ig", {}), it.setdefault("tt", {})
+        if ig.get("done") and (it["kind"] not in _posts.CAROUSELS or tt.get("sent") or tt.get("done")):
+            return f"déjà parti : Instagram {ig.get('link') or 'publié'}" + (" · brouillon TikTok envoyé" if tt.get("sent") else "")
+        now = _posts.now()
+        it["at"] = now.isoformat()
+        if it["kind"] in _posts.CAROUSELS and not tt.get("done"):
+            it["tt_at"] = now.isoformat()
+        it.pop("need_date", None)
+        it.pop("late_warned", None)
+        ig.pop("api_failed", None)
+        ig.pop("fails", None)
+        st.save()
+        if it.get("task"):
+            try:
+                await run(maker().clickup().update, it["task"], due_date=int(now.timestamp() * 1000), due_date_time=True)
+            except Exception:  # noqa: BLE001
+                log.exception("publish now: ClickUp date")
+        await posts_tick(ctx)
+        it = _posts.PostState(ep).items.get(key) or it
+        out = [f"{post_name(ep, key)} : "]
+        ig = it.get("ig") or {}
+        out.append(f"Instagram {ig['link']}" if ig.get("link") else "Instagram : " + (
+            "fichiers envoyés à poster à la main" if ig.get("sent") else "en cours, je préviens dès que c'est publié"))
+        if it["kind"] in _posts.CAROUSELS:
+            out.append("brouillon TikTok envoyé" if (it.get("tt") or {}).get("sent") else "TikTok : pas encore parti")
+        return " · ".join(out)
+
     async def planning_list(days=21, posted=False):
         await plan_refresh()
         return plan_list_text(int(days or 21), bool(posted))
@@ -1735,7 +1771,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
             "reels_show": reels_show, "reels_stop": reels_stop,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
-            "post_text_move": post_text_move, "post_text_size": post_text_size, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
+            "post_text_move": post_text_move, "post_text_size": post_text_size, "post_publish_now": post_publish_now, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
             "post_moment_choices": post_moment_choices, "post_moment_pick": post_moment_pick,
             "planning_list": planning_list, "planning_change": planning_change, "planning_add": planning_add,
             "planning_remove": planning_remove, "posts_validate": posts_validate,
