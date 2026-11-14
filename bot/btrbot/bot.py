@@ -1740,6 +1740,21 @@ def tool_handlers(ctx, images: list) -> dict:
             return "quel épisode ? (lien YouTube)"
         return bg(ctx, "Teaser", teaser_make(ctx, ep, feedback or "", bool(same))) + " (dans le fil Reels)"
 
+    async def tiktok_mode_t(mode=None):
+        if mode in ("draft", "direct"):
+            reg.data["tiktok_mode"] = mode
+            reg.save()
+        return (f"réglage TikTok = {tt_mode()} (draft : tout part en brouillon dans la boîte TikTok à l'heure prévue ; "
+                "direct : publication directe seulement si confirmée dans /tiktok)")
+
+    async def tiktok_draft_t(n=None, link=None):
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
+        ep = reg.episode(m.group(1)) if m else reel_ep()
+        if ep is None or not n or str(n) not in RS(ep).data.get("items", {}):
+            return "quel reel ? (numéro + lien de l'épisode)"
+        asyncio.create_task(tt_draft(ctx, ep, int(n)))
+        return f"j'envoie le reel {n} en brouillon TikTok ; légende dans le fil Reels dans ~1 min"
+
     async def teaser_show_t(link=None):
         m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
         ep = teaser_ep(m.group(1) if m else None)
@@ -1788,6 +1803,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "transcript_search": transcript_search, "post_texts": post_texts,
             "teaser_make": teaser_t, "teaser_show": teaser_show_t,
+            "tiktok_mode": tiktok_mode_t, "tiktok_draft": tiktok_draft_t,
             "youtube_community": youtube_community,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "instagram_collab": instagram_collab,
@@ -3261,33 +3277,47 @@ async def tt_tick(ctx):
             continue
         tt["sent"] = now.isoformat()
         RS(ep).save()
+        if tt_mode() == "draft":                              # Loïc 14.11: everything goes to the TikTok inbox as a draft
+            asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=(now - at).total_seconds() > 3600))
+            continue
         if tt.get("confirmed") and share.Secrets(cfg.data_dir).get("tt_refresh"):
             asyncio.create_task(tt_publish(ctx, ep, n))      # Loïc confirmed the post in the composer: API
             continue
-        name = short_name({"ep": ep, "n": n})
-        late = (now - at).total_seconds() > 3600
-        try:
-            video = it["file"]
-            if it.get("external"):                            # Loïc's own export can pass Telegram's 50 MB (03.11): the
-                video = str(await run(pipe.ig_video, dict(it)))   # 1080×1920 copy made for Instagram
-            drive = (it.get("links") or {}).get("video")
-            with open(video, "rb") as f:
-                await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 TikTok · {name}" + (" (en retard)" if late else "")
-                                         + " : c'est l'heure. Partage la vidéo vers TikTok et colle la légende ci-dessous."
-                                         + (f"\nPleine qualité : {drive}" if it.get("external") and drive else ""),
-                                         supports_streaming=True, width=1080, height=1920,
-                                         duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
-            if it.get("cover") and Path(it["cover"]).exists():
-                with open(it["cover"], "rb") as f:
-                    await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Cover · {name} (TikTok : « Modifier la couverture » "
-                                                                    "→ importer)")
-            cap = (it.get("captions") or {}).get("tiktok") or ""
-            await say(ctx, f"<pre>{esc(cap)}</pre>", reply_markup=K([[B("✅ Posté sur TikTok",
-                                                                         callback_data=f"ttok:{ep.video_id}:{n}")]]))
-        except Exception:  # noqa: BLE001
-            log.exception("tiktok send")
-            tt.pop("sent", None)
-            RS(ep).save()
+        await tt_notify(ctx, ep, n, it, (now - at).total_seconds() > 3600)
+
+
+def tt_mode() -> str:
+    """Global TikTok setting (tool tiktok_mode): « draft » (default) = reels go to the TikTok inbox, « direct » = Direct Post."""
+    return "direct" if reg.data.get("tiktok_mode") == "direct" else "draft"
+
+
+async def tt_notify(ctx, ep, n: int, it: dict, late: bool = False):
+    """Fallback: the video, the cover and the caption sent to Loïc, who posts by hand."""
+    from pathlib import Path
+    tt = it.setdefault("tt_post", {})
+    name = short_name({"ep": ep, "n": n})
+    try:
+        video = it["file"]
+        if it.get("external"):                            # Loïc's own export can pass Telegram's 50 MB (03.11): the
+            video = str(await run(pipe.ig_video, dict(it)))   # 1080×1920 copy made for Instagram
+        drive = (it.get("links") or {}).get("video")
+        with open(video, "rb") as f:
+            await ctx.bot.send_video(cfg.chat_id, f, caption=f"🎵 TikTok · {name}" + (" (en retard)" if late else "")
+                                     + " : c'est l'heure. Partage la vidéo vers TikTok et colle la légende ci-dessous."
+                                     + (f"\nPleine qualité : {drive}" if it.get("external") and drive else ""),
+                                     supports_streaming=True, width=1080, height=1920,
+                                     duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
+        if it.get("cover") and Path(it["cover"]).exists():
+            with open(it["cover"], "rb") as f:
+                await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Cover · {name} (TikTok : « Modifier la couverture » "
+                                                                "→ importer)")
+        cap = (it.get("captions") or {}).get("tiktok") or ""
+        await say(ctx, f"<pre>{esc(cap)}</pre>", reply_markup=K([[B("✅ Posté sur TikTok",
+                                                                     callback_data=f"ttok:{ep.video_id}:{n}")]]))
+    except Exception:  # noqa: BLE001
+        log.exception("tiktok send")
+        tt.pop("sent", None)
+        RS(ep).save()
 
 
 async def tt_posted(ctx, vid: str, n: int):
@@ -3518,15 +3548,20 @@ async def tt_publish(ctx, ep, n: int):
                        "notification pour ce reel (vidéo + légende à l'heure prévue).")
 
 
-async def tt_draft(ctx, ep, n: int):
-    """Upload (video.upload): the clip goes to the TikTok inbox as a draft; Loïc finishes it in the app."""
+async def tt_draft(ctx, ep, n: int, auto: bool = False, late: bool = False):
+    """Upload (video.upload): the clip goes to the TikTok inbox as a draft; Loïc finishes it in the app.
+    auto = the scheduled send (tiktok_mode draft): a failure falls back to the notification (video + caption)."""
     from pathlib import Path
     from . import share, tiktok
     it = reel_item(ep, n)
     name = short_name({"ep": ep, "n": n})
+    cap = (it.get("captions") or {}).get("tiktok") or ""
     try:
+        video = it["file"]
+        if it.get("external"):                            # Meta / TikTok specs copy of Loïc's own export
+            video = str(await run(pipe.ig_video, dict(it)))
         api = tiktok.TikTok(share.Secrets(cfg.data_dir))
-        pid = await run(api.draft, Path(it["file"]))
+        pid = await run(api.draft, Path(video))
         st = {}
         for _ in range(12):                               # the inbox notification usually comes within a minute
             await asyncio.sleep(5)
@@ -3538,14 +3573,20 @@ async def tt_draft(ctx, ep, n: int):
         if st.get("status") not in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
             await say(ctx, T(f"📥 Vidéo envoyée à TikTok, statut encore « {esc(str(st.get('status')))} » après 1 min "
                              f"(publish_id {esc(pid)}). Regarde ta boîte TikTok dans quelques minutes.",
-                             f"📥 Video uploaded, TikTok status still “{esc(str(st.get('status')))}” after 1 min."))
+                             f"📥 Video uploaded, TikTok status still “{esc(str(st.get('status')))}” after 1 min.")
+                      + "\n<pre>" + esc(cap) + "</pre>",
+                      reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
             return
-        await say(ctx, T(f"📥 {name} est dans ta boîte TikTok (notification « brouillon ») : ouvre-la, colle la légende "
-                         "et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the notification "
-                         "in TikTok to edit and post it.") + "\n<pre>" + esc((it.get("captions") or {}).get("tiktok") or "") + "</pre>")
+        await say(ctx, T(f"📥 {name} en brouillon TikTok" + (" (en retard)" if late else "") + " : ouvre la notification, "
+                         "colle la légende et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the "
+                         "notification in TikTok to edit and post it.") + "\n<pre>" + esc(cap) + "</pre>",
+                  reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
     except Exception as e:  # noqa: BLE001
         log.exception("tiktok draft")
-        await say(ctx, f"⚠️ Brouillon TikTok refusé : <code>{esc(str(e)[-200:])}</code>")
+        await say(ctx, f"⚠️ Brouillon TikTok refusé : <code>{esc(str(e)[-200:])}</code>"
+                  + (". Je t'envoie la vidéo et la légende à la place." if auto else ""))
+        if auto:
+            await tt_notify(ctx, ep, n, it, late)
 
 
 async def tiktok_cmd(update: Update, ctx):

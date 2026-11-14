@@ -364,6 +364,15 @@ TOOLS = [
                                                        "same": {"type": "boolean"}}}},
     {"name": "teaser_show", "description": "Renvoyer le teaser déjà monté, tel quel.",
      "input_schema": {"type": "object", "properties": {"link": {"type": "string"}}}},
+    {"name": "tiktok_mode", "description": "Réglage global TikTok des reels : mode = draft (défaut : à l'heure prévue le reel "
+                                           "part en brouillon dans la boîte TikTok, légende à copier dans le fil Reels) ou "
+                                           "direct (publication directe, seulement si confirmée dans /tiktok). Sans mode = "
+                                           "dire le réglage actuel.",
+     "input_schema": {"type": "object", "properties": {"mode": {"type": "string", "enum": ["draft", "direct"]}}}},
+    {"name": "tiktok_draft", "description": "Envoyer tout de suite le reel n en brouillon TikTok (boîte du compte) + sa légende "
+                                            "à copier. link = l'épisode si ce n'est pas celui en cours.",
+     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "link": {"type": "string"}},
+                      "required": ["n"]}},
     {"name": "transcript_search", "description": "Ce qui a été DIT dans un épisode (la transcription SRT) : query = mots ou "
                                                  "phrase à chercher (« chicken », « plan B ») → les passages avec leur "
                                                  "timecode et le contexte ; ou at = « 34:12 » pour lire ce moment. guest "
