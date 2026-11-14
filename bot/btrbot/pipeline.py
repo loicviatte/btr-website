@@ -726,7 +726,8 @@ class Pipeline:
         edit = {"framing": R.FRAMING, "fps": info["fps"], "frames": sum(p["frames"] for p in pcs), "doubts": doubts, "alts": alts,
                 "confidence": round(conf),
                 "missing_cuts": missing, "words": [w.__dict__ for w in R.out_words(words, pcs, info["fps"])],
-                "layout": [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs]}
+                "layout": [{"out": p["out"], "frames": p["frames"], "kind": p["kind"]} for p in pcs],
+                "map": [{"src": p["src"], "out": p["out"], "frames": p["frames"]} for p in pcs]}
         (work / "edit.json").write_text(json.dumps(edit))
         kinds = [p["kind"] for p in pcs]
         return {**self.reel_subtitles(ep, cand, fixes or [], note), "status": "preview", "confidence": round(conf),
@@ -1077,6 +1078,38 @@ class Pipeline:
         return {"cover": str(out), "cover_text": hook, "cover_pick": order[0] + 1, "cover_count": len(cands),
                 "cover_zoom": zoom,
                 "cover_issues": chk.get("issues", []), "cover_grid": str(out.parent / (out.stem + "_grille.jpg"))}
+
+    def cover_ms(self, ep: Episode, n: int, item: dict) -> int:
+        """Millisecond of the reel where the cover photo was taken (TikTok video_cover_timestamp_ms: the API takes a
+        frame, never an image). edit.json["map"] (source time → reel time) when the reel has one, else the words kept in
+        the reel are matched with the clip's words. 0 = unknown (first frame)."""
+        work = ep.dir / "reels" / f"r{n:02d}"
+        try:
+            cands = json.loads((work / "cover" / "cands.json").read_text())
+            pick = item.get("cover_pick")
+            if not pick or not 1 <= pick <= len(cands):
+                return 0
+            t = float(cands[pick - 1]["t"])
+            edit = json.loads((work / "edit.json").read_text())
+            dur = edit["frames"] / edit["fps"]
+            for m in edit.get("map") or []:
+                span = m["frames"] / edit["fps"]
+                if m["src"] <= t < m["src"] + span:
+                    return int(max(0.0, min(dur - 0.1, m["out"] + t - m["src"])) * 1000)
+            src = [w for f in sorted(work.glob("words_*.json")) for w in json.loads(f.read_text())]
+            out, i, pairs = edit["words"], 0, []
+            for w in src:                                    # the kept words stay in order: greedy match by text
+                j = next((k for k in range(i, min(i + 6, len(out))) if out[k]["text"] == w["text"]), None)
+                if j is not None:
+                    pairs.append((w, out[j]))
+                    i = j + 1
+            if not pairs:
+                return 0
+            w, o = min(pairs, key=lambda x: 0 if x[0]["start"] <= t <= x[0]["end"] else min(abs(x[0]["start"] - t), abs(x[0]["end"] - t)))
+            return int(max(0.0, min(dur - 0.1, o["start"] + max(0.0, min(t - w["start"], o["end"] - o["start"])))) * 1000)
+        except Exception:  # noqa: BLE001
+            log.exception("cover_ms")
+            return 0
 
     def cover_replace_files(self, ep: Episode, n: int, item: dict, path: Path) -> list[str]:
         """Only when Loïc asks: a published reel's new cover replaces the Drive cover (same file, same link) and is

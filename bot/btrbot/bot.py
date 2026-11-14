@@ -1740,12 +1740,23 @@ def tool_handlers(ctx, images: list) -> dict:
             return "quel épisode ? (lien YouTube)"
         return bg(ctx, "Teaser", teaser_make(ctx, ep, feedback or "", bool(same))) + " (dans le fil Reels)"
 
-    async def tiktok_mode_t(mode=None):
-        if mode in ("draft", "direct"):
+    async def tiktok_mode_t(mode=None, audited=None):
+        if mode in ("auto", "inbox", "direct"):
             reg.data["tiktok_mode"] = mode
-            reg.save()
-        return (f"réglage TikTok = {tt_mode()} (draft : tout part en brouillon dans la boîte TikTok à l'heure prévue ; "
-                "direct : publication directe seulement si confirmée dans /tiktok)")
+        if audited is not None:
+            reg.data["tiktok_audited"] = bool(audited)
+        reg.save()
+        return (f"réglage TikTok = {tt_mode()}, app auditée = {bool(reg.data.get('tiktok_audited'))} (auto : publication API "
+                "à l'heure avec légende + image de cover, « Moi seulement » tant que l'app n'est pas auditée ; inbox : "
+                "brouillon sans légende ; direct : seulement ce qui est confirmé dans /tiktok)")
+
+    async def tiktok_auto_t(n=None, link=None):
+        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
+        ep = reg.episode(m.group(1)) if m else reel_ep()
+        if ep is None or not n or str(n) not in RS(ep).data.get("items", {}):
+            return "quel reel ? (numéro + lien de l'épisode)"
+        asyncio.create_task(tt_auto(ctx, ep, int(n)))
+        return f"j'envoie le reel {n} sur TikTok avec légende + cover ; résultat dans le fil Reels dans ~1-2 min"
 
     async def tiktok_draft_t(n=None, link=None):
         m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
@@ -1803,7 +1814,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "transcript_search": transcript_search, "post_texts": post_texts,
             "teaser_make": teaser_t, "teaser_show": teaser_show_t,
-            "tiktok_mode": tiktok_mode_t, "tiktok_draft": tiktok_draft_t,
+            "tiktok_mode": tiktok_mode_t, "tiktok_draft": tiktok_draft_t, "tiktok_auto": tiktok_auto_t,
             "youtube_community": youtube_community,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "instagram_collab": instagram_collab,
@@ -3277,8 +3288,12 @@ async def tt_tick(ctx):
             continue
         tt["sent"] = now.isoformat()
         RS(ep).save()
-        if tt_mode() == "draft":                              # Loïc 14.11: everything goes to the TikTok inbox as a draft
-            asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=(now - at).total_seconds() > 3600))
+        late = (now - at).total_seconds() > 3600
+        if tt_mode() == "inbox":                              # Loïc 14.11: the TikTok inbox as a draft (no caption / cover)
+            asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=late))
+            continue
+        if tt_mode() == "auto" and share.Secrets(cfg.data_dir).get("tt_refresh"):
+            asyncio.create_task(tt_auto(ctx, ep, n, late))   # Direct Post: caption + cover frame already in place
             continue
         if tt.get("confirmed") and share.Secrets(cfg.data_dir).get("tt_refresh"):
             asyncio.create_task(tt_publish(ctx, ep, n))      # Loïc confirmed the post in the composer: API
@@ -3287,8 +3302,11 @@ async def tt_tick(ctx):
 
 
 def tt_mode() -> str:
-    """Global TikTok setting (tool tiktok_mode): « draft » (default) = reels go to the TikTok inbox, « direct » = Direct Post."""
-    return "direct" if reg.data.get("tiktok_mode") == "direct" else "draft"
+    """Global TikTok setting (tool tiktok_mode): « auto » (default, Loïc 14.11) = Direct Post at the Short's time with the
+    caption and the cover frame, « only me » until the app is audited (reg.data["tiktok_audited"]); « inbox » = draft in the
+    TikTok inbox (the API can't set caption / cover there); « direct » = only what Loïc confirmed in /tiktok."""
+    m = reg.data.get("tiktok_mode")
+    return m if m in ("inbox", "direct") else "auto"
 
 
 async def tt_notify(ctx, ep, n: int, it: dict, late: bool = False):
@@ -3546,6 +3564,66 @@ async def tt_publish(ctx, ep, n: int):
         RS(ep).save()
         await say(ctx, f"⚠️ TikTok n'a pas pris {name} : <code>{esc(str(e)[-200:])}</code>. Je repasse en mode "
                        "notification pour ce reel (vidéo + légende à l'heure prévue).")
+
+
+async def tt_auto(ctx, ep, n: int, late: bool = False):
+    """Scheduled reel: Direct Post with the full caption (hashtags, @) and video_cover_timestamp_ms = the moment of the
+    cover photo. The API takes no image for a cover, so the frame is the photo's moment. App not audited = « Moi
+    seulement » (SELF_ONLY): Loïc only switches it to public in TikTok. Any failure → the inbox draft, else the
+    notification (video + cover + caption)."""
+    from pathlib import Path
+    from . import share, tiktok
+    it = reel_item(ep, n)
+    tt = it.setdefault("tt_post", {})
+    name = short_name({"ep": ep, "n": n})
+    cap = (it.get("captions") or {}).get("tiktok") or ""
+    audited = bool(reg.data.get("tiktok_audited"))
+    try:
+        video = it["file"]
+        if it.get("external"):
+            video = str(await run(pipe.ig_video, dict(it)))
+        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
+        info = await run(api.creator_info)
+        want = "PUBLIC_TO_EVERYONE" if audited else "SELF_ONLY"
+        opts = info.get("privacy_level_options") or [want]
+        level = want if want in opts else ("SELF_ONLY" if "SELF_ONLY" in opts else opts[0])
+        settings = {"privacy_level": level, "disable_comment": bool(info.get("comment_disabled")),
+                    "disable_duet": bool(info.get("duet_disabled")), "disable_stitch": bool(info.get("stitch_disabled"))}
+        ms = await run(pipe.cover_ms, ep, n, it)
+        pid = await run(api.post, Path(video), cap, settings, ms)
+        tt["publish_id"], tt["cover_ms"], tt["privacy"] = pid, ms, level
+        RS(ep).save()
+        st = {}
+        for _ in range(60):
+            await asyncio.sleep(5)
+            st = await run(api.status, pid)
+            if st.get("status") in ("PUBLISH_COMPLETE", "FAILED"):
+                break
+        if st.get("status") != "PUBLISH_COMPLETE":
+            raise RuntimeError(st.get("fail_reason") or st.get("status") or "pas de réponse de TikTok")
+        if level == "PUBLIC_TO_EVERYONE":
+            tt["posted"] = True
+            RS(ep).save()
+            try:
+                await run(pipe.tt_mark, dict(it), share.TT_POSTED)
+            except Exception:  # noqa: BLE001
+                log.exception("clickup tt posted")
+            await say(ctx, f"🎵 {name} est en ligne sur TikTok avec sa légende (cover = image à {ms / 1000:.1f} s).")
+            return
+        await say(ctx, f"🎵 {name} est sur TikTok en « Moi seulement » avec sa légende complète et la cover choisie "
+                       f"(image à {ms / 1000:.1f} s de la vidéo). Il te reste à ouvrir TikTok → Profil → cadenas → la vidéo → "
+                       "Paramètres → Tout le monde. TikTok ne laisse pas le bot publier en public tant que l'app n'est pas "
+                       "auditée." + (" (en retard)" if late else ""),
+                  reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
+    except Exception as e:  # noqa: BLE001
+        log.exception("tiktok auto")
+        err = str(e)
+        why = (" Ton compte TikTok doit être en PRIVÉ tant que l'app n'est pas auditée (TikTok refuse sinon : "
+               "Paramètres → Confidentialité → Compte privé). Remets-le en public après la publication, ou attends l'audit."
+               if "unaudited_client" in err else "")
+        await say(ctx, f"⚠️ TikTok n'a pas pris {name} en publication directe : <code>{esc(err[-200:])}</code>.{why} "
+                       "Je passe par la boîte de brouillons.")
+        asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=late))
 
 
 async def tt_draft(ctx, ep, n: int, auto: bool = False, late: bool = False):
@@ -8021,7 +8099,7 @@ topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate
 topics.assign(globals(), "reels", """teaser_import covers_name teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
-    set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
+    set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tt_auto tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make post_youtube_send send_post post_validate on_post_button posts_tick atlas_tick
