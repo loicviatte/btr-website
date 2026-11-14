@@ -1526,15 +1526,25 @@ def tool_handlers(ctx, images: list) -> dict:
         return await post_change(str(key).lower().strip(), "size", {"factor": float(factor or 1), "reset": bool(reset),
                                                                      "part": (part or "").lower() or None})
 
-    async def post_publish_now(key):
+    async def post_publish_now(key, youtube=False, instagram=True):
         """Validated carousel / story out NOW (Loïc 14.11: late on the planning): the planned time becomes now, in ClickUp
-        too (posts_refresh follows ClickUp), then posts_tick does the usual (Instagram API, TikTok draft, files)."""
+        too (posts_refresh follows ClickUp), then posts_tick does the usual (Instagram API, TikTok draft, files).
+        youtube = also the YouTube Community text + images (no API: sent to Loïc to post by hand); instagram=False =
+        only that (carousel already out on Instagram)."""
         key = str(key).lower().strip()
         ep = posts_ep_of(key)
         st = _posts.PostState(ep)
         it = st.items.get(key)
-        if not it or it.get("status") != "ok":
+        if not it or it.get("status") not in ("ok", "posted"):
             return "ce post n'est pas validé : valide-le d'abord (posts_validate)"
+        if youtube or not instagram:
+            if it["kind"] not in _posts.CAROUSELS:
+                return "YouTube Community : seulement pour les carrousels"
+            sent = await post_youtube_send(ctx, ep, key)
+            if not instagram:
+                return sent
+        if it.get("status") == "posted":
+            return "déjà parti sur Instagram" + (f" · {sent}" if youtube else "")
         ig, tt = it.setdefault("ig", {}), it.setdefault("tt", {})
         if ig.get("done") and (it["kind"] not in _posts.CAROUSELS or tt.get("sent") or tt.get("done")):
             return f"déjà parti : Instagram {ig.get('link') or 'publié'}" + (" · brouillon TikTok envoyé" if tt.get("sent") else "")
@@ -7581,6 +7591,28 @@ async def cm_send(ctx, ep, kind: str, final: bool = False):
     st.save()
 
 
+async def post_youtube_send(ctx, ep, key: str) -> str:
+    """A validated carousel for YouTube Community (the API can't post): its images, then the text (tap to copy) =
+    the TikTok caption without hashtags and @, the Spotify mention replaced by the episode link."""
+    from telegram import InputMediaPhoto as P
+    it = _posts.PostState(ep).items.get(key) or {}
+    caps = it.get("captions") or {}
+    text = re.sub(r"(?m)^(#\S+\s*)+$", "", caps.get("tiktok") or caps.get("instagram") or "")
+    text = re.sub(r"@(\w+)", lambda m: m.group(1).replace("_", " ").title(), text)
+    text = re.sub(r"(?i)\n*Full episode\b[^\n]*$", "", text.strip()).strip()
+    text = f"{text}\n\nFull episode: https://youtu.be/{ep.video_id}"
+    imgs = [Path(x).read_bytes() for x in it.get("files") or [] if Path(x).exists()]
+    if not imgs:
+        return "YouTube Community : je n'ai plus les images de ce post"
+    if len(imgs) == 1:
+        await tg(ctx.bot.send_photo, cfg.chat_id, imgs[0])
+    else:
+        await tg(ctx.bot.send_media_group, cfg.chat_id, [P(x) for x in imgs[:10]])
+    await say(ctx, f"▶️ <b>À poster maintenant sur YouTube Community</b> · {esc(post_name(ep, key))}\n<pre>{esc(text)}</pre>\n"
+                   "<i>YouTube : « Créer un post » → Image (les 4 images), colle le texte.</i>")
+    return "YouTube Community : images + texte envoyés (à poster à la main, pas d'API)"
+
+
 async def cm_validate(ctx, ep, kind: str):
     st = _cm.State(ep)
     it = st.items.get(kind) or {}
@@ -7951,7 +7983,7 @@ topics.assign(globals(), "reels", """teaser_import covers_name teaser_make tease
     set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
-topics.assign(globals(), "stories", """posts_make send_post post_validate on_post_button posts_tick atlas_tick
+topics.assign(globals(), "stories", """posts_make post_youtube_send send_post post_validate on_post_button posts_tick atlas_tick
     post_confirm on_unlock_button post_ask_date post_set_date
     atlas_done tt_photo_draft posts_cmd posts_trial posts_finish send_post_safe posts_rerender posts_photos posts_zoom
     choices_picker posts_choices posts_pick show_changed posts_ig_test posts_show""")

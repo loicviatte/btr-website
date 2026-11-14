@@ -296,8 +296,11 @@ TOOLS = [
                                                "« je suis en retard, sors-le »). L'heure prévue devient maintenant (ClickUp aussi) : "
                                                "Instagram par l'API (collab incluse) ou fichiers à poster à la main, brouillon TikTok "
                                                "pour les carrousels. Ne republie jamais un post déjà sorti. À appeler directement, "
-                                               "sans passer par Claude Code.",
-     "input_schema": {"type": "object", "properties": {"key": {"type": "string", "description": "moment, topics, poll, qa…"}},
+                                               "sans passer par Claude Code. youtube=true : envoie aussi à Loïc les images + le texte à poster "
+                                               "sur YouTube Community (pas d'API, il poste à la main) ; instagram=false : seulement "
+                                               "YouTube (carrousel déjà publié sur Instagram).",
+     "input_schema": {"type": "object", "properties": {"key": {"type": "string", "description": "moment, topics, poll, qa…"},
+                                                       "youtube": {"type": "boolean"}, "instagram": {"type": "boolean"}},
                       "required": ["key"]}},
     {"name": "planning_list", "description": "Le calendrier ClickUp de TOUS les posts (Instagram, TikTok, Shorts, Community…) : "
                                             "une ligne par tâche « id · nom · statut · date ». À appeler avant de changer "
