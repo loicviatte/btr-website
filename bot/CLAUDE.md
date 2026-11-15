@@ -333,3 +333,6 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
 - Keep the episode flow working end to end; check with `/opt/btr-bot/.venv/bin/python -m py_compile btrbot/*.py`
   and, when useful, `tests/simulate.py` (offline mocks).
 - User-facing text in French. Keep changes small and in the existing style.
+- TikTok = drafts only (Loïc 15.11): `bot.tt_tick` → `tt_draft` (inbox upload, no Direct Post any more: tt_auto / tt_publish /
+  composer settings / tiktok_mode removed). The inbox API accepts no caption or cover, so each draft is followed by ONE
+  message (cover image + caption in <pre>, two messages if the caption passes 1024 chars) with « ✅ Posté sur TikTok ».

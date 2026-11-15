@@ -364,21 +364,8 @@ TOOLS = [
                                                        "same": {"type": "boolean"}}}},
     {"name": "teaser_show", "description": "Renvoyer le teaser déjà monté, tel quel.",
      "input_schema": {"type": "object", "properties": {"link": {"type": "string"}}}},
-    {"name": "tiktok_mode", "description": "Réglage global TikTok des reels : mode = auto (défaut : à l'heure du Short le bot "
-                                           "publie via l'API avec la légende ClickUp et la cover choisie ; « Moi seulement » "
-                                           "tant que l'app n'est pas auditée), inbox (brouillon dans la boîte TikTok, sans "
-                                           "légende ni cover) ou direct (seulement ce qui est confirmé dans /tiktok). "
-                                           "audited=true quand TikTok a validé l'app : auto publie alors en public. Sans "
-                                           "argument = dire le réglage actuel.",
-     "input_schema": {"type": "object", "properties": {"mode": {"type": "string", "enum": ["auto", "inbox", "direct"]},
-                                                       "audited": {"type": "boolean"}}}},
-    {"name": "tiktok_auto", "description": "Publier tout de suite le reel n sur TikTok par l'API, avec sa légende complète et la "
-                                           "cover (image du reel) déjà en place (« Moi seulement » tant que l'app n'est pas "
-                                           "auditée). link = l'épisode si ce n'est pas celui en cours.",
-     "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "link": {"type": "string"}},
-                      "required": ["n"]}},
-    {"name": "tiktok_draft", "description": "Envoyer tout de suite le reel n en brouillon TikTok (boîte du compte) + sa légende "
-                                            "à copier. link = l'épisode si ce n'est pas celui en cours.",
+    {"name": "tiktok_draft", "description": "Envoyer tout de suite le reel n en brouillon TikTok (boîte du compte, jamais publié) "
+                                            "+ UN message avec la cover et la légende à copier. link = l'épisode si ce n'est pas celui en cours.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}, "link": {"type": "string"}},
                       "required": ["n"]}},
     {"name": "transcript_search", "description": "Ce qui a été DIT dans un épisode (la transcription SRT) : query = mots ou "

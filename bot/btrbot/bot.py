@@ -1740,31 +1740,13 @@ def tool_handlers(ctx, images: list) -> dict:
             return "quel épisode ? (lien YouTube)"
         return bg(ctx, "Teaser", teaser_make(ctx, ep, feedback or "", bool(same))) + " (dans le fil Reels)"
 
-    async def tiktok_mode_t(mode=None, audited=None):
-        if mode in ("auto", "inbox", "direct"):
-            reg.data["tiktok_mode"] = mode
-        if audited is not None:
-            reg.data["tiktok_audited"] = bool(audited)
-        reg.save()
-        return (f"réglage TikTok = {tt_mode()}, app auditée = {bool(reg.data.get('tiktok_audited'))} (auto : publication API "
-                "à l'heure avec légende + image de cover, « Moi seulement » tant que l'app n'est pas auditée ; inbox : "
-                "brouillon sans légende ; direct : seulement ce qui est confirmé dans /tiktok)")
-
-    async def tiktok_auto_t(n=None, link=None):
-        m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
-        ep = reg.episode(m.group(1)) if m else reel_ep()
-        if ep is None or not n or str(n) not in RS(ep).data.get("items", {}):
-            return "quel reel ? (numéro + lien de l'épisode)"
-        asyncio.create_task(tt_auto(ctx, ep, int(n)))
-        return f"j'envoie le reel {n} sur TikTok avec légende + cover ; résultat dans le fil Reels dans ~1-2 min"
-
     async def tiktok_draft_t(n=None, link=None):
         m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
         ep = reg.episode(m.group(1)) if m else reel_ep()
         if ep is None or not n or str(n) not in RS(ep).data.get("items", {}):
             return "quel reel ? (numéro + lien de l'épisode)"
         asyncio.create_task(tt_draft(ctx, ep, int(n)))
-        return f"j'envoie le reel {n} en brouillon TikTok ; légende dans le fil Reels dans ~1 min"
+        return f"j'envoie le reel {n} en brouillon TikTok ; cover + légende à copier dans le fil Reels dans ~1 min"
 
     async def teaser_show_t(link=None):
         m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", link or "")
@@ -1814,7 +1796,7 @@ def tool_handlers(ctx, images: list) -> dict:
             "posts_status": posts_status_t, "posts_show": posts_show_t,
             "transcript_search": transcript_search, "post_texts": post_texts,
             "teaser_make": teaser_t, "teaser_show": teaser_show_t,
-            "tiktok_mode": tiktok_mode_t, "tiktok_draft": tiktok_draft_t, "tiktok_auto": tiktok_auto_t,
+            "tiktok_draft": tiktok_draft_t,
             "youtube_community": youtube_community,
             "shorts_plan": shorts_plan_t, "shorts_schedule": shorts_schedule, "covers_ok": covers_ok_t, "guest_instagram": guest_instagram,
             "instagram_collab": instagram_collab,
@@ -3289,24 +3271,10 @@ async def tt_tick(ctx):
         tt["sent"] = now.isoformat()
         RS(ep).save()
         late = (now - at).total_seconds() > 3600
-        if tt_mode() == "inbox":                              # Loïc 14.11: the TikTok inbox as a draft (no caption / cover)
+        if share.Secrets(cfg.data_dir).get("tt_refresh"):    # Loïc 15.11: inbox draft only, never a post
             asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=late))
             continue
-        if tt_mode() == "auto" and share.Secrets(cfg.data_dir).get("tt_refresh"):
-            asyncio.create_task(tt_auto(ctx, ep, n, late))   # Direct Post: caption + cover frame already in place
-            continue
-        if tt.get("confirmed") and share.Secrets(cfg.data_dir).get("tt_refresh"):
-            asyncio.create_task(tt_publish(ctx, ep, n))      # Loïc confirmed the post in the composer: API
-            continue
         await tt_notify(ctx, ep, n, it, (now - at).total_seconds() > 3600)
-
-
-def tt_mode() -> str:
-    """Global TikTok setting (tool tiktok_mode): « auto » (default, Loïc 14.11) = Direct Post at the Short's time with the
-    caption and the cover frame, « only me » until the app is audited (reg.data["tiktok_audited"]); « inbox » = draft in the
-    TikTok inbox (the API can't set caption / cover there); « direct » = only what Loïc confirmed in /tiktok."""
-    m = reg.data.get("tiktok_mode")
-    return m if m in ("inbox", "direct") else "auto"
 
 
 async def tt_notify(ctx, ep, n: int, it: dict, late: bool = False):
@@ -3352,283 +3320,35 @@ async def tt_posted(ctx, vid: str, n: int):
         await say(ctx, f"⚠️ ClickUp : <code>{esc(str(e)[-150:])}</code>")
 
 
-# TikTok composer (TikTok's Direct Post UX rules): before a post Loïc sees the account, the video, the caption, picks
-# the audience himself (nothing pre-selected), comments / duet / stitch, the commercial content disclosure, then confirms.
-TT_SET = {"c": "disable_comment", "d": "disable_duet", "s": "disable_stitch"}
-
-
+# TikTok: never published by the bot (Loïc 15.11). /tiktok [n] and the old composer buttons only send the draft.
 def T(fr: str, en: str) -> str:
     """TikTok screens in English when Loïc records the demo for TikTok's review (« /tiktok en », back with « /tiktok fr »)."""
     return en if reg.data.get("tt_en") else fr
 
 
-PRIVACY_EN = {"PUBLIC_TO_EVERYONE": "Everyone", "MUTUAL_FOLLOW_FRIENDS": "Friends", "FOLLOWER_OF_CREATOR": "Followers",
-              "SELF_ONLY": "Only me"}
-
-
-def tt_privacy(code: str) -> str:
-    from . import tiktok
-    return (PRIVACY_EN if reg.data.get("tt_en") else tiktok.PRIVACY_FR).get(code, code)
-
-
-def tt_card(ep, n: int):
-    from . import shorts, tiktok
-    it = reel_item(ep, n)
-    tt = it.setdefault("tt_post", {})
-    cr, st = tt.get("creator") or {}, tt.setdefault("settings", {})
-    who = cr.get("creator_nickname") or cr.get("creator_username") or "?"
-    at = shorts.parse((it.get("yt_short") or {}).get("at"))
-    lines = [f"🎵 <b>TikTok · {short_name({'ep': ep, 'n': n})}</b>",
-             T("Compte", "Account") + f" : <b>{esc(who)}</b>" + (f" (@{esc(cr['creator_username'])})" if cr.get("creator_username") else ""),
-             T("Quand", "When") + " : " + (f"<b>{shorts.label(at)}</b> " + T("(Londres)", "(London)") if at
-                                          else T("pas encore programmé (le Short d'abord)", "not scheduled yet")),
-             T("Légende", "Caption") + f" :\n<pre>{esc((it.get('captions') or {}).get('tiktok') or '')}</pre>"]
-    mx = cr.get("max_video_post_duration_sec")
-    if mx and float(it.get("duration") or 0) > float(mx):
-        lines.append(T(f"⚠️ La vidéo dure {it.get('duration')} s, ce compte accepte {mx} s maximum.",
-                       f"⚠️ The video lasts {it.get('duration')} s, this account accepts {mx} s at most."))
-    pl = st.get("privacy_level")
-    lines.append(T("Visibilité", "Who can view") + " : " + (f"<b>{tt_privacy(pl)}</b>" if pl else T("<b>à choisir</b>", "<b>choose</b>")))
-    if st.get("commercial"):
-        if st.get("brand_content_toggle"):
-            lines.append(T("Contenu commercial : sera étiqueté « Partenariat rémunéré ».",
-                           "Commercial content: your video will be labeled “Paid partnership”."))
-        elif st.get("brand_organic_toggle"):
-            lines.append(T("Contenu commercial : sera étiqueté « Contenu promotionnel ».",
-                           "Commercial content: your video will be labeled “Promotional content”."))
-        else:
-            lines.append(T("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque ».",
-                           "Commercial content: choose “Your brand” and/or “Branded content”."))
-    lines.append(T("En publiant, tu acceptes la Music Usage Confirmation de TikTok", "By posting, you agree to TikTok's Music Usage Confirmation")
-                 + (T(" et sa Branded Content Policy.", " and Branded Content Policy.") if st.get("brand_content_toggle") else "."))
-    if tt.get("confirmed"):
-        lines.append(T("✅ <b>Confirmé</b> : le bot publiera à l'heure dite. Tu peux encore changer et reconfirmer.",
-                       "✅ <b>Confirmed</b>: the bot will post at the scheduled time. You can still change and confirm again."))
-    key = f"ttc:{ep.video_id}:{n}"
-    opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
-    rows = [[B(("● " if pl == o else "") + tt_privacy(o), callback_data=f"{key}:p:{i}")
-             for i, o in enumerate(opts)][k:k + 2] for k in range(0, len(opts), 2)]
-    tog = []
-    for code, label, dis in (("c", T("Commentaires", "Comments"), "comment_disabled"), ("d", T("Duo", "Duet"), "duet_disabled"),
-                             ("s", "Stitch", "stitch_disabled")):
-        if cr.get(dis):
-            tog.append(B(f"🚫 {label}", callback_data=f"{key}:x"))
-        else:
-            tog.append(B(("❌ " if st.get(TT_SET[code]) else "✅ ") + label, callback_data=f"{key}:{code}"))
-    rows.append(tog)
-    rows.append([B(("☑️ " if st.get("commercial") else "⬜ ") + T("Contenu commercial", "Commercial content"), callback_data=f"{key}:m")])
-    if st.get("commercial"):
-        rows.append([B(("☑️ " if st.get("brand_organic_toggle") else "⬜ ") + T("Ta marque", "Your brand"), callback_data=f"{key}:o"),
-                     B(("☑️ " if st.get("brand_content_toggle") else "⬜ ") + T("Contenu de marque", "Branded content"),
-                       callback_data=f"{key}:b")])
-    rows.append([B(T("✅ Confirmer pour l'heure prévue", "✅ Confirm for the scheduled time"), callback_data=f"{key}:go"),
-                 B(T("▶️ Publier maintenant", "▶️ Post now"), callback_data=f"{key}:now")])
-    rows.append([B(T("📥 Envoyer en brouillon dans TikTok", "📥 Send as a draft to TikTok"), callback_data=f"{key}:draft")])
-    return "\n".join(lines), K(rows)
-
-
 async def tt_compose(ctx, ep, n: int):
-    """Send the composer for reel n (video first, so Loïc sees what will be posted)."""
-    from pathlib import Path
-    from . import share, tiktok
-    it = reel_item(ep, n)
-    tt = it.setdefault("tt_post", {})
-    try:
-        tt["creator"] = await run(lambda: tiktok.TikTok(share.Secrets(cfg.data_dir)).creator_info())
-    except share.NotConnected:
-        await say(ctx, T("TikTok n'est pas encore connecté : /connect.", "TikTok is not connected yet: /connect."))
-        return
-    except Exception as e:  # noqa: BLE001
-        await say(ctx, f"⚠️ TikTok : <code>{esc(str(e)[-200:])}</code>")
-        return
-    tt.setdefault("settings", {})
-    RS(ep).save()
-    if it.get("file") and Path(it["file"]).exists():
-        with open(it["file"], "rb") as f:
-            await ctx.bot.send_video(cfg.chat_id, f, caption=T("🎵 Aperçu TikTok · ", "🎵 TikTok preview · ") + short_name({'ep': ep, 'n': n}),
-                                     supports_streaming=True, width=1080, height=1920,
-                                     duration=int(it.get("duration") or 0), read_timeout=300, write_timeout=300)
-    text, kb = tt_card(ep, n)
-    await say(ctx, text, reply_markup=kb)
+    """/tiktok n: the reel goes to the TikTok inbox as a draft (video), cover + caption in one message."""
+    await say(ctx, T("📥 J'envoie la vidéo en brouillon dans la boîte TikTok du compte…",
+                     "📥 Sending the video as a draft to the account's TikTok inbox…"))
+    asyncio.create_task(tt_draft(ctx, ep, n))
 
 
 async def on_tt_button(ctx, q, data: str):
-    from . import share, tiktok
-    _, vid, n, act, *rest = data.split(":")
-    ep, n = reg.episode(vid), int(n)
-    it = reel_item(ep, n)
-    tt = it.setdefault("tt_post", {})
-    st = tt.setdefault("settings", {})
-    cr = tt.get("creator") or {}
-    if tt.get("posted"):
-        await say(ctx, T("Déjà publié sur TikTok.", "Already posted on TikTok."))
-        return
-    if act == "x":
-        await say(ctx, T("Ce réglage est désactivé dans les paramètres de ton compte TikTok.",
-                         "This setting is turned off in your TikTok account settings."))
-        return
+    """Buttons of the old composer (messages already in the chat): only « draft » still does something."""
+    _, vid, n, act, *_ = data.split(":")
     if act == "draft":
-        await say(ctx, T("📥 J'envoie la vidéo en brouillon dans la boîte TikTok du compte…",
-                         "📥 Sending the video as a draft to the account's TikTok inbox…"))
-        asyncio.create_task(tt_draft(ctx, ep, n))
-        return
-    if act == "p":
-        opts = cr.get("privacy_level_options") or list(tiktok.PRIVACY_FR)
-        st["privacy_level"] = opts[int(rest[0])]
-    elif act in TT_SET:
-        st[TT_SET[act]] = not st.get(TT_SET[act])
-    elif act == "m":
-        st["commercial"] = not st.get("commercial")
-        if not st["commercial"]:
-            st["brand_organic_toggle"] = st["brand_content_toggle"] = False
-    elif act == "o":
-        st["brand_organic_toggle"] = not st.get("brand_organic_toggle")
-    elif act == "b":
-        st["brand_content_toggle"] = not st.get("brand_content_toggle")
-        if st["brand_content_toggle"] and st.get("privacy_level") == "SELF_ONLY":
-            st["privacy_level"] = None
-            await say(ctx, T("Un contenu de marque ne peut pas être privé : choisis une autre visibilité.",
-                             "Branded content can't be private: choose another audience."))
-    elif act in ("go", "now"):
-        if not st.get("privacy_level"):
-            await say(ctx, T("Choisis d'abord la visibilité.", "Choose who can view this video first."))
-            return
-        if st.get("commercial") and not (st.get("brand_organic_toggle") or st.get("brand_content_toggle")):
-            await say(ctx, T("Contenu commercial : choisis « Ta marque » et/ou « Contenu de marque », ou décoche-le.",
-                             "Commercial content: choose “Your brand” and/or “Branded content”, or untick it."))
-            return
-        if st.get("brand_content_toggle") and st.get("privacy_level") == "SELF_ONLY":
-            await say(ctx, T("Un contenu de marque ne peut pas être privé.", "Branded content can't be private."))
-            return
-        tt["confirmed"] = True
-        RS(ep).save()
-        try:
-            await run(pipe.tt_mark, dict(it), share.TT_SCHEDULED)
-        except Exception:  # noqa: BLE001
-            log.exception("clickup tt")
-        if act == "now":
-            tt["sent"] = "now"
-            RS(ep).save()
-            await say(ctx, T("🎵 J'envoie sur TikTok…", "🎵 Posting to TikTok…"))
-            asyncio.create_task(tt_publish(ctx, ep, n))
-    RS(ep).save()
-    text, kb = tt_card(ep, n)
-    try:
-        await q.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
-    except Exception:  # noqa: BLE001
-        pass
+        await tt_compose(ctx, reg.episode(vid), int(n))
+    else:
+        await say(ctx, T("Le bot ne publie plus sur TikTok : il envoie un brouillon, tu publies depuis l'app.",
+                         "The bot no longer posts to TikTok: it sends a draft, you post from the app."))
 
-
-async def tt_publish(ctx, ep, n: int):
-    """Direct Post with the confirmed settings, then follow the status until TikTok says it is out."""
-    from pathlib import Path
-    from . import share, tiktok
-    it = reel_item(ep, n)
-    tt = it.setdefault("tt_post", {})
-    name = short_name({"ep": ep, "n": n})
-    try:
-        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
-        pid = await run(api.post, Path(it["file"]), (it.get("captions") or {}).get("tiktok") or "", tt["settings"])
-        tt["publish_id"] = pid
-        RS(ep).save()
-        st = {}
-        await say(ctx, T("🎵 Vidéo envoyée, TikTok la traite…", "🎵 Video uploaded, TikTok is processing it…"))
-        for _ in range(60):
-            await asyncio.sleep(5)
-            st = await run(api.status, pid)
-            if st.get("status") in ("PUBLISH_COMPLETE", "FAILED"):
-                break
-        if st.get("status") != "PUBLISH_COMPLETE":
-            raise RuntimeError(st.get("fail_reason") or st.get("status") or "pas de réponse de TikTok")
-        if tt["settings"].get("privacy_level") == "SELF_ONLY":    # private = a test: the reel stays planned
-            for k in ("confirmed", "sent", "settings"):
-                tt.pop(k, None)
-            RS(ep).save()
-            await say(ctx, T(f"🎵 {name} est publié sur TikTok en privé (Moi uniquement) : c'était un test, le reel reste "
-                             "prévu comme avant (notification à son heure).",
-                             f"🎵 {name} is posted on TikTok (Only me)."))
-            return
-        tt["posted"] = True
-        RS(ep).save()
-        try:
-            await run(pipe.tt_mark, dict(it), share.TT_POSTED)
-        except Exception:  # noqa: BLE001
-            log.exception("clickup tt posted")
-        private = tt["settings"].get("privacy_level") == "SELF_ONLY"
-        await say(ctx, T(f"🎵 {name} est en ligne sur TikTok", f"🎵 {name} is live on TikTok")
-                       + f" ({tt_privacy(tt['settings']['privacy_level'])}). ClickUp : Posted.")
-    except Exception as e:  # noqa: BLE001
-        log.exception("tiktok post")
-        tt.pop("confirmed", None)
-        tt.pop("sent", None)
-        RS(ep).save()
-        await say(ctx, f"⚠️ TikTok n'a pas pris {name} : <code>{esc(str(e)[-200:])}</code>. Je repasse en mode "
-                       "notification pour ce reel (vidéo + légende à l'heure prévue).")
-
-
-async def tt_auto(ctx, ep, n: int, late: bool = False):
-    """Scheduled reel: Direct Post with the full caption (hashtags, @) and video_cover_timestamp_ms = the moment of the
-    cover photo. The API takes no image for a cover, so the frame is the photo's moment. App not audited = « Moi
-    seulement » (SELF_ONLY): Loïc only switches it to public in TikTok. Any failure → the inbox draft, else the
-    notification (video + cover + caption)."""
-    from pathlib import Path
-    from . import share, tiktok
-    it = reel_item(ep, n)
-    tt = it.setdefault("tt_post", {})
-    name = short_name({"ep": ep, "n": n})
-    cap = (it.get("captions") or {}).get("tiktok") or ""
-    audited = bool(reg.data.get("tiktok_audited"))
-    try:
-        video = it["file"]
-        if it.get("external"):
-            video = str(await run(pipe.ig_video, dict(it)))
-        api = tiktok.TikTok(share.Secrets(cfg.data_dir))
-        info = await run(api.creator_info)
-        want = "PUBLIC_TO_EVERYONE" if audited else "SELF_ONLY"
-        opts = info.get("privacy_level_options") or [want]
-        level = want if want in opts else ("SELF_ONLY" if "SELF_ONLY" in opts else opts[0])
-        settings = {"privacy_level": level, "disable_comment": bool(info.get("comment_disabled")),
-                    "disable_duet": bool(info.get("duet_disabled")), "disable_stitch": bool(info.get("stitch_disabled"))}
-        ms = await run(pipe.cover_ms, ep, n, it)
-        pid = await run(api.post, Path(video), cap, settings, ms)
-        tt["publish_id"], tt["cover_ms"], tt["privacy"] = pid, ms, level
-        RS(ep).save()
-        st = {}
-        for _ in range(60):
-            await asyncio.sleep(5)
-            st = await run(api.status, pid)
-            if st.get("status") in ("PUBLISH_COMPLETE", "FAILED"):
-                break
-        if st.get("status") != "PUBLISH_COMPLETE":
-            raise RuntimeError(st.get("fail_reason") or st.get("status") or "pas de réponse de TikTok")
-        if level == "PUBLIC_TO_EVERYONE":
-            tt["posted"] = True
-            RS(ep).save()
-            try:
-                await run(pipe.tt_mark, dict(it), share.TT_POSTED)
-            except Exception:  # noqa: BLE001
-                log.exception("clickup tt posted")
-            await say(ctx, f"🎵 {name} est en ligne sur TikTok avec sa légende (cover = image à {ms / 1000:.1f} s).")
-            return
-        await say(ctx, f"🎵 {name} est sur TikTok en « Moi seulement » avec sa légende complète et la cover choisie "
-                       f"(image à {ms / 1000:.1f} s de la vidéo). Il te reste à ouvrir TikTok → Profil → cadenas → la vidéo → "
-                       "Paramètres → Tout le monde. TikTok ne laisse pas le bot publier en public tant que l'app n'est pas "
-                       "auditée." + (" (en retard)" if late else ""),
-                  reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
-    except Exception as e:  # noqa: BLE001
-        log.exception("tiktok auto")
-        err = str(e)
-        why = (" Ton compte TikTok doit être en PRIVÉ tant que l'app n'est pas auditée (TikTok refuse sinon : "
-               "Paramètres → Confidentialité → Compte privé). Remets-le en public après la publication, ou attends l'audit."
-               if "unaudited_client" in err else "")
-        await say(ctx, f"⚠️ TikTok n'a pas pris {name} en publication directe : <code>{esc(err[-200:])}</code>.{why} "
-                       "Je passe par la boîte de brouillons.")
-        asyncio.create_task(tt_draft(ctx, ep, n, auto=True, late=late))
 
 
 async def tt_draft(ctx, ep, n: int, auto: bool = False, late: bool = False):
-    """Upload (video.upload): the clip goes to the TikTok inbox as a draft; Loïc finishes it in the app.
-    auto = the scheduled send (tiktok_mode draft): a failure falls back to the notification (video + caption)."""
+    """The ONLY way a reel goes to TikTok (Loïc 15.11): the clip lands in the account's TikTok inbox as a DRAFT
+    (Upload, video.upload), never published by the bot. The API takes no caption / cover on that endpoint (only
+    source_info), so Loïc gets ONE message in the Reels topic: the cover as an image + the ClickUp caption to copy.
+    auto = the scheduled send: a failure falls back to the notification (video + cover + caption)."""
     from pathlib import Path
     from . import share, tiktok
     it = reel_item(ep, n)
@@ -3640,6 +3360,8 @@ async def tt_draft(ctx, ep, n: int, auto: bool = False, late: bool = False):
             video = str(await run(pipe.ig_video, dict(it)))
         api = tiktok.TikTok(share.Secrets(cfg.data_dir))
         pid = await run(api.draft, Path(video))
+        it.setdefault("tt_post", {})["publish_id"] = pid
+        RS(ep).save()
         st = {}
         for _ in range(12):                               # the inbox notification usually comes within a minute
             await asyncio.sleep(5)
@@ -3648,21 +3370,28 @@ async def tt_draft(ctx, ep, n: int, auto: bool = False, late: bool = False):
                 break
         if st.get("status") == "FAILED":
             raise RuntimeError(st.get("fail_reason") or "FAILED")
-        if st.get("status") not in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
-            await say(ctx, T(f"📥 Vidéo envoyée à TikTok, statut encore « {esc(str(st.get('status')))} » après 1 min "
-                             f"(publish_id {esc(pid)}). Regarde ta boîte TikTok dans quelques minutes.",
-                             f"📥 Video uploaded, TikTok status still “{esc(str(st.get('status')))}” after 1 min.")
-                      + "\n<pre>" + esc(cap) + "</pre>",
-                      reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
-            return
-        await say(ctx, T(f"📥 {name} en brouillon TikTok" + (" (en retard)" if late else "") + " : ouvre la notification, "
-                         "colle la légende et publie.", f"📥 {name} is in the account's TikTok inbox as a draft: open the "
-                         "notification in TikTok to edit and post it.") + "\n<pre>" + esc(cap) + "</pre>",
-                  reply_markup=K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]]))
+        there = st.get("status") in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE")
+        head = (f"📥 {name} : brouillon TikTok" + (" (en retard)" if late else "") + (" prêt" if there else
+                f" envoyé (statut « {esc(str(st.get('status')))} », regarde ta boîte TikTok dans quelques minutes)")
+                + ". TikTok ne laisse pas l'API joindre la légende ni la cover à un brouillon : ouvre-le dans l'app, "
+                "importe la cover (Modifier la couverture), colle la légende ci-dessous et publie toi-même.")
+        kb = K([[B("✅ Posté sur TikTok", callback_data=f"ttok:{ep.video_id}:{n}")]])
+        text = f"{head}\n<pre>{esc(cap)}</pre>"
+        cover = it.get("cover")
+        if cover and Path(cover).exists():
+            if len(text) <= 1024:                         # one message: cover + caption
+                with open(cover, "rb") as f:
+                    await ctx.bot.send_photo(cfg.chat_id, f, caption=text, parse_mode=ParseMode.HTML, reply_markup=kb)
+            else:                                         # Telegram caps a photo caption at 1024 characters
+                with open(cover, "rb") as f:
+                    await ctx.bot.send_photo(cfg.chat_id, f, caption=f"Cover · {name}")
+                await say(ctx, text, reply_markup=kb)
+        else:
+            await say(ctx, text + "\n(pas de cover rangée pour ce reel)", reply_markup=kb)
     except Exception as e:  # noqa: BLE001
         log.exception("tiktok draft")
         await say(ctx, f"⚠️ Brouillon TikTok refusé : <code>{esc(str(e)[-200:])}</code>"
-                  + (". Je t'envoie la vidéo et la légende à la place." if auto else ""))
+                  + (". Je t'envoie la vidéo, la cover et la légende à la place." if auto else ""))
         if auto:
             await tt_notify(ctx, ep, n, it, late)
 
@@ -8099,7 +7828,7 @@ topics.assign(globals(), "stories", """cm_make cm_send cm_validate cm_unvalidate
 topics.assign(globals(), "reels", """teaser_import covers_name teaser_make teaser_send on_teaser_button propose_reels send_reel make_reel reel_chain validate_reel maybe_dispatch
     file_reels redo_cover alt_cover push_alt_cover show_reels restore_validated better_covers send_cover share_reel drop_reel undrop_reel
     on_reel_button shorts_plan shorts_show shorts_go shorts_watch shorts_sync ig_tick ig_job ask_handle
-    set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_publish tt_draft tt_auto tiktok_cmd covers_ok
+    set_guest_handle handle_reply tt_tick tt_posted tt_compose on_tt_button tt_draft tiktok_cmd covers_ok
     reels_cmd reel_fast_path igtest_cmd shorts_cmd teaser_cmd""")
 topics.assign(globals(), "dash", """dash_tick""")
 topics.assign(globals(), "stories", """posts_make post_youtube_send send_post post_validate on_post_button posts_tick atlas_tick

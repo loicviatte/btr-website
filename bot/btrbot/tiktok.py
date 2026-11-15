@@ -1,13 +1,12 @@
-"""TikTok Content Posting API (Direct Post), official, no third party.
+"""TikTok Content Posting API, official, no third party.
 
 Connected once from Telegram (/connect): Loïc pastes « tiktok CLIENT_KEY CLIENT_SECRET » (app BTR Studio on
 developers.tiktok.com), opens the authorisation link, TikTok sends him to breaktheroutinepodcast.com/tiktok/callback
 which shows « tiktok CODE »; he pastes it back. Tokens: access 24 h (refreshed by the bot), refresh 365 days, kept in
-data/secrets.json. Until TikTok audits the app, everything it posts is private (SELF_ONLY): the bot then keeps the
-notification mode for real posts (bot.tt_tick).
+data/secrets.json.
 
-Before each post Loïc confirms in Telegram (bot.tt_compose, TikTok's UX rules): account, caption, audience picked by
-him from creator_info (nothing pre-selected), comments / duet / stitch, commercial content disclosure.
+The bot NEVER publishes a video (Loïc 15.11): reels only go to the account's inbox as drafts (`draft`, endpoint
+inbox/video/init, which takes only source_info: no caption, no cover), and Loïc publishes from the TikTok app.
 """
 import time
 import urllib.parse
@@ -186,24 +185,6 @@ class TikTok:
             "post_info": {"title": title[:90], "description": caption[:4000]},
             "source_info": {"source": "PULL_FROM_URL", "photo_cover_index": 0, "photo_images": urls[:35]},
             "post_mode": "MEDIA_UPLOAD", "media_type": "PHOTO"}))["data"]
-        return d["publish_id"]
-
-    def post(self, video: Path, title: str, settings: dict, cover_ms: int = 0) -> str:
-        """Direct Post of a local file with Loïc's settings (privacy_level, disable_comment / duet / stitch,
-        brand_content_toggle, brand_organic_toggle). Returns the publish_id."""
-        size = video.stat().st_size
-        chunk, count = self._chunks(size)
-        body = {"post_info": {"title": title[:2200], "privacy_level": settings["privacy_level"],
-                              "disable_comment": bool(settings.get("disable_comment")),
-                              "disable_duet": bool(settings.get("disable_duet")),
-                              "disable_stitch": bool(settings.get("disable_stitch")),
-                              "video_cover_timestamp_ms": int(cover_ms),
-                              "brand_content_toggle": bool(settings.get("brand_content_toggle")),
-                              "brand_organic_toggle": bool(settings.get("brand_organic_toggle"))},
-                "source_info": {"source": "FILE_UPLOAD", "video_size": size, "chunk_size": chunk,
-                                "total_chunk_count": count}}
-        d = _check(requests.post(f"{API}/post/publish/video/init/", headers=self._h(), timeout=60, json=body))["data"]
-        self._upload(d["upload_url"], video, size, chunk, count)
         return d["publish_id"]
 
     def status(self, publish_id: str) -> dict:
