@@ -26,8 +26,10 @@ Comment tu travailles :
 - Discussion du titre / de la citation de l'épisode en cours (« plus provoc », « le 2 mais plus court », « autre angle ») :
   outil title_chat avec son message tel quel.
 - Une demande que les outils ne couvrent pas (nouvelle fonction, nouveau format, bug, retouche de mise en page qui
-  n'est pas un réglage) : outil propose_claude_code avec une demande complète et autonome. Ça affiche un bouton ; rien
-  ne part sans son oui. Ne dis jamais « c'est transmis » avant son clic.
+  n'est pas un réglage) : outil propose_claude_code avec une demande complète et autonome (ce qu'il veut, ce qu'il a
+  vu, quel épisode / reel / post, le comportement attendu : Claude ne voit pas cette conversation). Le bot lui envoie
+  la demande à copier-coller dans sa session Claude (gratuit), avec un bouton pour la faire coder par le bot (payant).
+  Dis-lui simplement de la copier dans Claude. Ne dis jamais que c'est en cours de codage.
 - Retour visuel sur une miniature (souvent avec captures) : d'abord un RÉGLAGE si ça suffit (set_design : position,
   taille, interligne, devant/derrière…), sinon thumbnail_feedback (Claude Code reprend la miniature avec ses captures).
 - Les miniatures : horizontal = youtube, vertical = instagram, carré = square. Une miniature validée est figée.
@@ -133,9 +135,10 @@ TOOLS = [
      "réglage) : prépare la demande pour Claude Code avec ses captures, et affiche le bouton de confirmation.",
      "input_schema": {"type": "object", "properties": {"feedback": {"type": "string", "description": "le retour complet de Loïc, reformulé clairement"}},
                       "required": ["feedback"]}},
-    {"name": "propose_claude_code", "description": "Proposer de faire coder par Claude Code (nouvelle fonction, bug, comportement différent). "
-     "Affiche un bouton ; rien ne part sans le oui de Loïc.",
-     "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "demande complète, autonome, précise"}},
+    {"name": "propose_claude_code", "description": "Faire coder quelque chose (nouvelle fonction, bug, comportement différent) : envoie à Loïc une "
+     "demande complète à coller dans sa session Claude (le bot y ajoute les erreurs du serveur), avec un bouton de secours "
+     "pour la faire coder par le bot (payant).",
+     "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "demande complète et autonome : ce que Loïc veut, ce qu'il a vu (messages, erreurs exactes), épisode / reel / post concerné, comportement attendu"}},
                       "required": ["request"]}},
     {"name": "reels_propose", "description": "Proposer 10 moments pour des reels (dernier épisode, ou la vidéo donnée).",
      "input_schema": {"type": "object", "properties": {"video": {"type": "string", "description": "lien ou id YouTube (facultatif)"}}}},
@@ -512,7 +515,7 @@ def _create(llm, model, system, tools, messages):
 
 
 async def converse(llm, model: str, context: str, history: list[dict], user_content, handlers: dict,
-                   max_steps: int = 12) -> tuple[str, list[str]]:
+                   max_steps: int = 8) -> tuple[str, list[str]]:
     """Runs the tool loop. Returns (final text for Loïc, list of actions done)."""
     system = cached_system(context)
     tools = cached_tools()
@@ -560,7 +563,7 @@ def clean(text: str) -> str:
 class Memory:
     """The whole chat as the model sees it: Loïc's messages, and everything the bot posted (merged per turn)."""
 
-    def __init__(self, reg, key: str = "convo", keep: int = 30):
+    def __init__(self, reg, key: str = "convo", keep: int = 12):   # Loïc 16.11: 12 (cost; was 30)
         self.reg, self.key, self.keep = reg, key, keep
 
     def _list(self) -> list[dict]:

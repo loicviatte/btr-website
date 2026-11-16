@@ -30,7 +30,7 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   keeps audio.m4a + subs.ass. Boot one-shot reel7_flash_1103. Test: `tests/reel_flash.py`. FRAMING not bumped.
 - `llm._json` (03.11, empty answer on the reel moments): no JSON → asked again with twice the max_tokens, then once on
   the work model; the error names the stop reasons. Boot one-shot reels_retry_1103 relaunched Hannah's reel moments.
-- Models (`llm.MODELS`, `usage.py`): chat Opus (Loïc 01.11: « un bot intelligent comme Claude »; was Haiku), creative Opus (axes, title, description), work Sonnet (chapters, frames),
+- Models (`llm.MODELS`, `usage.py`): chat Sonnet (Loïc 16.11, cost: was Opus from 01.11; memory 12 turns, 8 tool steps max), creative Opus (axes, title, description), work Sonnet (chapters, frames),
   vision_cheap Haiku (eyes). Every call is logged with its cost in `data/usage.jsonl` (/couts). Claude Code: Sonnet (Loïc 04.11, cost), /opus for one request on Opus, fresh session.
 - PART badge: `templates/_part.html` (top right, white PART + gold number), on all 3 formats via `pipeline.part_number(ep)`; on any existing YouTube thumbnail via `Pipeline.badge_thumbnail` + `/badge` (preview, then Loïc's go; allowed on public videos, thumbnail only).
 - Reels (workflow: claude/btr-reels-workflow.md in the Claude project): `btrbot/reels.py` (section download in 4K,
@@ -336,3 +336,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
 - TikTok = drafts only (Loïc 15.11): `bot.tt_tick` → `tt_draft` (inbox upload, no Direct Post any more: tt_auto / tt_publish /
   composer settings / tiktok_mode removed). The inbox API accepts no caption or cover, so each draft is followed by ONE
   message (cover image + caption in <pre>, two messages if the caption passes 1024 chars) with « ✅ Posté sur TikTok ».
+- Code requests (Loïc 16.11, cost): `propose_claude_code` no longer runs Claude Code on the API by default.
+  `send_code_prompt` sends Loïc a complete request (what to do + `server_context()`: recent journal errors,
+  last_deploy_error.txt, active episode, last 8 messages of the topic) in a <pre> block (a .txt file past 3700 chars)
+  that he pastes in his own Claude session, which has push access to the repo (push = deploy). Button « 🤖 Faire
+  coder par le bot (payant) » = the old dev mode (ask:yes → talk_to_agent). thumbnail_feedback unchanged (needs the
+  server's re-render).

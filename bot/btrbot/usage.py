@@ -15,7 +15,7 @@ PRICES = {
 }
 
 # Which model does what (env overrides: MODEL_CHAT, MODEL_CREATIVE, MODEL_WORK, MODEL_VISION_CHEAP, DEV_MODEL)
-#   chat      → Haiku : talks with Loïc, understands what he wants, drives the bot through tools (~0.1-0.3 ¢/message)
+#   chat      → Sonnet (Loïc 16.11, was Opus): talks with Loïc, understands what he wants, drives the bot through tools
 #   creative  → Opus  : the hook (3 axes, title discussion, description): the product itself, a few cents per episode
 #   work      → Sonnet: chapters, re-timing, picking the best frames
 #   vision_cheap → Haiku: eyes open/closed check on the frame sheets

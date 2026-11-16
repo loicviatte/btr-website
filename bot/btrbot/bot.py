@@ -891,7 +891,7 @@ async def send_recap(ctx, ep):
     await say(ctx, "Dernier check : " + valid_status(ep) + "\nTout est bon ?", reply_markup=thumb_kb(ep))
 
 
-CHAT_MODEL = os.environ.get("CHAT_MODEL") or os.environ.get("MODEL_CHAT") or "claude-opus-5-5"   # Loïc 01.11: « un bot intelligent comme Claude »
+CHAT_MODEL = os.environ.get("CHAT_MODEL") or os.environ.get("MODEL_CHAT") or "claude-sonnet-5-5"   # Loïc 16.11: Sonnet (cost; was Opus since 01.11)
 
 
 RECENT = {"at": 0.0, "text": ""}
@@ -937,6 +937,79 @@ async def propose_ask(ctx, ep, text: str, images: list[str]):
     await say(ctx, "Je peux transmettre ton retour (et tes captures) à Claude pour reprendre la miniature concernée, "
                    "sans toucher aux miniatures validées. Demander à Claude ?",
               reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
+
+
+def server_context() -> str:
+    """What Claude (Loïc's Claude session, which has the repo but not the server) can't see: recent errors in the
+    bot's journal, the last failed deploy, the bot's state. Best effort, never raises."""
+    import subprocess
+    out = []
+    try:
+        log_ = subprocess.run(["journalctl", "-u", "btr-bot", "-n", "400", "--no-pager", "-o", "short-iso"],
+                              capture_output=True, text=True, timeout=10).stdout.splitlines()
+        keep, after = [], 0
+        for line in log_:
+            if re.search(r"ERROR|Traceback|Exception|Error:|⚠️", line):
+                after = 12
+            if after:
+                keep.append(line[:300])
+                after -= 1
+        if keep:
+            out.append("Dernières erreurs du journal (journalctl -u btr-bot) :\n" + "\n".join(keep[-60:]))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        err = cfg.data_dir / "last_deploy_error.txt"
+        if err.exists():
+            out.append("Dernier déploiement raté (data/last_deploy_error.txt) :\n" + err.read_text()[-1500:])
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        ep = reg.episode(reg.active) if reg.active else None
+        if ep:
+            out.append(f"Épisode actif : {ep.video_id} ({ep.get('guest_name', '')}), étape {ep.stage}")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        recent = MEMORY._list()[-8:]
+        if recent:
+            out.append("Derniers échanges dans ce fil Telegram :\n" + "\n".join(
+                f"{'Loïc' if m['role'] == 'user' else 'Bot'} : {m['content'][:500]}" for m in recent))
+    except Exception:  # noqa: BLE001
+        pass
+    return "\n\n".join(out) or "(rien de particulier côté serveur)"
+
+
+async def send_code_prompt(ctx, request: str, n_images: int = 0):
+    """Loïc 16.11 (cost): a code change is no longer run on the API by default. The bot writes a complete,
+    self-contained request with the server context, Loïc pastes it in his Claude session (which can push to the repo
+    = deploy). The paid dev mode stays one tap away for what needs the server (live data, re-renders)."""
+    caps = (f"\nLoïc a {n_images} capture(s) d'écran pour cette demande : il les joint au message." if n_images else "")
+    prompt = f"""Demande de code pour le bot Telegram BTR Studio (dépôt loicviatte/btr-website, dossier bot/).
+Lis d'abord bot/CLAUDE.md. Fais le changement dans le style existant, vérifie avec python -m py_compile btrbot/*.py
+(et le test concerné dans bot/tests/ s'il y en a un), mets bot/CLAUDE.md à jour, puis commit et push sur main :
+le push redéploie le bot tout seul (retour à l'ancienne version s'il plante au démarrage).
+
+DEMANDE
+{request.strip()}{caps}
+
+CONTEXTE SERVEUR (relevé par le bot au moment de la demande)
+{server_context()}"""
+    import io
+    if len(prompt) <= 3700:
+        await say(ctx, "📋 <b>Demande pour Claude</b> : touche le bloc pour le copier, puis colle-le dans ta session "
+                       "Claude (gratuit, sur ton abonnement).")
+        await tg(ctx.bot.send_message, cfg.chat_id, f"<pre>{esc(prompt)}</pre>", parse_mode=ParseMode.HTML,
+                 reply_markup=K([[B("🤖 Faire coder par le bot (payant)", callback_data="ask:yes"),
+                                  B("Annuler", callback_data="ask:no")]]))
+        MEMORY.add("assistant", "Demande pour Claude envoyée (à copier) : " + request[:300])
+    else:
+        await ctx.bot.send_document(cfg.chat_id, io.BytesIO(prompt.encode()), filename="demande_claude.txt",
+                                    caption="📋 Demande pour Claude (trop longue pour un message) : ouvre le fichier, "
+                                            "copie tout et colle-le dans ta session Claude (gratuit).",
+                                    reply_markup=K([[B("🤖 Faire coder par le bot (payant)", callback_data="ask:yes"),
+                                                     B("Annuler", callback_data="ask:no")]]))
+        MEMORY.add("assistant", "Demande pour Claude envoyée en fichier : " + request[:300])
 
 
 async def on_ask_button(ctx, data: str):
@@ -1205,9 +1278,9 @@ def tool_handlers(ctx, images: list) -> dict:
     async def propose_claude_code(request):
         reg.data["pending_ask"] = {"text": request, "thumbs": False, "images": [str(p) for p in images]}
         reg.save()
-        await say(ctx, "🧠 Je fais coder ça par Claude ?\n<i>" + esc(request[:600]) + "</i>",
-                  reply_markup=K([[B("✅ Oui, demander à Claude", callback_data="ask:yes"), B("Non", callback_data="ask:no")]]))
-        return "bouton affiché : rien ne part sans son oui"
+        await send_code_prompt(ctx, request, len(images))
+        return ("demande complète envoyée à Loïc, à copier-coller dans Claude (son abonnement, gratuit) ; bouton "
+                "« faire coder par le bot » en secours (API, payant) : rien ne part sans son clic")
 
     async def start_episode(video):
         m = re.search(r"(?:v=|youtu\.be/|shorts/|^)([\w-]{11})", video.strip())
