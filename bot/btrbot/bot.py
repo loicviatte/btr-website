@@ -4216,6 +4216,8 @@ async def on_text(update: Update, ctx):
     """Exact « titre: / citation: / part: / description: » commands stay instant; everything else is a conversation."""
     if not allowed(update):
         return
+    if not update.message or not update.message.text:      # an edited message / a service update (log 17.11)
+        return
     text = update.message.text.strip()
     if await on_secret(update, ctx, text):
         return
@@ -4645,6 +4647,55 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reel7, when=110, name="reel7-flash-1103")
+    if not reg.data.get("wide_rescue_1117"):        # Loïc 17.11: Joanna reel 4, the wide shot showed the porthole
+        reg.data["wide_rescue_1117"] = True           # (no face found → centre crop): picture made again, crop on her
+        reg.save()
+
+        async def _wide(ctx):
+            import json as _json
+            ep = reg.episode("UL72rwUr5og")
+            if not ep:
+                return
+            todo, filed = [], []
+            for key, item in sorted(RS(ep).data["items"].items(), key=lambda kv: int(kv[0])):
+                n = int(key)
+                try:
+                    edit = _json.loads((pipe.reel_work(ep, n) / "edit.json").read_text())
+                except Exception:  # noqa: BLE001
+                    continue
+                if not any(p.get("kind") == "center" for p in edit.get("layout") or []):
+                    continue
+                (todo if item.get("status") == "preview" and pipe.reel_edit_kept(ep, n) else filed).append(n)
+            tok = topics.TOPIC.set("reels")
+            try:
+                async def go():
+                    for n in todo:
+                        item, cand = reel_item(ep, n), reel_cand(ep, n)
+                        if not cand:
+                            continue
+                        try:
+                            res = await run(pipe.reel_repicture, ep, dict(cand), list(item["shift"]), list(item["cuts"]))
+                        except Exception as e:  # noqa: BLE001
+                            await say(ctx, f"⚠️ Reel {n} : recadrage du plan large impossible ({esc(str(e)[:200])}).")
+                            continue
+                        if not res.get("rescued"):
+                            await say(ctx, f"Reel {n} : je ne trouve toujours personne dans le plan large, il reste "
+                                           "centré. Envoie-moi une capture si c'est gênant.")
+                            continue
+                        item.update(file=res["file"], size_mb=res["size_mb"])
+                        RS(ep).save()
+                        await say(ctx, f"🎞️ Reel {n} : le plan large est maintenant recadré sur Joanna (il était centré "
+                                       "sur le décor). Son, durée et sous-titres identiques. Nouvelle version à valider :")
+                        await send_reel(ctx, ep, n)
+                    if filed:
+                        await say(ctx, "ℹ️ Reels déjà validés qui ont aussi un plan sans visage détecté (centré) : "
+                                       + ", ".join(str(n) for n in filed) + ". Dis-moi si l'un d'eux montre le décor "
+                                       "au lieu de Joanna, je le refais.")
+                if todo or filed:
+                    bg(ctx, "Reels (plan large)", go())
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_wide, when=120, name="wide-rescue-1117")
     if not reg.data.get("covers_noname_1103"):      # Loïc 03.11: « enlève le nom et prénom sous la phrase » (EP14)
         reg.data["covers_noname_1103"] = True
         reg.save()

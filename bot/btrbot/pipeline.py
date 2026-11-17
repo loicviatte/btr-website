@@ -716,6 +716,7 @@ class Pipeline:
         fr = R.sample_frames(clip, a, b, work / "frames")
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
         shots = R.shot_layouts(samples, scene, a, b)
+        R.rescue_center(shots, clip, self.faces, work / "rescue")
         if n < TEASER_N:                                        # a teaser moment needs no cover
             try:
                 R.cover_search(clip, samples, dict(fr), work / "cover", mouth=self._mouth_checker(work))  # 4K stills
@@ -776,7 +777,9 @@ class Pipeline:
         a, b = ranges[0][0], ranges[-1][1]
         fr = R.sample_frames(clip, a, b, work / "frames")
         samples = [(t, R.classify(cv2.imread(str(p)), self.faces)) for t, p in fr]
-        pcs = R.pieces(ranges, R.shot_layouts(samples, scene, a, b), info["fps"], info["duration"])
+        shots = R.shot_layouts(samples, scene, a, b)
+        rescued = R.rescue_center(shots, clip, self.faces, work / "rescue")
+        pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
         if [(round(p["out"], 3), p["frames"]) for p in pcs] != [(round(p["out"], 3), p["frames"]) for p in edit["layout"]]:
             raise RuntimeError("le découpage ne retombe pas exactement sur le montage gardé : rien changé")
         held = [round(p["out"], 2) for p in pcs if "hold" in p]
@@ -793,7 +796,7 @@ class Pipeline:
         total = edit["frames"] / edit["fps"]
         out = R.final_mux(work / "base.mp4", work / "audio.m4a", work / "subs.ass", fonts,
                           work / f"BTR_reel_{n:02d}_{slug}.mp4", total, edit["frames"])
-        return {"file": str(out), "held": held, "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+        return {"file": str(out), "held": held, "rescued": rescued, "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
 
     def reel_subtitles(self, ep: Episode, cand: dict, fixes: list, note: str = "") -> dict:
         """Subtitles + final file from the kept edit (base picture + sound): a few seconds, no new cut.

@@ -536,6 +536,50 @@ def shot_layouts(samples: list[tuple[float, dict]], cuts: list[float], a: float,
     return merged
 
 
+def rescue_center(shots: list[dict], clip: Path, faces, work: Path) -> int:
+    """A shot where the 1280 px samples found nobody was framed on the middle of the picture: on Joanna's reel 4
+    (Loïc 17.11) the wide shot showed the porthole of the set and not her. Look again on the full-resolution clip
+    (3 frames), with a lower detector score and smaller faces allowed; the crop then follows the guest (Marius only
+    when he is the one face found). Returns how many shots were rescued."""
+    from .faces import MATCH
+    import cv2
+    work.mkdir(parents=True, exist_ok=True)
+    done = 0
+    for i, sh in enumerate(shots):
+        if sh["kind"] != "center":
+            continue
+        found = []
+        for k in (0.25, 0.5, 0.75):
+            t = sh["a"] + (sh["b"] - sh["a"]) * k
+            out = work / f"rescue_{i}_{int(k * 100)}.jpg"
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", str(clip), "-frames:v", "1",
+                            "-q:v", "2", str(out)], check=False)
+            img = cv2.imread(str(out))
+            if img is None:
+                continue
+            H, W = img.shape[:2]
+            fs = [f for f in faces.analyse(img, min_score=0.5) if f.box[3] / H > 0.02]
+            if not fs:
+                continue
+            guests = [f for f in fs if f.sim_marius < MATCH]
+            f = max(guests or fs, key=lambda f: f.box[3])
+            x, y, w, h = f.box
+            found.append({"kind": "guest" if f.sim_marius < MATCH else "marius", "cx": (x + w / 2) / W,
+                          "cy": (y + h / 2) / H, "fh": h / H})
+        if not found:
+            continue
+        kinds = [f["kind"] for f in found]
+        kind = "guest" if "guest" in kinds else "marius"
+        fs = [f for f in found if f["kind"] == kind]
+        xs = [f["cx"] for f in fs]
+        sh.update({"kind": kind, **{k: _median(fs, k) for k in ("cx", "cy", "fh")},
+                   "cx_lo": float(min(xs)), "cx_hi": float(max(xs)),
+                   "cy_top": float(min(f["cy"] - f["fh"] / 2 for f in fs)),
+                   "fh_max": float(max(f["fh"] for f in fs)), "rescued": True})
+        done += 1
+    return done
+
+
 def pieces(ranges: list[tuple[float, float]], shots: list[dict], fps: float, limit: float) -> list[dict]:
     """The edit on the source's exact frame grid: each piece = whole frames of one range inside one shot.
     Inside one camera shot the framing alternates wide / tight at every cut, so the jump cuts read as intentional."""

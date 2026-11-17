@@ -350,3 +350,11 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Same day, « Autres » then said « tous les gros plans montrés » after one batch: the shortlist only kept unmistakable
   faces (Marius sim ≥ 0.5, guest < 0.2). Under 12 left → completed with `shortlist(loose=True)` (the scan's own MATCH /
   NOT_MATCH thresholds); the picker's « reject » drops a wrong person.
+- Wide shot with nobody found (Loïc 17.11, Joanna reel 4: « on voit juste le hublot »): a shot whose 1280 px samples
+  had no usable face was framed « center » (middle of the set). `reels.rescue_center` (render + `reel_repicture`) looks
+  again on 3 full-resolution frames of the clip with a lower detector score (0.5) and faces down to 2 % of the height;
+  the crop follows the guest (Marius only if he is the only face). Boot one-shot wide_rescue_1117: Joanna's reels in
+  preview with a centre piece get their picture made again (sound / subtitles kept) and sent; validated ones with a
+  centre piece are listed to Loïc. `faces.Faces.LOCK`: the shared YuNet / SFace are used by one thread at a time
+  (OpenCV 5 « buf.shape() == m.shape() » when two threads changed the input size: image search failed 17.11).
+  `on_text` ignores updates without a text message.
