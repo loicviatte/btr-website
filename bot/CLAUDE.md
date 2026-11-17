@@ -347,3 +347,6 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   frame already shown (was: the exact second only, so the next frame of the same shot came back); PICK_FRAMES also
   returns « reject » (on-screen text / logo / sponsor banner / lower third / wrong person): never proposed, kept in
   ep["bad_<who>"] and left out of later searches. Nothing left = « je t'ai montré tous les gros plans… envoie une capture ».
+  Same day, « Autres » then said « tous les gros plans montrés » after one batch: the shortlist only kept unmistakable
+  faces (Marius sim ≥ 0.5, guest < 0.2). Under 12 left → completed with `shortlist(loose=True)` (the scan's own MATCH /
+  NOT_MATCH thresholds); the picker's « reject » drops a wrong person.

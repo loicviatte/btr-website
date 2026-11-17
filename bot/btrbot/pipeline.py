@@ -243,6 +243,10 @@ class Pipeline:
         near = mmss(ep["final"].get("timestamp")) if who == "guest" and ep.get("final") else None
         bad = list(ep.get(f"bad_{who}") or [])            # frames refused by the picker (overlay, wrong person)
         sl = frames.shortlist(cands, who, 24, near, tuple(exclude) + tuple(bad))
+        if len(sl) < 12:                                  # few sure faces left: widen to the scan's thresholds
+            sl += [c for c in frames.shortlist(cands, who, 24 - len(sl), near,
+                                               tuple(exclude) + tuple(bad) + tuple(c["t"] for c in sl), loose=True)]
+            sl.sort(key=lambda c: c["t"])
         if not sl:
             return []
         try:  # keep only clearly open eyes (checked on face close-ups, 12 at a time: the contact sheet is too small)
