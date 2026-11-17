@@ -79,11 +79,16 @@ def scan(frames: list[tuple[float, Path]], faces: Faces, cache: Path) -> list[di
     return out
 
 
+EXCLUDE_GAP = 20   # seconds around a frame already shown / refused (= the shortlist window)
+
+
 def shortlist(cands: list[dict], who: str, k: int = 12, near: float | None = None, exclude=()) -> list[dict]:
     """Sharpest close-up per 20 s window, spread over the episode (and around the quote for the guest)."""
     # stricter than the scan thresholds: only unmistakable Marius (>= .5) or unmistakable non-Marius (< .2)
     sure = (lambda c: c["sim"] >= 0.5) if who == "marius" else (lambda c: c["sim"] < 0.2)
-    pool = [c for c in cands if c["who"] == who and sure(c) and c["t"] not in exclude]
+    # Loïc 17.11 (« il envoie les mêmes photos » with 🔁 Autres): leaving out only the exact second shown let the next
+    # frame of the same shot (same 20 s window, same pose) come back; a shown or refused frame now blocks its neighbours
+    pool = [c for c in cands if c["who"] == who and sure(c) and all(abs(c["t"] - x) >= EXCLUDE_GAP for x in exclude)]
     best: dict[int, dict] = {}
     for c in pool:
         b = int(c["t"] // 20)

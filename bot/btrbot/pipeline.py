@@ -241,7 +241,8 @@ class Pipeline:
     def propose_frames(self, ep: Episode, who: str, exclude=()) -> list[dict]:
         cands = self.scan(ep)
         near = mmss(ep["final"].get("timestamp")) if who == "guest" and ep.get("final") else None
-        sl = frames.shortlist(cands, who, 24, near, exclude)
+        bad = list(ep.get(f"bad_{who}") or [])            # frames refused by the picker (overlay, wrong person)
+        sl = frames.shortlist(cands, who, 24, near, tuple(exclude) + tuple(bad))
         if not sl:
             return []
         try:  # keep only clearly open eyes (checked on face close-ups, 12 at a time: the contact sheet is too small)
@@ -259,10 +260,14 @@ class Pipeline:
         label = ep.get("guest_name", "the guest") if who == "guest" else f"{self.cfg.host_name} (the host)"
         try:
             pick = self.llm.pick_frames(sheet, label, ep["final"]["quote"], 4)
-            order = [i - 1 for i in pick.get("best", []) if 1 <= i <= len(sl)]
+            reject = {i - 1 for i in pick.get("reject", []) if 1 <= i <= len(sl)}
+            order = [i - 1 for i in pick.get("best", []) if 1 <= i <= len(sl) and i - 1 not in reject]
         except Exception:
-            order = []
-        order += [i for i in range(len(sl)) if i not in order]
+            order, reject = [], set()
+        if reject:
+            ep[f"bad_{who}"] = bad + [sl[i]["t"] for i in reject]
+            ep.save()
+        order += [i for i in range(len(sl)) if i not in order and i not in reject]
         chosen = [sl[i] for i in order[:4]]
         # 4K versions of the proposals
         url = None

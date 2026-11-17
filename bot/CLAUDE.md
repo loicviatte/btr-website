@@ -342,3 +342,8 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   that he pastes in his own Claude session, which has push access to the repo (push = deploy). Button « 🤖 Faire
   coder par le bot (payant) » = the old dev mode (ask:yes → talk_to_agent). thumbnail_feedback unchanged (needs the
   server's re-render).
+- Thumbnail « 🔁 Autres » (Loïc 17.11: « il envoie les mêmes photos », Marius 26:21 three times, fewer each time, with
+  the OMDS « In collaboration with » banner): `frames.shortlist` leaves out every candidate within EXCLUDE_GAP 20 s of a
+  frame already shown (was: the exact second only, so the next frame of the same shot came back); PICK_FRAMES also
+  returns « reject » (on-screen text / logo / sponsor banner / lower third / wrong person): never proposed, kept in
+  ep["bad_<who>"] and left out of later searches. Nothing left = « je t'ai montré tous les gros plans… envoie une capture ».

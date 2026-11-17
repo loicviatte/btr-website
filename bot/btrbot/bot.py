@@ -773,7 +773,9 @@ async def propose_frames(ctx, ep, who: str, more=False):
     shown = ep.get(f"shown_{who}", [])
     picks = await run(pipe.propose_frames, ep, who, tuple(shown) if more else ())
     if not picks:
-        await say(ctx, f"Je n'ai pas trouvé de gros plan de {esc(label)}. Envoie-moi une capture (photo) en réponse et je l'utilise.")
+        await say(ctx, (f"Je t'ai montré tous les gros plans nets de {esc(label)} que j'ai trouvés." if more and shown else
+                        f"Je n'ai pas trouvé de gros plan de {esc(label)}.")
+                  + " Envoie-moi une capture (photo) en réponse et je l'utilise.")
         return
     ep[f"cand_{who}"] = picks
     ep[f"shown_{who}"] = shown + [p["t"] for p in picks]

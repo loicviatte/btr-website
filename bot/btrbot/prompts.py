@@ -48,7 +48,8 @@ Return ONLY JSON:
 
 PICK_FRAMES = """These are numbered candidate frames of {who} from the episode. The thumbnail quote is: "{quote}".
 Pick the {n} best frames for a YouTube/Instagram thumbnail: eyes open, face sharp and well lit, a strong readable expression that fits the quote's emotion, mouth not caught mid-word in an ugly way, head not cut, not blurred by motion. Prefer variety (different expressions).
-Return ONLY JSON: {{"best": [numbers in order of preference], "note": "1 short French line"}}"""
+Never pick a frame with anything added on the picture (on-screen text, logo, sponsor or "in collaboration with" banner, lower third, graphic) or where the person is not {who}: list those numbers in "reject".
+Return ONLY JSON: {{"best": [numbers in order of preference], "reject": [numbers], "note": "1 short French line"}}"""
 
 EYES_OPEN = """These are numbered close-ups of the upper half of a face (eyes area), taken from a video, for a thumbnail.
 List ONLY the numbers where BOTH eyes are fully open: both irises and pupils clearly visible, no squinting, no laughing-squint, no blink, no heavy lids, not winking, not looking far to the side with the eye half hidden. When in doubt, leave the number out.
