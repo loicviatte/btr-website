@@ -1,0 +1,8684 @@
+1
+00:00:00,040 --> 00:00:02,319
+<b>Hello and welcome to a new</b>
+
+2
+00:00:02,480 --> 00:00:04,120
+<b>episode of BREAK, the Routine.</b>
+
+3
+00:00:04,160 --> 00:00:07,080
+<b>We have a very special guest from an area</b>
+
+4
+00:00:07,080 --> 00:00:09,480
+<b>that we did not have until now.</b>
+
+5
+00:00:09,480 --> 00:00:11,880
+<b>We have somebody that started as a</b>
+
+6
+00:00:11,960 --> 00:00:14,800
+<b>dancer, now of course an entrepreneur</b>
+
+7
+00:00:14,800 --> 00:00:15,839
+<b>that does something very</b>
+
+8
+00:00:15,839 --> 00:00:17,719
+<b>special for the dance world.</b>
+
+9
+00:00:18,039 --> 00:00:20,879
+<b>She developed an app called Air Dance,</b>
+
+10
+00:00:20,920 --> 00:00:23,839
+<b>now of course known as O-Dance, a wider</b>
+
+11
+00:00:23,920 --> 00:00:25,800
+<b>platform for the dance world.</b>
+
+12
+00:00:26,079 --> 00:00:29,160
+<b>This episode is about the gap between the</b>
+
+13
+00:00:29,160 --> 00:00:32,520
+<b>digital access as a promise and the real</b>
+
+14
+00:00:32,640 --> 00:00:33,920
+<b>value dancers and</b>
+
+15
+00:00:33,920 --> 00:00:36,079
+<b>teachers of course get from it.</b>
+
+16
+00:00:36,960 --> 00:00:38,799
+<b>Joanna Wargala, thank you so</b>
+
+17
+00:00:38,799 --> 00:00:40,039
+<b>much for being here with us.</b>
+
+18
+00:00:40,200 --> 00:00:41,640
+<b>Hello, hi. Thank you very</b>
+
+19
+00:00:41,640 --> 00:00:42,280
+<b>much for the invitation.</b>
+
+20
+00:00:42,280 --> 00:00:43,359
+<b>I'm so excited to have you.</b>
+
+21
+00:00:43,600 --> 00:00:44,759
+<b>Thank you very much, that</b>
+
+22
+00:00:44,759 --> 00:00:46,240
+<b>is also very excited for me.</b>
+
+23
+00:00:46,520 --> 00:00:46,920
+<b>You are.</b>
+
+24
+00:00:47,240 --> 00:00:50,880
+<b>It's actually, I think, international, my</b>
+
+25
+00:00:50,880 --> 00:00:52,119
+<b>first podcast. I already</b>
+
+26
+00:00:52,119 --> 00:00:53,240
+<b>did something in Poland.</b>
+
+27
+00:00:53,320 --> 00:00:53,920
+<b>Oh, beautiful.</b>
+
+28
+00:00:53,920 --> 00:00:56,880
+<b>Yeah, but it's already a pleasure to be</b>
+
+29
+00:00:56,880 --> 00:00:57,960
+<b>here and to have you.</b>
+
+30
+00:00:57,960 --> 00:01:00,759
+<b>No, I love to have you because I heard of</b>
+
+31
+00:01:00,759 --> 00:01:03,479
+<b>course from 2000 when you started with</b>
+
+32
+00:01:03,960 --> 00:01:06,640
+<b>Air Dance and I saw the videos and I was</b>
+
+33
+00:01:06,640 --> 00:01:08,519
+<b>like, wow, this is so good.</b>
+
+34
+00:01:08,519 --> 00:01:10,040
+<b>And then of course the lockdown started</b>
+
+35
+00:01:10,040 --> 00:01:12,400
+<b>and you were the person that I didn't</b>
+
+36
+00:01:12,400 --> 00:01:13,280
+<b>know then, you were</b>
+
+37
+00:01:13,319 --> 00:01:16,079
+<b>already prepared for this.</b>
+
+38
+00:01:16,079 --> 00:01:17,760
+<b>So you had a vision about that.</b>
+
+39
+00:01:17,760 --> 00:01:19,959
+<b>Yes, exactly. Actually, that was very,</b>
+
+40
+00:01:20,599 --> 00:01:23,359
+<b>very good time for, of course, for us.</b>
+
+41
+00:01:23,359 --> 00:01:26,159
+<b>That maybe not for all the people around</b>
+
+42
+00:01:26,319 --> 00:01:27,760
+<b>because lockdown was nothing good.</b>
+
+43
+00:01:28,439 --> 00:01:30,519
+<b>And it was something that for sure</b>
+
+44
+00:01:30,560 --> 00:01:32,560
+<b>changed also many people and many</b>
+
+45
+00:01:32,560 --> 00:01:34,200
+<b>personalities and also.</b>
+
+46
+00:01:34,560 --> 00:01:36,120
+<b>But you could foresee almost.</b>
+
+47
+00:01:36,120 --> 00:01:37,359
+<b>Yes. So the idea</b>
+
+48
+00:01:37,359 --> 00:01:39,120
+<b>actually started in 2018.</b>
+
+49
+00:01:40,920 --> 00:01:43,359
+<b>Because when I start to be part of the</b>
+
+50
+00:01:43,359 --> 00:01:47,719
+<b>dancing world, my, let's say, my journey</b>
+
+51
+00:01:48,040 --> 00:01:52,719
+<b>started in 2016 with a pro-end dancing.</b>
+
+52
+00:01:52,719 --> 00:01:54,560
+<b>So I never danced before.</b>
+
+53
+00:01:54,920 --> 00:01:59,000
+<b>It was for me that a big adventure.</b>
+
+54
+00:01:59,200 --> 00:01:59,719
+<b>Of course.</b>
+
+55
+00:01:59,719 --> 00:02:02,920
+<b>Yes. So and I fall in love immediately.</b>
+
+56
+00:02:03,920 --> 00:02:05,040
+<b>Like a lot of us.</b>
+
+57
+00:02:06,000 --> 00:02:08,560
+<b>All of us. We went to the dance studio</b>
+
+58
+00:02:08,560 --> 00:02:10,879
+<b>and we're like, what is going on here?</b>
+
+59
+00:02:10,919 --> 00:02:11,439
+<b>Yes.</b>
+
+60
+00:02:11,879 --> 00:02:14,800
+<b>This is so beautiful and so complex and</b>
+
+61
+00:02:14,800 --> 00:02:18,039
+<b>music and beautiful people and dresses</b>
+
+62
+00:02:18,039 --> 00:02:20,199
+<b>and you know, it was so</b>
+
+63
+00:02:20,280 --> 00:02:22,120
+<b>I did football before.</b>
+
+64
+00:02:22,599 --> 00:02:24,520
+<b>And then when I entered into the dance</b>
+
+65
+00:02:24,520 --> 00:02:25,439
+<b>studio, I was 12 years old,</b>
+
+66
+00:02:25,479 --> 00:02:27,680
+<b>I was like, what's going on?</b>
+
+67
+00:02:27,680 --> 00:02:29,919
+<b>Like why am I playing football?</b>
+
+68
+00:02:30,199 --> 00:02:31,960
+<b>It was like, this is so different.</b>
+
+69
+00:02:38,159 --> 00:02:40,879
+<b>So in my case, actually, I have my</b>
+
+70
+00:02:40,919 --> 00:02:43,120
+<b>artistic soul from many years.</b>
+
+71
+00:02:43,159 --> 00:02:47,319
+<b>I was before musician when I was four.</b>
+
+72
+00:02:47,360 --> 00:02:50,879
+<b>I started cello and piano.</b>
+
+73
+00:02:51,120 --> 00:02:55,360
+<b>So it was for me the part of my life.</b>
+
+74
+00:02:55,840 --> 00:02:58,960
+<b>So my rhythm was already in your blood.</b>
+
+75
+00:02:59,039 --> 00:03:01,240
+<b>Exactly. And I finished when I was 18.</b>
+
+76
+00:03:02,560 --> 00:03:05,520
+<b>So because, of course, of some situation,</b>
+
+77
+00:03:05,520 --> 00:03:08,199
+<b>family situation and everything was.</b>
+
+78
+00:03:09,319 --> 00:03:10,199
+<b>And adulthood.</b>
+
+79
+00:03:10,199 --> 00:03:12,319
+<b>You went to a new stage of your life.</b>
+
+80
+00:03:12,639 --> 00:03:14,759
+<b>New stage. And you know, the problem was,</b>
+
+81
+00:03:14,800 --> 00:03:18,000
+<b>of course, for many people, not only in a</b>
+
+82
+00:03:18,000 --> 00:03:20,599
+<b>part of being a musician, also by dancer,</b>
+
+83
+00:03:20,919 --> 00:03:24,759
+<b>we can be very talented, but if you don't</b>
+
+84
+00:03:24,759 --> 00:03:27,159
+<b>have money, then it's</b>
+
+85
+00:03:27,159 --> 00:03:30,039
+<b>really difficult to achieve.</b>
+
+86
+00:03:30,120 --> 00:03:33,319
+<b>To the to the to the moment where the</b>
+
+87
+00:03:33,319 --> 00:03:35,960
+<b>money will support you.</b>
+
+88
+00:03:36,560 --> 00:03:38,879
+<b>First, you need to in that level, of</b>
+
+89
+00:03:38,879 --> 00:03:40,439
+<b>course, if you go to I have very good</b>
+
+90
+00:03:40,680 --> 00:03:41,719
+<b>students from Germany</b>
+
+91
+00:03:42,039 --> 00:03:43,479
+<b>and they do cello as well.</b>
+
+92
+00:03:43,560 --> 00:03:45,840
+<b>And they are like top top in Germany in</b>
+
+93
+00:03:45,840 --> 00:03:47,639
+<b>the under 16 category.</b>
+
+94
+00:03:48,479 --> 00:03:51,319
+<b>And it's they said</b>
+
+95
+00:03:51,520 --> 00:03:52,560
+<b>it's tougher than dancing.</b>
+
+96
+00:03:52,599 --> 00:03:57,000
+<b>Yes, the top top world of music is so</b>
+
+97
+00:03:57,000 --> 00:03:58,159
+<b>tough and expensive.</b>
+
+98
+00:03:58,560 --> 00:04:02,240
+<b>Very expensive. Actually, my journey here</b>
+
+99
+00:04:02,360 --> 00:04:07,439
+<b>to England was when I was 16, I won a</b>
+
+100
+00:04:07,479 --> 00:04:10,400
+<b>competition and in piano.</b>
+
+101
+00:04:10,639 --> 00:04:12,240
+<b>Yes, in cello. In cello.</b>
+
+102
+00:04:12,240 --> 00:04:16,240
+<b>In the award was I could choose a place</b>
+
+103
+00:04:16,240 --> 00:04:19,120
+<b>where I will be in college.</b>
+
+104
+00:04:20,279 --> 00:04:23,360
+<b>So I are a strong college in Poland, but</b>
+
+105
+00:04:23,399 --> 00:04:25,879
+<b>I choose the college here in London.</b>
+
+106
+00:04:25,959 --> 00:04:28,279
+<b>Oh, really? Yes. And I go. So you always</b>
+
+107
+00:04:28,279 --> 00:04:29,519
+<b>loved London. Exactly.</b>
+
+108
+00:04:29,519 --> 00:04:33,040
+<b>So at first I start in Scotland and I</b>
+
+109
+00:04:33,040 --> 00:04:34,240
+<b>live there in Edinburgh.</b>
+
+110
+00:04:34,360 --> 00:04:36,879
+<b>In Edinburgh. Yeah, I love Edinburgh.</b>
+
+111
+00:04:36,879 --> 00:04:39,399
+<b>And then I came here to London for one</b>
+
+112
+00:04:39,399 --> 00:04:41,040
+<b>year and I was playing</b>
+
+113
+00:04:41,120 --> 00:04:42,639
+<b>in the London orchestra.</b>
+
+114
+00:04:42,800 --> 00:04:45,560
+<b>The first cello. Did you? Yes. Wow.</b>
+
+115
+00:04:45,759 --> 00:04:48,279
+<b>So it's unbelievable. I didn't know that.</b>
+
+116
+00:04:48,279 --> 00:04:49,439
+<b>That's what I say. And</b>
+
+117
+00:04:49,439 --> 00:04:52,800
+<b>after 20 years, actually, 2016,</b>
+
+118
+00:04:54,439 --> 00:04:58,480
+<b>almost 20 and my artistic soul wake up</b>
+
+119
+00:04:58,879 --> 00:05:02,319
+<b>and after doing business for 20 years,</b>
+
+120
+00:05:02,560 --> 00:05:04,959
+<b>you are like, it's enough now. Exactly.</b>
+
+121
+00:05:04,959 --> 00:05:06,480
+<b>Let me go back to my</b>
+
+122
+00:05:07,040 --> 00:05:08,519
+<b>feeling and to my roots.</b>
+
+123
+00:05:08,600 --> 00:05:11,040
+<b>Actually, when I was traveling now for</b>
+
+124
+00:05:11,040 --> 00:05:12,079
+<b>this competition for</b>
+
+125
+00:05:12,079 --> 00:05:13,319
+<b>international to London,</b>
+
+126
+00:05:13,759 --> 00:05:15,879
+<b>I was sitting in the airplane and I was</b>
+
+127
+00:05:15,959 --> 00:05:18,680
+<b>reading and writing a post.</b>
+
+128
+00:05:19,079 --> 00:05:23,519
+<b>I was thinking about this period of time,</b>
+
+129
+00:05:23,519 --> 00:05:26,600
+<b>how everything started and what was the.</b>
+
+130
+00:05:26,600 --> 00:05:28,639
+<b>Your journey. Exactly. What was the</b>
+
+131
+00:05:28,959 --> 00:05:30,639
+<b>impulse also for that one,</b>
+
+132
+00:05:31,000 --> 00:05:32,839
+<b>that I came to the</b>
+
+133
+00:05:32,839 --> 00:05:34,720
+<b>studio and I started to dance.</b>
+
+134
+00:05:35,120 --> 00:05:39,720
+<b>And the most important, how my life and</b>
+
+135
+00:05:39,800 --> 00:05:43,360
+<b>my soul changed through the</b>
+
+136
+00:05:43,360 --> 00:05:44,959
+<b>dancing, through this life.</b>
+
+137
+00:05:45,439 --> 00:05:49,519
+<b>And back to Air Dance. Yes, in 2016, when</b>
+
+138
+00:05:49,519 --> 00:05:51,319
+<b>I started to dance, of</b>
+
+139
+00:05:51,319 --> 00:05:53,480
+<b>course, I saw it that</b>
+
+140
+00:05:55,199 --> 00:05:57,279
+<b>to be a good dancer, to be successful,</b>
+
+141
+00:05:57,720 --> 00:05:58,959
+<b>you need to have a package.</b>
+
+142
+00:05:59,160 --> 00:06:01,040
+<b>You need to have a strong</b>
+
+143
+00:06:01,399 --> 00:06:02,759
+<b>supporter by the teachers.</b>
+
+144
+00:06:02,959 --> 00:06:04,920
+<b>You have you need to be travel to get</b>
+
+145
+00:06:04,920 --> 00:06:06,199
+<b>camps, to get lesson.</b>
+
+146
+00:06:06,680 --> 00:06:08,800
+<b>Your look must be outstanding. When you</b>
+
+147
+00:06:08,800 --> 00:06:10,000
+<b>go on the floor, you need</b>
+
+148
+00:06:10,000 --> 00:06:11,319
+<b>to look like million dollars.</b>
+
+149
+00:06:11,680 --> 00:06:13,480
+<b>But for everything, you need</b>
+
+150
+00:06:13,480 --> 00:06:16,279
+<b>money. So I start to support.</b>
+
+151
+00:06:16,560 --> 00:06:18,639
+<b>First passion, I would say. Exactly.</b>
+
+152
+00:06:18,639 --> 00:06:20,720
+<b>A lot of will and passion. And of course,</b>
+
+153
+00:06:20,720 --> 00:06:23,439
+<b>to see the it's like in a business,</b>
+
+154
+00:06:23,439 --> 00:06:24,600
+<b>because you come from the business, you</b>
+
+155
+00:06:24,600 --> 00:06:25,879
+<b>analyze. I see you</b>
+
+156
+00:06:25,879 --> 00:06:27,680
+<b>analyze very, very clear.</b>
+
+157
+00:06:27,920 --> 00:06:29,680
+<b>I would say a little bit dry to say, OK,</b>
+
+158
+00:06:29,680 --> 00:06:30,680
+<b>I need this, this, these</b>
+
+159
+00:06:30,680 --> 00:06:35,000
+<b>tools in order to be top in this</b>
+
+160
+00:06:35,040 --> 00:06:38,040
+<b>industry. Because there is many, many</b>
+
+161
+00:06:38,160 --> 00:06:41,160
+<b>very talented dancers. And I saw it and</b>
+
+162
+00:06:41,639 --> 00:06:45,319
+<b>meet them. And I know that if they will</b>
+
+163
+00:06:45,319 --> 00:06:49,240
+<b>have the possibility to be a</b>
+
+164
+00:06:49,279 --> 00:06:53,000
+<b>shift, they can be champions.</b>
+
+165
+00:06:53,560 --> 00:06:54,920
+<b>And one of the cause, the</b>
+
+166
+00:06:54,920 --> 00:06:56,480
+<b>plan is not there. Exactly.</b>
+
+167
+00:06:56,600 --> 00:06:59,279
+<b>And one of the knowledge. Yeah. And one</b>
+
+168
+00:06:59,279 --> 00:07:01,040
+<b>of the biggest issues for this</b>
+
+169
+00:07:01,720 --> 00:07:03,600
+<b>people, especially, you know, from small</b>
+
+170
+00:07:03,639 --> 00:07:05,240
+<b>towns, because when I started to dance,</b>
+
+171
+00:07:05,319 --> 00:07:06,879
+<b>I was in Jelena Gura.</b>
+
+172
+00:07:06,920 --> 00:07:08,480
+<b>It's a small town in Poland.</b>
+
+173
+00:07:09,120 --> 00:07:11,000
+<b>It's Jelena Gura. It's a</b>
+
+174
+00:07:11,040 --> 00:07:12,920
+<b>very small town. Which region?</b>
+
+175
+00:07:12,920 --> 00:07:16,160
+<b>Which region? It's close to the German</b>
+
+176
+00:07:16,160 --> 00:07:19,040
+<b>border. So I used to live in</b>
+
+177
+00:07:19,040 --> 00:07:20,920
+<b>Nuremberg, which is very close</b>
+
+178
+00:07:20,920 --> 00:07:22,879
+<b>to Poland. Yeah, it is. But it's more</b>
+
+179
+00:07:22,920 --> 00:07:26,079
+<b>more dressed. I used to teach in Dresden.</b>
+
+180
+00:07:26,439 --> 00:07:29,199
+<b>Yeah. So it is a small town. And my first</b>
+
+181
+00:07:29,240 --> 00:07:32,240
+<b>teachers of my partner, Thomas Yashinsky,</b>
+
+182
+00:07:32,600 --> 00:07:35,240
+<b>he was from this town. And actually for</b>
+
+183
+00:07:35,240 --> 00:07:36,839
+<b>them, that was something</b>
+
+184
+00:07:37,920 --> 00:07:40,360
+<b>new that I start to take them</b>
+
+185
+00:07:40,360 --> 00:07:42,959
+<b>with me to competition. I start to</b>
+
+186
+00:07:42,959 --> 00:07:44,439
+<b>sponsor for them the lessons</b>
+
+187
+00:07:44,480 --> 00:07:46,839
+<b>I sponsor the dress. So they</b>
+
+188
+00:07:47,040 --> 00:07:53,480
+<b>make actually like from top, let's say 48</b>
+
+189
+00:07:53,759 --> 00:07:55,839
+<b>in Poland, it was in top</b>
+
+190
+00:07:55,839 --> 00:07:58,000
+<b>12, just in the few months.</b>
+
+191
+00:07:58,560 --> 00:07:59,680
+<b>Because we start to</b>
+
+192
+00:07:59,680 --> 00:08:02,199
+<b>develop. To do it professionally.</b>
+
+193
+00:08:02,279 --> 00:08:04,680
+<b>Not just as a hobby. That's very good</b>
+
+194
+00:08:04,680 --> 00:08:05,720
+<b>word. I think that the</b>
+
+195
+00:08:05,720 --> 00:08:07,079
+<b>most important is that the</b>
+
+196
+00:08:07,079 --> 00:08:09,680
+<b>dancer, they need to understand that if</b>
+
+197
+00:08:09,680 --> 00:08:12,439
+<b>they really want to be</b>
+
+198
+00:08:12,439 --> 00:08:15,319
+<b>successful, they need to target that</b>
+
+199
+00:08:15,319 --> 00:08:17,800
+<b>everything what they did or what they do,</b>
+
+200
+00:08:17,920 --> 00:08:20,000
+<b>it's 100%. It's like a</b>
+
+201
+00:08:20,000 --> 00:08:21,079
+<b>business, like a job.</b>
+
+202
+00:08:21,680 --> 00:08:23,079
+<b>You need to be perfect. That's an</b>
+
+203
+00:08:23,079 --> 00:08:25,959
+<b>important point. Exactly. And I think.</b>
+
+204
+00:08:25,959 --> 00:08:27,439
+<b>You just shoot without the target is a</b>
+
+205
+00:08:27,439 --> 00:08:30,120
+<b>little bit without a sense, really.</b>
+
+206
+00:08:30,319 --> 00:08:31,959
+<b>But many people are working like that.</b>
+
+207
+00:08:32,279 --> 00:08:34,440
+<b>They are like, you know, I understand</b>
+
+208
+00:08:34,440 --> 00:08:35,279
+<b>that dancing is also</b>
+
+209
+00:08:35,320 --> 00:08:38,559
+<b>pleasure. But if they are taking it, the</b>
+
+210
+00:08:38,559 --> 00:08:40,799
+<b>very fun in doing comes.</b>
+
+211
+00:08:40,840 --> 00:08:42,840
+<b>Yes. Then they need to be 100%.</b>
+
+212
+00:08:43,960 --> 00:08:46,879
+<b>And then I recognize that the biggest</b>
+
+213
+00:08:46,879 --> 00:08:49,120
+<b>struggle is to connect with</b>
+
+214
+00:08:49,120 --> 00:08:50,759
+<b>the right teacher. Because of</b>
+
+215
+00:08:50,759 --> 00:08:52,960
+<b>course, the teachers that they are very</b>
+
+216
+00:08:53,000 --> 00:08:55,360
+<b>successful, the champions, they travel</b>
+
+217
+00:08:55,480 --> 00:08:57,080
+<b>around the world. And</b>
+
+218
+00:08:57,159 --> 00:08:59,279
+<b>to have lessons with them, then it's not</b>
+
+219
+00:08:59,279 --> 00:09:01,840
+<b>possible that they can somehow connect</b>
+
+220
+00:09:01,840 --> 00:09:03,399
+<b>with them. And that's</b>
+
+221
+00:09:03,440 --> 00:09:07,080
+<b>how the idea of evidence is difficult.</b>
+
+222
+00:09:07,240 --> 00:09:09,000
+<b>Yeah. So I was thinking that</b>
+
+223
+00:09:09,039 --> 00:09:10,679
+<b>if we will have an app or if</b>
+
+224
+00:09:10,679 --> 00:09:13,840
+<b>we will have a platform when those people</b>
+
+225
+00:09:13,840 --> 00:09:16,320
+<b>can watch the lesson or</b>
+
+226
+00:09:16,320 --> 00:09:18,000
+<b>book a lesson to have a lesson</b>
+
+227
+00:09:18,000 --> 00:09:21,559
+<b>with the teacher, then maybe it will be</b>
+
+228
+00:09:21,799 --> 00:09:23,159
+<b>much easier for them to</b>
+
+229
+00:09:23,200 --> 00:09:25,000
+<b>get that knowledge. Because</b>
+
+230
+00:09:25,320 --> 00:09:27,720
+<b>the lack of knowledge was the biggest</b>
+
+231
+00:09:27,720 --> 00:09:29,159
+<b>gap. Because the problem</b>
+
+232
+00:09:29,159 --> 00:09:30,720
+<b>was that even if they have,</b>
+
+233
+00:09:31,720 --> 00:09:34,519
+<b>let's say they work hard and they have</b>
+
+234
+00:09:34,519 --> 00:09:37,080
+<b>money, but maybe that</b>
+
+235
+00:09:37,080 --> 00:09:38,519
+<b>will be enough to pay this,</b>
+
+236
+00:09:38,799 --> 00:09:42,039
+<b>I don't know, 150, 200, 250 pounds for a</b>
+
+237
+00:09:42,039 --> 00:09:44,279
+<b>lesson. But still to get</b>
+
+238
+00:09:44,279 --> 00:09:45,600
+<b>this lesson, they need to travel</b>
+
+239
+00:09:45,600 --> 00:09:47,399
+<b>to London or I don't know, it's another</b>
+
+240
+00:09:47,399 --> 00:09:49,399
+<b>500 to 1000. Then they need</b>
+
+241
+00:09:49,399 --> 00:09:50,720
+<b>to sleep. They need to have</b>
+
+242
+00:09:50,720 --> 00:09:52,759
+<b>a hotel. They need to eat something. I</b>
+
+243
+00:09:52,759 --> 00:09:54,600
+<b>remember this dance. I came</b>
+
+244
+00:09:54,639 --> 00:09:56,000
+<b>from Germany once a month to</b>
+
+245
+00:09:56,000 --> 00:09:58,399
+<b>London. One day was at least a thousand,</b>
+
+246
+00:09:58,399 --> 00:09:59,279
+<b>at least a thousand for</b>
+
+247
+00:09:59,279 --> 00:10:01,240
+<b>one day. So that's what I was</b>
+
+248
+00:10:01,240 --> 00:10:05,840
+<b>thinking about. So from 250 pounds, what</b>
+
+249
+00:10:05,840 --> 00:10:09,039
+<b>is, let's say, affordable for a really</b>
+
+250
+00:10:09,039 --> 00:10:10,159
+<b>good dancer that can</b>
+
+251
+00:10:10,159 --> 00:10:12,039
+<b>already give some lessons for children or</b>
+
+252
+00:10:12,039 --> 00:10:13,320
+<b>something, it's not an</b>
+
+253
+00:10:13,440 --> 00:10:15,639
+<b>issue, another problem to get this</b>
+
+254
+00:10:15,679 --> 00:10:18,080
+<b>money. But when you combine everything</b>
+
+255
+00:10:18,120 --> 00:10:21,480
+<b>together with the travel, with hotel.</b>
+
+256
+00:10:21,480 --> 00:10:23,399
+<b>Even with your time. Travel time.</b>
+
+257
+00:10:23,399 --> 00:10:24,840
+<b>Because you cannot teach also that.</b>
+
+258
+00:10:24,840 --> 00:10:25,799
+<b>Obviously.</b>
+
+259
+00:10:25,799 --> 00:10:28,159
+<b>You get tired. You cannot teach the next</b>
+
+260
+00:10:28,159 --> 00:10:32,000
+<b>day because it scales</b>
+
+261
+00:10:32,000 --> 00:10:33,720
+<b>to a level where you lose</b>
+
+262
+00:10:33,799 --> 00:10:35,720
+<b>three times or four times more than the</b>
+
+263
+00:10:35,720 --> 00:10:36,399
+<b>lesson you're paying.</b>
+
+264
+00:10:36,440 --> 00:10:37,480
+<b>Yes, exactly.</b>
+
+265
+00:10:37,879 --> 00:10:39,519
+<b>Yeah. If people really, but it's that</b>
+
+266
+00:10:40,000 --> 00:10:41,200
+<b>people are like, "Oh no,</b>
+
+267
+00:10:41,240 --> 00:10:43,240
+<b>they are, I have the feeling,</b>
+
+268
+00:10:43,399 --> 00:10:45,120
+<b>I love, first of all, I love, I love you</b>
+
+269
+00:10:45,120 --> 00:10:46,720
+<b>speak numbers because</b>
+
+270
+00:10:46,720 --> 00:10:47,759
+<b>nobody, everybody's afraid of</b>
+
+271
+00:10:47,759 --> 00:10:50,120
+<b>numbers. And I'm also a numbers guy. So I</b>
+
+272
+00:10:50,120 --> 00:10:51,320
+<b>did, for example, strictly</b>
+
+273
+00:10:51,320 --> 00:10:52,480
+<b>Germany, you have contracts</b>
+
+274
+00:10:52,480 --> 00:10:53,879
+<b>where you sign, you're not allowed to</b>
+
+275
+00:10:53,879 --> 00:10:54,679
+<b>speak with the other</b>
+
+276
+00:10:54,679 --> 00:10:56,320
+<b>professionals when you do dancing with</b>
+
+277
+00:10:56,320 --> 00:10:57,799
+<b>the stars. You're not allowed to speak</b>
+
+278
+00:10:57,799 --> 00:10:59,919
+<b>about what you earn because</b>
+
+279
+00:10:59,919 --> 00:11:01,200
+<b>there was a private television.</b>
+
+280
+00:11:01,240 --> 00:11:03,200
+<b>It's not like here, BBC is doing Strictly</b>
+
+281
+00:11:03,200 --> 00:11:04,759
+<b>Come Dancing. Everybody</b>
+
+282
+00:11:04,759 --> 00:11:05,960
+<b>knows what the professionals</b>
+
+283
+00:11:06,000 --> 00:11:08,840
+<b>are earning. In countries where is a</b>
+
+284
+00:11:09,080 --> 00:11:10,240
+<b>private television, you're</b>
+
+285
+00:11:10,240 --> 00:11:11,360
+<b>not allowed to speak about</b>
+
+286
+00:11:11,399 --> 00:11:13,440
+<b>money. And always everybody's like,</b>
+
+287
+00:11:13,519 --> 00:11:14,360
+<b>"That's a private lesson."</b>
+
+288
+00:11:14,519 --> 00:11:15,840
+<b>Sometimes I would like to ask</b>
+
+289
+00:11:15,840 --> 00:11:18,000
+<b>my guests, "What do you change for a</b>
+
+290
+00:11:18,000 --> 00:11:19,240
+<b>lesson? Just make an</b>
+
+291
+00:11:19,279 --> 00:11:21,200
+<b>advertisement, an elevator pitch."</b>
+
+292
+00:11:21,399 --> 00:11:24,159
+<b>Or we call it in business. Just say, "Hi,</b>
+
+293
+00:11:24,200 --> 00:11:26,200
+<b>I'm Aris, I'm Johanna, and</b>
+
+294
+00:11:26,240 --> 00:11:28,080
+<b>I teach private lesson in</b>
+
+295
+00:11:28,559 --> 00:11:30,639
+<b>my studio here in West London for this</b>
+
+296
+00:11:30,639 --> 00:11:33,879
+<b>prize. And if you want to try, please</b>
+
+297
+00:11:33,879 --> 00:11:35,480
+<b>join my groups or my</b>
+
+298
+00:11:35,519 --> 00:11:35,720
+<b>private."</b>
+
+299
+00:11:35,799 --> 00:11:36,679
+<b>Yes, exactly. I don't understand that.</b>
+
+300
+00:11:36,679 --> 00:11:38,080
+<b>And people are dancing always like,</b>
+
+301
+00:11:38,720 --> 00:11:39,919
+<b>"Everything is a secret.</b>
+
+302
+00:11:40,240 --> 00:11:40,879
+<b>I'm not going to tell you."</b>
+
+303
+00:11:40,879 --> 00:11:42,639
+<b>And this is another story.</b>
+
+304
+00:11:42,639 --> 00:11:43,840
+<b>I'm not going to tell you what, but now</b>
+
+305
+00:11:43,840 --> 00:11:45,840
+<b>I'm like, "Guys, come on.</b>
+
+306
+00:11:46,120 --> 00:11:47,360
+<b>There's a list of prizes,</b>
+
+307
+00:11:47,360 --> 00:11:49,600
+<b>like in every business. A coffee is three</b>
+
+308
+00:11:49,600 --> 00:11:51,200
+<b>pounds, a tea is two,</b>
+
+309
+00:11:51,200 --> 00:11:52,200
+<b>and a water is one."</b>
+
+310
+00:11:53,480 --> 00:11:56,440
+<b>Many times I'm like, "Guys, come on."</b>
+
+311
+00:11:56,519 --> 00:12:00,399
+<b>But this is the problem also because the</b>
+
+312
+00:12:00,399 --> 00:12:02,679
+<b>dancing market and dancing</b>
+
+313
+00:12:02,720 --> 00:12:04,679
+<b>world is very much connected</b>
+
+314
+00:12:04,679 --> 00:12:05,679
+<b>to cash.</b>
+
+315
+00:12:06,440 --> 00:12:07,240
+<b>Yes, that's true.</b>
+
+316
+00:12:07,279 --> 00:12:09,240
+<b>And this is also the issue why people are</b>
+
+317
+00:12:09,240 --> 00:12:10,440
+<b>not talking about it.</b>
+
+318
+00:12:10,799 --> 00:12:13,000
+<b>That's why also old dance and old switch</b>
+
+319
+00:12:13,200 --> 00:12:14,600
+<b>come across the solution</b>
+
+320
+00:12:14,639 --> 00:12:16,120
+<b>for those teachers and those</b>
+
+321
+00:12:16,120 --> 00:12:19,440
+<b>people that they can a little bit more</b>
+
+322
+00:12:20,240 --> 00:12:21,840
+<b>flexible with everything</b>
+
+323
+00:12:21,840 --> 00:12:23,720
+<b>what is coming across them.</b>
+
+324
+00:12:23,759 --> 00:12:25,879
+<b>Also, because the governments are not</b>
+
+325
+00:12:25,879 --> 00:12:27,399
+<b>helping in this, they go</b>
+
+326
+00:12:27,399 --> 00:12:29,279
+<b>crazy with taxes, especially</b>
+
+327
+00:12:29,279 --> 00:12:30,399
+<b>the developed countries. I don't know</b>
+
+328
+00:12:30,399 --> 00:12:31,919
+<b>exactly what the tax range</b>
+
+329
+00:12:31,919 --> 00:12:33,399
+<b>in Poland is, but I'm sure</b>
+
+330
+00:12:33,440 --> 00:12:34,480
+<b>it's not easy always.</b>
+
+331
+00:12:34,559 --> 00:12:37,440
+<b>Yeah, but that's why we have the digital</b>
+
+332
+00:12:37,440 --> 00:12:38,840
+<b>solution. That's why we</b>
+
+333
+00:12:38,879 --> 00:12:40,039
+<b>have the cryptocurrency.</b>
+
+334
+00:12:40,080 --> 00:12:41,279
+<b>That's why we have a token</b>
+
+335
+00:12:41,519 --> 00:12:43,519
+<b>that can be a substitute of the</b>
+
+336
+00:12:44,360 --> 00:12:45,600
+<b>cash payment and it's</b>
+
+337
+00:12:45,600 --> 00:12:47,000
+<b>like, "Oh, and it's tax-free."</b>
+
+338
+00:12:47,000 --> 00:12:50,279
+<b>At the moment that you are using that as</b>
+
+339
+00:12:50,279 --> 00:12:52,000
+<b>a virtual in the space</b>
+
+340
+00:12:52,039 --> 00:12:53,240
+<b>and the ecosystem that</b>
+
+341
+00:12:53,279 --> 00:12:56,240
+<b>we have built for the dancers, it's your</b>
+
+342
+00:12:56,240 --> 00:12:57,720
+<b>decision. If you wanted</b>
+
+343
+00:12:58,000 --> 00:12:58,960
+<b>to withdraw the money,</b>
+
+344
+00:12:58,960 --> 00:13:00,639
+<b>of course, to your account, you can do</b>
+
+345
+00:13:00,639 --> 00:13:02,519
+<b>it. Then you need to pay the taxes.</b>
+
+346
+00:13:02,559 --> 00:13:05,279
+<b>But if you are doing it digital, then</b>
+
+347
+00:13:05,279 --> 00:13:07,080
+<b>it's on the time and</b>
+
+348
+00:13:07,080 --> 00:13:08,919
+<b>the place, it's you decide</b>
+
+349
+00:13:09,000 --> 00:13:11,480
+<b>whatever you need. I think that's the</b>
+
+350
+00:13:11,639 --> 00:13:13,399
+<b>very clever and very</b>
+
+351
+00:13:13,440 --> 00:13:14,879
+<b>good solution, not only for</b>
+
+352
+00:13:14,879 --> 00:13:15,279
+<b>dancers.</b>
+
+353
+00:13:15,600 --> 00:13:17,879
+<b>It's like a duty-free almost area.</b>
+
+354
+00:13:17,919 --> 00:13:21,919
+<b>Exactly. What is good about it, of</b>
+
+355
+00:13:21,919 --> 00:13:26,120
+<b>course, nobody can now, until today,</b>
+
+356
+00:13:26,440 --> 00:13:27,799
+<b>there is no tax on it.</b>
+
+357
+00:13:28,039 --> 00:13:30,000
+<b>I hope it will stay as long as possible.</b>
+
+358
+00:13:30,279 --> 00:13:31,480
+<b>I think it depends from country to</b>
+
+359
+00:13:31,480 --> 00:13:34,320
+<b>country, which I think</b>
+
+360
+00:13:34,320 --> 00:13:35,639
+<b>Portugal was one of the best</b>
+
+361
+00:13:35,879 --> 00:13:39,519
+<b>countries to have crypto in. But how is</b>
+
+362
+00:13:39,519 --> 00:13:40,960
+<b>it, if you go there now</b>
+
+363
+00:13:40,960 --> 00:13:41,879
+<b>with crypto, we jumped.</b>
+
+364
+00:13:42,879 --> 00:13:44,399
+<b>This is the easiest interview ever. I</b>
+
+365
+00:13:44,399 --> 00:13:45,840
+<b>don't have to ask even a question.</b>
+
+366
+00:13:45,879 --> 00:13:47,639
+<b>Joanna is on it, you see.</b>
+
+367
+00:13:47,720 --> 00:13:49,279
+<b>And I didn't read the question.</b>
+
+368
+00:13:49,320 --> 00:13:49,679
+<b>No.</b>
+
+369
+00:13:49,679 --> 00:13:53,519
+<b>They take me hero, like 100% surprising.</b>
+
+370
+00:13:53,519 --> 00:13:56,399
+<b>No, but you have a plan, obviously.</b>
+
+371
+00:13:56,440 --> 00:13:58,039
+<b>Yes, of course, I always have a plan.</b>
+
+372
+00:13:59,080 --> 00:13:59,519
+<b>What a question.</b>
+
+373
+00:13:59,519 --> 00:14:00,679
+<b>I'm the woman on the mission.</b>
+
+374
+00:14:01,279 --> 00:14:03,000
+<b>I love that.</b>
+
+375
+00:14:03,519 --> 00:14:04,600
+<b>You need a plan.</b>
+
+376
+00:14:05,120 --> 00:14:09,159
+<b>To finish the subject with Erdens. So</b>
+
+377
+00:14:09,159 --> 00:14:11,759
+<b>2018 was the first</b>
+
+378
+00:14:12,159 --> 00:14:13,879
+<b>lesson that we have recorded.</b>
+
+379
+00:14:14,159 --> 00:14:17,399
+<b>Actually, 2019 was in January in our</b>
+
+380
+00:14:17,399 --> 00:14:18,919
+<b>studio, because then.</b>
+
+381
+00:14:19,399 --> 00:14:19,840
+<b>In Warsaw.</b>
+
+382
+00:14:19,960 --> 00:14:23,240
+<b>In Warsaw. Then we have created Erdens</b>
+
+383
+00:14:23,320 --> 00:14:24,720
+<b>Academy and Erdens Sport</b>
+
+384
+00:14:24,720 --> 00:14:26,159
+<b>together with Vladimir Sharapo.</b>
+
+385
+00:14:27,759 --> 00:14:29,519
+<b>We have created a space. Actually, the</b>
+
+386
+00:14:29,519 --> 00:14:31,159
+<b>idea of creating the space</b>
+
+387
+00:14:31,159 --> 00:14:32,840
+<b>was because we need to have</b>
+
+388
+00:14:32,840 --> 00:14:33,600
+<b>a place where we would</b>
+
+389
+00:14:33,600 --> 00:14:36,639
+<b>like to train. And then we.</b>
+
+390
+00:14:37,200 --> 00:14:38,559
+<b>From that need of just</b>
+
+391
+00:14:38,559 --> 00:14:40,120
+<b>simple having a place to practice.</b>
+
+392
+00:14:40,240 --> 00:14:42,840
+<b>And we just say because Vladimir was at</b>
+
+393
+00:14:42,840 --> 00:14:47,159
+<b>the moment also teaching a lot in many</b>
+
+394
+00:14:47,159 --> 00:14:49,200
+<b>places around Warsaw.</b>
+
+395
+00:14:49,600 --> 00:14:51,720
+<b>And he needs to travel. And then of</b>
+
+396
+00:14:51,720 --> 00:14:52,879
+<b>course, we lose the time</b>
+
+397
+00:14:52,919 --> 00:14:54,360
+<b>because when he was traveling,</b>
+
+398
+00:14:54,360 --> 00:14:56,159
+<b>then we cannot practice or we cannot</b>
+
+399
+00:14:56,159 --> 00:14:58,000
+<b>prepare each other for.</b>
+
+400
+00:14:58,399 --> 00:14:59,200
+<b>Again, travel time.</b>
+
+401
+00:14:59,840 --> 00:15:02,440
+<b>Travel time. And like I say, I start in</b>
+
+402
+00:15:02,440 --> 00:15:07,480
+<b>2016, but I was very, let's say,</b>
+
+403
+00:15:07,799 --> 00:15:09,039
+<b>intensive in training.</b>
+
+404
+00:15:09,039 --> 00:15:11,279
+<b>After three months, I come to London for</b>
+
+405
+00:15:11,279 --> 00:15:12,440
+<b>my first competition.</b>
+
+406
+00:15:12,600 --> 00:15:13,240
+<b>Three months.</b>
+
+407
+00:15:13,559 --> 00:15:14,240
+<b>London Bowl.</b>
+
+408
+00:15:14,480 --> 00:15:16,559
+<b>No. And today is London Bowl.</b>
+
+409
+00:15:16,559 --> 00:15:17,039
+<b>And today is London Bowl.</b>
+
+410
+00:15:17,039 --> 00:15:18,320
+<b>Just that we have, of course, the podcast</b>
+
+411
+00:15:18,320 --> 00:15:19,960
+<b>we'll come with later. Yesterday was the</b>
+
+412
+00:15:19,960 --> 00:15:22,240
+<b>International in the Royal Albert Hall.</b>
+
+413
+00:15:22,600 --> 00:15:24,039
+<b>What a fabulous evening was that.</b>
+
+414
+00:15:24,200 --> 00:15:25,000
+<b>Thank you very much.</b>
+
+415
+00:15:25,000 --> 00:15:25,919
+<b>Yes, that was fabulous.</b>
+
+416
+00:15:26,559 --> 00:15:27,159
+<b>We have the</b>
+
+417
+00:15:27,159 --> 00:15:28,879
+<b>possibility to dance the final.</b>
+
+418
+00:15:30,519 --> 00:15:31,799
+<b>To dance in Royal Albert Hall.</b>
+
+419
+00:15:31,879 --> 00:15:32,600
+<b>It's amazing.</b>
+
+420
+00:15:32,679 --> 00:15:33,320
+<b>It's something.</b>
+
+421
+00:15:33,320 --> 00:15:36,279
+<b>It's like, you know, Christmas and all</b>
+
+422
+00:15:36,279 --> 00:15:38,440
+<b>the Easter together with</b>
+
+423
+00:15:38,440 --> 00:15:40,080
+<b>all the prizes, surprises.</b>
+
+424
+00:15:40,080 --> 00:15:41,440
+<b>And oh, wow.</b>
+
+425
+00:15:41,440 --> 00:15:41,960
+<b>Beautiful.</b>
+
+426
+00:15:42,159 --> 00:15:45,639
+<b>I can only say to all the girls from</b>
+
+427
+00:15:45,679 --> 00:15:47,559
+<b>Pro-Am that it doesn't</b>
+
+428
+00:15:47,559 --> 00:15:49,120
+<b>matter, you know, if you have the</b>
+
+429
+00:15:49,120 --> 00:15:51,799
+<b>opportunity, go for qualify. If you have</b>
+
+430
+00:15:51,799 --> 00:15:53,600
+<b>the possibility to get</b>
+
+431
+00:15:53,639 --> 00:15:55,120
+<b>to be in Royal Albert.</b>
+
+432
+00:15:56,080 --> 00:15:58,360
+<b>It's nothing to combine with the feeling</b>
+
+433
+00:15:58,360 --> 00:16:00,000
+<b>that you are going out.</b>
+
+434
+00:16:00,559 --> 00:16:02,559
+<b>That arena, that Coliseum feeling.</b>
+
+435
+00:16:02,679 --> 00:16:03,759
+<b>That arena, that feeling,</b>
+
+436
+00:16:03,919 --> 00:16:05,440
+<b>the music, the orchestra.</b>
+
+437
+00:16:06,000 --> 00:16:06,399
+<b>The orchestra.</b>
+
+438
+00:16:06,399 --> 00:16:07,360
+<b>Oh my God. The orchestra. When they</b>
+
+439
+00:16:07,360 --> 00:16:08,799
+<b>played all both together.</b>
+
+440
+00:16:08,840 --> 00:16:09,559
+<b>Yes.</b>
+
+441
+00:16:09,639 --> 00:16:10,240
+<b>Oh my God.</b>
+
+442
+00:16:11,000 --> 00:16:14,399
+<b>At this moment, you really don't think</b>
+
+443
+00:16:14,440 --> 00:16:16,279
+<b>about the result because</b>
+
+444
+00:16:16,480 --> 00:16:17,759
+<b>to be there, you are already</b>
+
+445
+00:16:17,799 --> 00:16:18,639
+<b>the winner. Yes.</b>
+
+446
+00:16:18,639 --> 00:16:19,120
+<b>Exactly.</b>
+
+447
+00:16:19,159 --> 00:16:20,679
+<b>It doesn't matter which place you take.</b>
+
+448
+00:16:20,879 --> 00:16:22,480
+<b>Of course, it's the best to be the best.</b>
+
+449
+00:16:22,840 --> 00:16:23,559
+<b>Like I said, different</b>
+
+450
+00:16:23,559 --> 00:16:24,879
+<b>judges, different results anyway.</b>
+
+451
+00:16:25,840 --> 00:16:27,639
+<b>Different day, of course. You can have a</b>
+
+452
+00:16:27,639 --> 00:16:29,320
+<b>good day and you feel amazing,</b>
+
+453
+00:16:29,480 --> 00:16:31,000
+<b>but it doesn't look amazing sometimes.</b>
+
+454
+00:16:31,000 --> 00:16:32,240
+<b>Sometimes you don't feel amazing.</b>
+
+455
+00:16:32,240 --> 00:16:33,279
+<b>And you look amazing.</b>
+
+456
+00:16:34,639 --> 00:16:38,720
+<b>But yesterday we had a very good day. We</b>
+
+457
+00:16:38,720 --> 00:16:39,639
+<b>danced, I think, very</b>
+
+458
+00:16:39,639 --> 00:16:41,399
+<b>good. And I feel amazing.</b>
+
+459
+00:16:41,639 --> 00:16:44,320
+<b>I feel that everything was set perfectly.</b>
+
+460
+00:16:44,320 --> 00:16:45,080
+<b>Accomplished.</b>
+
+461
+00:16:45,159 --> 00:16:46,240
+<b>The dress, the makeup.</b>
+
+462
+00:16:46,240 --> 00:16:47,320
+<b>Mission accomplished.</b>
+
+463
+00:16:47,399 --> 00:16:49,399
+<b>Exactly. So we</b>
+
+464
+00:16:49,399 --> 00:16:51,279
+<b>finished first, but it's okay.</b>
+
+465
+00:16:52,360 --> 00:16:53,960
+<b>It's like I say, there's</b>
+
+466
+00:16:53,960 --> 00:16:55,000
+<b>another one, two, three.</b>
+
+467
+00:16:55,000 --> 00:16:56,000
+<b>It's always the volume.</b>
+
+468
+00:16:56,440 --> 00:16:59,279
+<b>Never results were... It's</b>
+
+469
+00:16:59,279 --> 00:17:00,679
+<b>like money makes you happy.</b>
+
+470
+00:17:01,200 --> 00:17:02,679
+<b>It's the same way to result. Do results</b>
+
+471
+00:17:02,679 --> 00:17:03,519
+<b>make you happy, actually?</b>
+
+472
+00:17:04,279 --> 00:17:05,160
+<b>What do you think? Do</b>
+
+473
+00:17:05,160 --> 00:17:06,400
+<b>results make you happier?</b>
+
+474
+00:17:06,880 --> 00:17:09,799
+<b>If you know, you shouldn't have been</b>
+
+475
+00:17:09,799 --> 00:17:12,880
+<b>there. But I suppose some</b>
+
+476
+00:17:12,880 --> 00:17:13,759
+<b>dancers, when they are pushed</b>
+
+477
+00:17:13,759 --> 00:17:15,400
+<b>from sometimes, they have a whole team</b>
+
+478
+00:17:15,400 --> 00:17:16,160
+<b>behind them. They are</b>
+
+479
+00:17:16,160 --> 00:17:17,200
+<b>over pushed and they are...</b>
+
+480
+00:17:17,599 --> 00:17:21,960
+<b>I'm not going to say names, of course,</b>
+
+481
+00:17:21,960 --> 00:17:22,759
+<b>but they should have</b>
+
+482
+00:17:22,759 --> 00:17:24,400
+<b>been in the 24th final and</b>
+
+483
+00:17:24,400 --> 00:17:25,920
+<b>then they win the competition. And</b>
+
+484
+00:17:25,920 --> 00:17:29,279
+<b>everybody's like, guys, we're not stupid.</b>
+
+485
+00:17:30,000 --> 00:17:30,920
+<b>We have eyes and we can</b>
+
+486
+00:17:30,920 --> 00:17:32,000
+<b>see that it's not there.</b>
+
+487
+00:17:33,319 --> 00:17:37,440
+<b>Long term, that's a bad, bad decision.</b>
+
+488
+00:17:37,519 --> 00:17:40,599
+<b>To be honest, dancing world, it's a very</b>
+
+489
+00:17:41,279 --> 00:17:43,519
+<b>tricky world. And I'm still learning.</b>
+
+490
+00:17:44,480 --> 00:17:47,559
+<b>But it's actually exciting.</b>
+
+491
+00:17:48,799 --> 00:17:52,160
+<b>Because it's also give me the possibility</b>
+
+492
+00:17:52,279 --> 00:17:53,359
+<b>to train my character</b>
+
+493
+00:17:53,720 --> 00:17:55,720
+<b>and to train my abilities,</b>
+
+494
+00:17:55,960 --> 00:17:58,960
+<b>how I can deal with people and with</b>
+
+495
+00:17:59,079 --> 00:18:00,079
+<b>reaction and everything.</b>
+
+496
+00:18:00,119 --> 00:18:03,000
+<b>I see business and</b>
+
+497
+00:18:03,000 --> 00:18:04,480
+<b>dancing so close together.</b>
+
+498
+00:18:04,480 --> 00:18:04,880
+<b>Yes.</b>
+
+499
+00:18:05,079 --> 00:18:07,039
+<b>And because you need a strategy and a</b>
+
+500
+00:18:07,039 --> 00:18:08,799
+<b>direction and a vision in business,</b>
+
+501
+00:18:08,799 --> 00:18:10,039
+<b>the same you need in dancing. Like you</b>
+
+502
+00:18:10,039 --> 00:18:11,200
+<b>said, you need a plan, you</b>
+
+503
+00:18:11,359 --> 00:18:12,079
+<b>need to know what you're doing.</b>
+
+504
+00:18:12,400 --> 00:18:16,160
+<b>And for me, when I see PRIM nowadays,</b>
+
+505
+00:18:16,480 --> 00:18:17,920
+<b>it's changing so much.</b>
+
+506
+00:18:18,160 --> 00:18:18,519
+<b>Oh my God.</b>
+
+507
+00:18:18,640 --> 00:18:20,319
+<b>I did only one competition I did. I did a</b>
+
+508
+00:18:20,319 --> 00:18:21,400
+<b>war show, a competition,</b>
+
+509
+00:18:21,559 --> 00:18:24,160
+<b>a Michael Dosto competition one time. And</b>
+
+510
+00:18:24,160 --> 00:18:25,039
+<b>I was like, oh my God,</b>
+
+511
+00:18:25,160 --> 00:18:26,680
+<b>because I wanted just to taste the world</b>
+
+512
+00:18:26,680 --> 00:18:27,400
+<b>to see what's going on.</b>
+
+513
+00:18:27,720 --> 00:18:29,440
+<b>I did strictly Dancing with the Stars</b>
+
+514
+00:18:29,440 --> 00:18:30,920
+<b>Germany two years as a professional.</b>
+
+515
+00:18:31,559 --> 00:18:33,960
+<b>And it was okay. It was not my cup of</b>
+
+516
+00:18:33,960 --> 00:18:35,440
+<b>tea, how they say it here in the UK.</b>
+
+517
+00:18:35,960 --> 00:18:38,599
+<b>But I liked it. I liked</b>
+
+518
+00:18:38,599 --> 00:18:40,519
+<b>the show. So I did shows.</b>
+
+519
+00:18:41,359 --> 00:18:43,559
+<b>I like more to do show competitions, show</b>
+
+520
+00:18:43,559 --> 00:18:45,720
+<b>dance than a normal competition.</b>
+
+521
+00:18:45,799 --> 00:18:47,559
+<b>Because it's just you have the stage, the</b>
+
+522
+00:18:47,559 --> 00:18:48,319
+<b>lights, everything you</b>
+
+523
+00:18:48,319 --> 00:18:49,160
+<b>have here for yourself.</b>
+
+524
+00:18:49,400 --> 00:18:51,680
+<b>You have your own music that you practice</b>
+
+525
+00:18:51,680 --> 00:18:52,839
+<b>and you know it perfectly.</b>
+
+526
+00:18:53,160 --> 00:18:54,759
+<b>And then it just gives you a different, a</b>
+
+527
+00:18:54,759 --> 00:18:55,160
+<b>different, but</b>
+
+528
+00:18:55,160 --> 00:18:56,279
+<b>everybody's different, obviously.</b>
+
+529
+00:18:56,279 --> 00:18:58,079
+<b>Exactly. But I think this is also the</b>
+
+530
+00:18:58,119 --> 00:18:59,000
+<b>question of the pro</b>
+
+531
+00:18:59,000 --> 00:19:01,480
+<b>because my pro, Vladimir,</b>
+
+532
+00:19:02,160 --> 00:19:05,160
+<b>he likes also more shows, but probably</b>
+
+533
+00:19:05,160 --> 00:19:06,640
+<b>because he's dancing his</b>
+
+534
+00:19:06,640 --> 00:19:08,160
+<b>whole life competitive.</b>
+
+535
+00:19:08,279 --> 00:19:08,799
+<b>Okay.</b>
+
+536
+00:19:08,839 --> 00:19:10,039
+<b>And then you have this</b>
+
+537
+00:19:10,039 --> 00:19:11,440
+<b>feeling that, okay, I, I, I,</b>
+
+538
+00:19:11,440 --> 00:19:12,000
+<b>You like both.</b>
+
+539
+00:19:12,039 --> 00:19:13,279
+<b>You are both. For me,</b>
+
+540
+00:19:13,279 --> 00:19:14,319
+<b>I am competitive girl.</b>
+
+541
+00:19:14,319 --> 00:19:15,160
+<b>I like more competitive.</b>
+
+542
+00:19:15,160 --> 00:19:16,160
+<b>I like competitive.</b>
+
+543
+00:19:16,279 --> 00:19:16,519
+<b>Why?</b>
+
+544
+00:19:17,440 --> 00:19:19,400
+<b>Because I like this feeling. I like to</b>
+
+545
+00:19:19,400 --> 00:19:21,039
+<b>challenge myself, my body,</b>
+
+546
+00:19:21,039 --> 00:19:22,920
+<b>my, I like the preparation.</b>
+
+547
+00:19:22,920 --> 00:19:24,279
+<b>I like also that.</b>
+
+548
+00:19:24,279 --> 00:19:25,359
+<b>It's more intense, you think?</b>
+
+549
+00:19:25,359 --> 00:19:27,319
+<b>It's more intense. It's motivate me also.</b>
+
+550
+00:19:27,559 --> 00:19:28,839
+<b>And of course, I'm not,</b>
+
+551
+00:19:28,839 --> 00:19:31,599
+<b>the most important thing is for me that</b>
+
+552
+00:19:31,599 --> 00:19:32,680
+<b>I'm challenged myself.</b>
+
+553
+00:19:32,680 --> 00:19:35,319
+<b>I want it to be every time that when I go</b>
+
+554
+00:19:35,359 --> 00:19:36,720
+<b>on the floor, I want to be</b>
+
+555
+00:19:36,759 --> 00:19:38,039
+<b>the best version of myself.</b>
+
+556
+00:19:38,279 --> 00:19:40,759
+<b>I'm not competing with nobody. It's, if</b>
+
+557
+00:19:40,759 --> 00:19:42,359
+<b>you ask me who was with</b>
+
+558
+00:19:42,359 --> 00:19:43,519
+<b>me on the floor and define,</b>
+
+559
+00:19:43,599 --> 00:19:45,640
+<b>I cannot give you the names because I</b>
+
+560
+00:19:45,640 --> 00:19:47,200
+<b>don't remember. I am</b>
+
+561
+00:19:47,200 --> 00:19:48,759
+<b>there for myself and I am some</b>
+
+562
+00:19:48,759 --> 00:19:50,599
+<b>concentrating about what I'm doing.</b>
+
+563
+00:19:50,920 --> 00:19:52,559
+<b>You know, when they do, when they do this</b>
+
+564
+00:19:52,599 --> 00:19:53,839
+<b>marathon running, yeah?</b>
+
+565
+00:19:53,880 --> 00:19:54,160
+<b>Yeah.</b>
+
+566
+00:19:54,400 --> 00:19:56,319
+<b>You actually try to beat your</b>
+
+567
+00:19:56,319 --> 00:19:58,519
+<b>time from the last marathon.</b>
+
+568
+00:19:58,519 --> 00:19:59,079
+<b>Exactly.</b>
+
+569
+00:19:59,279 --> 00:20:00,200
+<b>It's the same.</b>
+
+570
+00:20:00,200 --> 00:20:00,440
+<b>Yeah.</b>
+
+571
+00:20:00,599 --> 00:20:01,559
+<b>So you try just to be</b>
+
+572
+00:20:01,559 --> 00:20:02,279
+<b>better than last time.</b>
+
+573
+00:20:02,279 --> 00:20:02,759
+<b>Exactly.</b>
+
+574
+00:20:03,559 --> 00:20:06,079
+<b>That's a nice thought. And I think that's</b>
+
+575
+00:20:07,000 --> 00:20:09,960
+<b>a thought and a way of</b>
+
+576
+00:20:10,319 --> 00:20:12,319
+<b>dealing much better with</b>
+
+577
+00:20:12,440 --> 00:20:14,319
+<b>everything that comes with that result.</b>
+
+578
+00:20:14,519 --> 00:20:14,720
+<b>Yes.</b>
+
+579
+00:20:14,839 --> 00:20:15,039
+<b>You know?</b>
+
+580
+00:20:15,200 --> 00:20:17,559
+<b>Because it can bring you down a result</b>
+
+581
+00:20:17,559 --> 00:20:20,079
+<b>that was not maybe your day or it was...</b>
+
+582
+00:20:20,200 --> 00:20:20,680
+<b>Exactly.</b>
+
+583
+00:20:21,119 --> 00:20:22,960
+<b>Whatever. There are so many things that,</b>
+
+584
+00:20:23,319 --> 00:20:25,119
+<b>dress, there are so many things that can</b>
+
+585
+00:20:25,400 --> 00:20:27,319
+<b>influence the result. And then you're</b>
+
+586
+00:20:27,319 --> 00:20:29,559
+<b>like, that's not who I am.</b>
+
+587
+00:20:29,559 --> 00:20:31,359
+<b>You know, I'm not going to be</b>
+
+588
+00:20:32,319 --> 00:20:34,160
+<b>put in this box because I had this</b>
+
+589
+00:20:34,160 --> 00:20:35,279
+<b>result. This result is</b>
+
+590
+00:20:35,319 --> 00:20:36,559
+<b>okay. And it goes to,</b>
+
+591
+00:20:36,920 --> 00:20:38,720
+<b>okay, I have to work on some things to do</b>
+
+592
+00:20:38,720 --> 00:20:40,000
+<b>better, but it's not</b>
+
+593
+00:20:40,000 --> 00:20:41,160
+<b>something that defines me.</b>
+
+594
+00:20:41,240 --> 00:20:41,799
+<b>Exactly.</b>
+
+595
+00:20:42,240 --> 00:20:42,920
+<b>And I think this is</b>
+
+596
+00:20:42,920 --> 00:20:44,359
+<b>what people should not...</b>
+
+597
+00:20:44,599 --> 00:20:46,359
+<b>Oh, I'm the world champion now. And this</b>
+
+598
+00:20:46,359 --> 00:20:48,359
+<b>is my... Yes. But you</b>
+
+599
+00:20:48,359 --> 00:20:49,720
+<b>might not be a great teacher,</b>
+
+600
+00:20:49,720 --> 00:20:49,880
+<b>maybe.</b>
+
+601
+00:20:50,680 --> 00:20:52,960
+<b>Exactly. Exactly. 100% agree. And this is</b>
+
+602
+00:20:52,960 --> 00:20:54,720
+<b>what you say also about the pro-embers.</b>
+
+603
+00:20:55,039 --> 00:20:59,640
+<b>That the pro-em system has very developed</b>
+
+604
+00:20:59,680 --> 00:21:01,359
+<b>and also the quality</b>
+
+605
+00:21:01,400 --> 00:21:02,319
+<b>of the pro-em dancers.</b>
+
+606
+00:21:02,319 --> 00:21:02,880
+<b>Oh my God. Yes.</b>
+
+607
+00:21:03,039 --> 00:21:05,960
+<b>They are so high that actually in many</b>
+
+608
+00:21:07,000 --> 00:21:08,440
+<b>situations and many girls,</b>
+
+609
+00:21:08,440 --> 00:21:10,599
+<b>they could be literally a pro.</b>
+
+610
+00:21:10,920 --> 00:21:13,240
+<b>They can go on the stage with Amatruz and</b>
+
+611
+00:21:13,240 --> 00:21:14,079
+<b>pro and they will...</b>
+
+612
+00:21:15,079 --> 00:21:15,640
+<b>Look good.</b>
+
+613
+00:21:15,759 --> 00:21:18,039
+<b>Look good. And you have really a big</b>
+
+614
+00:21:18,079 --> 00:21:19,319
+<b>problem to say, okay,</b>
+
+615
+00:21:19,359 --> 00:21:20,200
+<b>which one is which one?</b>
+
+616
+00:21:20,400 --> 00:21:21,519
+<b>Yeah.</b>
+
+617
+00:21:21,759 --> 00:21:24,920
+<b>When I was starting 10 years ago, I was</b>
+
+618
+00:21:24,920 --> 00:21:26,039
+<b>actually the first</b>
+
+619
+00:21:26,039 --> 00:21:27,200
+<b>pro-em from Poland that</b>
+
+620
+00:21:27,200 --> 00:21:28,160
+<b>start to travel</b>
+
+621
+00:21:28,160 --> 00:21:30,240
+<b>international. So in Poland it was...</b>
+
+622
+00:21:31,160 --> 00:21:32,720
+<b>I thought it was always, always big</b>
+
+623
+00:21:32,759 --> 00:21:34,359
+<b>because I know Stefano Terrazino is a</b>
+
+624
+00:21:34,359 --> 00:21:35,359
+<b>good friend of mine.</b>
+
+625
+00:21:35,400 --> 00:21:38,279
+<b>And on those times he already started a</b>
+
+626
+00:21:38,279 --> 00:21:39,519
+<b>bit of pro-embers, I think,</b>
+
+627
+00:21:39,839 --> 00:21:40,839
+<b>when I met him, what was it,</b>
+
+628
+00:21:40,839 --> 00:21:43,720
+<b>15 years ago? He was still doing dancing</b>
+
+629
+00:21:43,720 --> 00:21:44,519
+<b>with the stars in Poland?</b>
+
+630
+00:21:44,559 --> 00:21:44,960
+<b>Yes.</b>
+
+631
+00:21:45,279 --> 00:21:46,599
+<b>And he was already doing pro-embers and</b>
+
+632
+00:21:46,599 --> 00:21:47,799
+<b>everything. So I was like, okay.</b>
+
+633
+00:21:47,799 --> 00:21:49,759
+<b>But it was very little and they was doing</b>
+
+634
+00:21:49,839 --> 00:21:51,000
+<b>that in very small...</b>
+
+635
+00:21:51,000 --> 00:21:54,079
+<b>You know, community in small hotels,</b>
+
+636
+00:21:54,079 --> 00:21:56,319
+<b>there was not such a big</b>
+
+637
+00:21:56,920 --> 00:21:58,519
+<b>events like we are doing now.</b>
+
+638
+00:21:58,519 --> 00:22:00,519
+<b>Yeah. So I'm also organizer with Vladimir</b>
+
+639
+00:22:00,519 --> 00:22:01,559
+<b>of Erdens Christmas Bowl.</b>
+
+640
+00:22:01,799 --> 00:22:02,519
+<b>Yes, Christmas Bowl.</b>
+
+641
+00:22:02,680 --> 00:22:03,640
+<b>And we are doing this</b>
+
+642
+00:22:03,640 --> 00:22:05,079
+<b>six years in a row now.</b>
+
+643
+00:22:05,200 --> 00:22:06,799
+<b>Wow. Well done. Congratulations.</b>
+
+644
+00:22:06,799 --> 00:22:08,720
+<b>This year we have a very special place</b>
+
+645
+00:22:08,720 --> 00:22:11,480
+<b>because we are doing it in a Hotel</b>
+
+646
+00:22:11,480 --> 00:22:13,039
+<b>Goenbiskin, Mikowieki.</b>
+
+647
+00:22:13,440 --> 00:22:13,839
+<b>Mikowieki.</b>
+
+648
+00:22:13,839 --> 00:22:16,240
+<b>Yes. And this is a place that is very</b>
+
+649
+00:22:16,240 --> 00:22:17,359
+<b>important for all the</b>
+
+650
+00:22:17,400 --> 00:22:19,400
+<b>ballroom dancing in Poland because</b>
+
+651
+00:22:19,400 --> 00:22:20,960
+<b>for many years the</b>
+
+652
+00:22:20,960 --> 00:22:22,079
+<b>Tropicana Cup was there.</b>
+
+653
+00:22:22,079 --> 00:22:23,039
+<b>Yes, of course. I know. I</b>
+
+654
+00:22:23,039 --> 00:22:24,559
+<b>was there once or twice.</b>
+
+655
+00:22:24,559 --> 00:22:26,200
+<b>It was like Polish International or</b>
+
+656
+00:22:26,200 --> 00:22:27,519
+<b>Polish Blackpullet, we can say.</b>
+
+657
+00:22:27,519 --> 00:22:27,920
+<b>Exactly.</b>
+
+658
+00:22:28,240 --> 00:22:31,319
+<b>Because all the dancers that was close to</b>
+
+659
+00:22:31,319 --> 00:22:32,960
+<b>Poland, like Ukraine or</b>
+
+660
+00:22:32,960 --> 00:22:34,839
+<b>Czech Republic or Russia,</b>
+
+661
+00:22:34,839 --> 00:22:38,039
+<b>everybody was coming there because that</b>
+
+662
+00:22:38,039 --> 00:22:39,559
+<b>was something that give you the</b>
+
+663
+00:22:39,680 --> 00:22:43,480
+<b>shot to the next stage in the, let's say,</b>
+
+664
+00:22:43,720 --> 00:22:44,720
+<b>international dancing.</b>
+
+665
+00:22:45,119 --> 00:22:48,279
+<b>And this year we are part of Dancing</b>
+
+666
+00:22:48,279 --> 00:22:51,119
+<b>Week. So we are doing this</b>
+
+667
+00:22:51,119 --> 00:22:53,359
+<b>together with Polish Dance</b>
+
+668
+00:22:53,359 --> 00:22:56,279
+<b>Federation and it will be in connecting</b>
+
+669
+00:22:56,279 --> 00:22:58,079
+<b>with IDEO. And that's</b>
+
+670
+00:22:58,079 --> 00:22:59,640
+<b>what we are doing. So it will</b>
+
+671
+00:22:59,640 --> 00:23:00,839
+<b>be 10 days of dancing.</b>
+
+672
+00:23:00,880 --> 00:23:02,400
+<b>It's a big, huge festival.</b>
+
+673
+00:23:02,440 --> 00:23:03,279
+<b>Oh wow. It's first time so long.</b>
+
+674
+00:23:03,279 --> 00:23:04,839
+<b>First time. And in the middle.</b>
+
+675
+00:23:04,839 --> 00:23:05,759
+<b>So you do prom?</b>
+
+676
+00:23:06,279 --> 00:23:08,400
+<b>We do everything. So on nine of...</b>
+
+677
+00:23:08,640 --> 00:23:09,799
+<b>The same day or you...</b>
+
+678
+00:23:09,799 --> 00:23:12,720
+<b>We start from 6th of December and we</b>
+
+679
+00:23:12,720 --> 00:23:15,920
+<b>finish on actually 14th of December.</b>
+
+680
+00:23:16,400 --> 00:23:18,359
+<b>And the Erdens Christmas Bow will start</b>
+
+681
+00:23:18,359 --> 00:23:20,160
+<b>with 9th and 10th with the training camp.</b>
+
+682
+00:23:20,759 --> 00:23:24,359
+<b>And in the meantime, IDEO will have the</b>
+
+683
+00:23:24,359 --> 00:23:25,519
+<b>world championships for the</b>
+
+684
+00:23:25,519 --> 00:23:26,759
+<b>gymnastics and the artistic</b>
+
+685
+00:23:26,759 --> 00:23:30,160
+<b>dance. And 11th and 12th we have the</b>
+
+686
+00:23:30,200 --> 00:23:31,319
+<b>ballroom competition</b>
+
+687
+00:23:32,039 --> 00:23:33,119
+<b>together with the Pro-M.</b>
+
+688
+00:23:33,119 --> 00:23:33,839
+<b>So it's...</b>
+
+689
+00:23:33,880 --> 00:23:35,440
+<b>All right. So you combine them.</b>
+
+690
+00:23:35,440 --> 00:23:36,240
+<b>Yes, yes.</b>
+
+691
+00:23:36,480 --> 00:23:38,279
+<b>Very good. Good luck with that. Sounds</b>
+
+692
+00:23:38,279 --> 00:23:39,799
+<b>like an amazing, amazing project.</b>
+
+693
+00:23:40,519 --> 00:23:42,200
+<b>So you're not settling down,</b>
+
+694
+00:23:42,200 --> 00:23:44,279
+<b>I see. You don't want to stop.</b>
+
+695
+00:23:44,519 --> 00:23:46,920
+<b>Your projects are just running out of</b>
+
+696
+00:23:46,920 --> 00:23:48,000
+<b>your mind and you just</b>
+
+697
+00:23:48,000 --> 00:23:49,680
+<b>want to achieve the next goal.</b>
+
+698
+00:23:50,240 --> 00:23:51,200
+<b>Which is great. Keeps</b>
+
+699
+00:23:51,200 --> 00:23:52,039
+<b>you definitely young.</b>
+
+700
+00:23:52,319 --> 00:23:53,039
+<b>Yes, thank you.</b>
+
+701
+00:23:53,440 --> 00:23:56,200
+<b>That keeps you young. To have a goal and</b>
+
+702
+00:23:56,200 --> 00:23:57,400
+<b>a focus and to have</b>
+
+703
+00:23:57,400 --> 00:23:59,839
+<b>that, let's say, vision</b>
+
+704
+00:24:00,680 --> 00:24:03,119
+<b>in so many ways is amazing. And</b>
+
+705
+00:24:03,400 --> 00:24:03,880
+<b>especially you're</b>
+
+706
+00:24:03,880 --> 00:24:04,880
+<b>helping the dance community.</b>
+
+707
+00:24:05,000 --> 00:24:05,519
+<b>Exactly.</b>
+
+708
+00:24:05,599 --> 00:24:05,960
+<b>It's brilliant.</b>
+
+709
+00:24:06,279 --> 00:24:07,039
+<b>I feel that...</b>
+
+710
+00:24:07,039 --> 00:24:08,559
+<b>I think everyone should say thank you to</b>
+
+711
+00:24:08,559 --> 00:24:09,519
+<b>people like you because</b>
+
+712
+00:24:09,920 --> 00:24:12,000
+<b>it's really, really not easy</b>
+
+713
+00:24:12,000 --> 00:24:14,519
+<b>what you're doing. And many of the times</b>
+
+714
+00:24:14,519 --> 00:24:16,079
+<b>I did a London Open, I did</b>
+
+715
+00:24:16,319 --> 00:24:18,759
+<b>a competition and I got also</b>
+
+716
+00:24:19,240 --> 00:24:21,279
+<b>12 couples to do shows from all</b>
+
+717
+00:24:21,279 --> 00:24:22,559
+<b>federations as well. And I</b>
+
+718
+00:24:22,559 --> 00:24:23,839
+<b>tried to get judges from all</b>
+
+719
+00:24:23,839 --> 00:24:26,079
+<b>federations and they were all coming</b>
+
+720
+00:24:26,079 --> 00:24:28,880
+<b>together, you know? But it's not easy.</b>
+
+721
+00:24:28,960 --> 00:24:30,400
+<b>It's not easy. And you spend a lot of</b>
+
+722
+00:24:30,400 --> 00:24:31,960
+<b>money and in the end you're like, "Guys,</b>
+
+723
+00:24:33,599 --> 00:24:36,000
+<b>am I by myself here? I want to change the</b>
+
+724
+00:24:36,000 --> 00:24:37,720
+<b>world by myself." But I</b>
+
+725
+00:24:37,720 --> 00:24:39,640
+<b>think if we each do our part,</b>
+
+726
+00:24:39,640 --> 00:24:41,519
+<b>you know, step by step, do it a little</b>
+
+727
+00:24:41,519 --> 00:24:43,039
+<b>bit better here, do a bit better here,</b>
+
+728
+00:24:43,519 --> 00:24:46,000
+<b>it gets to a level where it starts to</b>
+
+729
+00:24:46,000 --> 00:24:48,160
+<b>shift a little bit. And in</b>
+
+730
+00:24:48,160 --> 00:24:49,640
+<b>terms of shifting, do you</b>
+
+731
+00:24:49,640 --> 00:24:52,640
+<b>think... Because of course 2000 was the</b>
+
+732
+00:24:52,640 --> 00:24:55,000
+<b>perfect year to start an online platform.</b>
+
+733
+00:24:55,000 --> 00:24:55,279
+<b>Yes.</b>
+
+734
+00:24:55,759 --> 00:24:58,000
+<b>But do you think... I don't know if the</b>
+
+735
+00:24:58,000 --> 00:24:59,480
+<b>technology was maybe</b>
+
+736
+00:24:59,480 --> 00:25:01,599
+<b>sometimes maybe too expensive or the</b>
+
+737
+00:25:01,599 --> 00:25:04,599
+<b>people's way of dealing with this type of</b>
+
+738
+00:25:04,599 --> 00:25:06,160
+<b>information. Because of</b>
+
+739
+00:25:06,160 --> 00:25:07,240
+<b>course they were forced</b>
+
+740
+00:25:07,279 --> 00:25:09,720
+<b>by the lockdown to, especially in</b>
+
+741
+00:25:09,720 --> 00:25:10,559
+<b>countries like Germany</b>
+
+742
+00:25:10,559 --> 00:25:11,920
+<b>where it was very restricted,</b>
+
+743
+00:25:12,039 --> 00:25:14,480
+<b>UK was very restricted, to stay at home</b>
+
+744
+00:25:14,599 --> 00:25:15,519
+<b>and do whatever they</b>
+
+745
+00:25:15,519 --> 00:25:16,799
+<b>could on their computer.</b>
+
+746
+00:25:18,279 --> 00:25:21,160
+<b>Or you think nowadays people start to be</b>
+
+747
+00:25:21,160 --> 00:25:23,680
+<b>much more, let's say because of AI,</b>
+
+748
+00:25:24,279 --> 00:25:28,400
+<b>much more comfortable with learning from</b>
+
+749
+00:25:29,160 --> 00:25:30,599
+<b>a screen, let's call it like that.</b>
+
+750
+00:25:30,920 --> 00:25:33,960
+<b>I think that the last 10 years in</b>
+
+751
+00:25:34,000 --> 00:25:35,720
+<b>technology, the development</b>
+
+752
+00:25:35,799 --> 00:25:39,319
+<b>is so huge that we as humans,</b>
+
+753
+00:25:39,359 --> 00:25:42,359
+<b>we are not ready for that one. And you</b>
+
+754
+00:25:42,359 --> 00:25:43,880
+<b>see now what's happening also with AI.</b>
+
+755
+00:25:43,920 --> 00:25:46,519
+<b>That's what I'm saying, we have to fast</b>
+
+756
+00:25:46,519 --> 00:25:48,440
+<b>forward our slow thinking</b>
+
+757
+00:25:48,440 --> 00:25:49,599
+<b>from 10 years ago. It was like,</b>
+
+758
+00:25:49,720 --> 00:25:50,559
+<b>also we locked on people</b>
+
+759
+00:25:50,559 --> 00:25:51,720
+<b>like, "Oh, I'm not sure."</b>
+
+760
+00:25:51,759 --> 00:25:53,240
+<b>When I started to build up, it was</b>
+
+761
+00:25:53,400 --> 00:25:55,240
+<b>totally different technology.</b>
+
+762
+00:25:55,279 --> 00:25:56,440
+<b>And I don't want to know the costs.</b>
+
+763
+00:25:57,839 --> 00:25:58,880
+<b>Now to do an app.</b>
+
+764
+00:25:59,400 --> 00:26:01,799
+<b>We do a... So one of the sponsors of the</b>
+
+765
+00:26:01,839 --> 00:26:04,000
+<b>podcast is In Between. I showed you,</b>
+
+766
+00:26:04,000 --> 00:26:05,559
+<b>it's a platform between teacher and</b>
+
+767
+00:26:05,759 --> 00:26:08,200
+<b>student to just have the AI</b>
+
+768
+00:26:08,200 --> 00:26:10,680
+<b>recording and really giving you</b>
+
+769
+00:26:11,039 --> 00:26:13,079
+<b>straight away your bullet point what you</b>
+
+770
+00:26:13,079 --> 00:26:13,880
+<b>have to practice for the</b>
+
+771
+00:26:13,880 --> 00:26:14,960
+<b>next week until your next</b>
+
+772
+00:26:14,960 --> 00:26:17,119
+<b>private lesson. Our podcast is supported</b>
+
+773
+00:26:17,119 --> 00:26:19,279
+<b>by the OT and Marius Dance Studio. We</b>
+
+774
+00:26:19,279 --> 00:26:20,720
+<b>have a wonderful studio</b>
+
+775
+00:26:21,079 --> 00:26:23,119
+<b>in Northwest London, 4,000 square feet</b>
+
+776
+00:26:23,200 --> 00:26:25,160
+<b>with classes from every</b>
+
+777
+00:26:25,160 --> 00:26:26,319
+<b>kind, from beginners to</b>
+
+778
+00:26:26,680 --> 00:26:29,160
+<b>competitors to solo ladies to kids</b>
+
+779
+00:26:29,160 --> 00:26:30,599
+<b>classes. We have wonderful</b>
+
+780
+00:26:30,599 --> 00:26:32,480
+<b>teachers and we can't wait to</b>
+
+781
+00:26:32,480 --> 00:26:34,720
+<b>have you through our doors. OT and Marius</b>
+
+782
+00:26:34,720 --> 00:26:36,119
+<b>Dance Studio in North London.</b>
+
+783
+00:26:37,160 --> 00:26:39,200
+<b>You know the feeling that after a dance</b>
+
+784
+00:26:39,200 --> 00:26:40,759
+<b>lesson, you forgot more than</b>
+
+785
+00:26:40,759 --> 00:26:42,279
+<b>half of the things you just</b>
+
+786
+00:26:42,279 --> 00:26:45,359
+<b>learned. The In Between app fixes exactly</b>
+
+787
+00:26:45,400 --> 00:26:46,920
+<b>that issue. Your coach is</b>
+
+788
+00:26:46,920 --> 00:26:47,799
+<b>teaching you the lesson,</b>
+
+789
+00:26:48,119 --> 00:26:50,880
+<b>our system is recording the lesson. It</b>
+
+790
+00:26:50,880 --> 00:26:51,720
+<b>gives you of course, a</b>
+
+791
+00:26:51,720 --> 00:26:52,839
+<b>proof from your coach,</b>
+
+792
+00:26:53,039 --> 00:26:55,519
+<b>the exact bullet points that are very</b>
+
+793
+00:26:55,519 --> 00:26:56,240
+<b>important for you to</b>
+
+794
+00:26:56,240 --> 00:26:58,319
+<b>practice until the next lesson. That</b>
+
+795
+00:26:58,319 --> 00:27:00,640
+<b>system will give you the freedom and of</b>
+
+796
+00:27:00,640 --> 00:27:02,079
+<b>course will save you a</b>
+
+797
+00:27:02,079 --> 00:27:04,119
+<b>lot, a lot of money. If you're</b>
+
+798
+00:27:04,119 --> 00:27:06,599
+<b>interested, please search for the In</b>
+
+799
+00:27:06,599 --> 00:27:09,279
+<b>Between app. That's an amazing idea. It's</b>
+
+800
+00:27:09,279 --> 00:27:10,759
+<b>helping so much because</b>
+
+801
+00:27:11,079 --> 00:27:12,839
+<b>as a coach, I have the problem. I'm like,</b>
+
+802
+00:27:13,319 --> 00:27:13,920
+<b>I don't know what you</b>
+
+803
+00:27:13,920 --> 00:27:16,279
+<b>practiced. Can you please show me?</b>
+
+804
+00:27:16,279 --> 00:27:17,680
+<b>And then, ah, we didn't, you know,</b>
+
+805
+00:27:17,720 --> 00:27:19,400
+<b>excuses, excuses. Exactly. Like this, you</b>
+
+806
+00:27:19,400 --> 00:27:20,640
+<b>can track the students</b>
+
+807
+00:27:20,960 --> 00:27:23,319
+<b>and this is something that the technology</b>
+
+808
+00:27:23,319 --> 00:27:25,279
+<b>now is so much cheaper than</b>
+
+809
+00:27:25,279 --> 00:27:26,359
+<b>10 years ago when you started.</b>
+
+810
+00:27:26,400 --> 00:27:29,640
+<b>That's what I say. And of course, one</b>
+
+811
+00:27:29,640 --> 00:27:31,799
+<b>side is much cheaper, but also the</b>
+
+812
+00:27:32,200 --> 00:27:33,799
+<b>possibility what you can now</b>
+
+813
+00:27:33,839 --> 00:27:37,720
+<b>do is huge. You can actually make</b>
+
+814
+00:27:37,759 --> 00:27:40,319
+<b>everything. Yes. Everything you can. I</b>
+
+815
+00:27:40,319 --> 00:27:41,599
+<b>remember when we start</b>
+
+816
+00:27:42,599 --> 00:27:47,519
+<b>to develop and we've got an idea to make</b>
+
+817
+00:27:47,519 --> 00:27:55,440
+<b>possible to show with how</b>
+
+818
+00:27:55,680 --> 00:27:57,079
+<b>to build it. How to build it.</b>
+
+819
+00:27:57,400 --> 00:27:59,519
+<b>But also when you move that you can see</b>
+
+820
+00:27:59,519 --> 00:28:00,680
+<b>all the movement on the</b>
+
+821
+00:28:01,559 --> 00:28:04,000
+<b>screen. It was such a detail.</b>
+
+822
+00:28:04,039 --> 00:28:08,359
+<b>It was such difficult to get it any tool</b>
+
+823
+00:28:08,640 --> 00:28:12,000
+<b>to allow us to show it in the app. Now</b>
+
+824
+00:28:12,119 --> 00:28:13,079
+<b>you have no problem.</b>
+
+825
+00:28:13,279 --> 00:28:15,440
+<b>I make for you everything. Actually it</b>
+
+826
+00:28:15,480 --> 00:28:17,200
+<b>will analyze, it will show.</b>
+
+827
+00:28:17,200 --> 00:28:18,519
+<b>I love the camera technology.</b>
+
+828
+00:28:18,680 --> 00:28:21,480
+<b>It's amazing. Yeah. And of course</b>
+
+829
+00:28:21,480 --> 00:28:22,640
+<b>cheaper, like I said, because</b>
+
+830
+00:28:22,839 --> 00:28:23,759
+<b>it's such an important point.</b>
+
+831
+00:28:23,759 --> 00:28:25,160
+<b>We're always like, oh no, no, no, I have</b>
+
+832
+00:28:25,160 --> 00:28:26,519
+<b>the vision. Yeah. But if</b>
+
+833
+00:28:26,519 --> 00:28:28,200
+<b>you don't have a budget</b>
+
+834
+00:28:28,319 --> 00:28:30,119
+<b>for the vision, it's a little bit</b>
+
+835
+00:28:30,119 --> 00:28:31,720
+<b>difficult because you</b>
+
+836
+00:28:31,720 --> 00:28:33,200
+<b>can dream about everything.</b>
+
+837
+00:28:33,559 --> 00:28:37,920
+<b>But you have to put the time, the passion</b>
+
+838
+00:28:37,920 --> 00:28:40,480
+<b>and the energy and then you</b>
+
+839
+00:28:40,480 --> 00:28:41,279
+<b>have to put the money behind.</b>
+
+840
+00:28:41,559 --> 00:28:43,039
+<b>Because it's not going to move by itself.</b>
+
+841
+00:28:43,119 --> 00:28:44,319
+<b>Exactly. That's what</b>
+
+842
+00:28:44,720 --> 00:28:46,519
+<b>was also the point to</b>
+
+843
+00:28:46,519 --> 00:28:50,160
+<b>create Audience. We have combined many</b>
+
+844
+00:28:50,160 --> 00:28:51,200
+<b>things together. So</b>
+
+845
+00:28:51,200 --> 00:28:53,799
+<b>Audience is not only now just an</b>
+
+846
+00:28:54,039 --> 00:28:56,880
+<b>online platform for lessons and for</b>
+
+847
+00:28:57,000 --> 00:28:59,039
+<b>videos, but it's also a</b>
+
+848
+00:28:59,039 --> 00:29:00,480
+<b>platform when you can register</b>
+
+849
+00:29:00,480 --> 00:29:02,519
+<b>for a competition. You can advertise your</b>
+
+850
+00:29:02,519 --> 00:29:03,920
+<b>competition. You can</b>
+
+851
+00:29:03,920 --> 00:29:06,519
+<b>sell your dresses. We</b>
+
+852
+00:29:07,000 --> 00:29:09,480
+<b>have now a big cooperation also starting</b>
+
+853
+00:29:09,480 --> 00:29:10,680
+<b>from next month with</b>
+
+854
+00:29:10,680 --> 00:29:12,720
+<b>Michael Chan, where you can buy</b>
+
+855
+00:29:12,920 --> 00:29:16,559
+<b>all the practice wear and everything</b>
+
+856
+00:29:16,559 --> 00:29:19,279
+<b>directly from the app. You</b>
+
+857
+00:29:19,279 --> 00:29:20,519
+<b>can book your lesson with the</b>
+
+858
+00:29:20,519 --> 00:29:22,680
+<b>teacher. You can book the lesson online</b>
+
+859
+00:29:22,759 --> 00:29:24,240
+<b>with a room that you can make.</b>
+
+860
+00:29:24,240 --> 00:29:26,400
+<b>It's more for pro-M teachers?</b>
+
+861
+00:29:26,440 --> 00:29:29,200
+<b>No, it's for everybody. And of course,</b>
+
+862
+00:29:29,200 --> 00:29:31,440
+<b>what is the most important is the</b>
+
+863
+00:29:32,160 --> 00:29:33,599
+<b>financial structure also.</b>
+
+864
+00:29:33,759 --> 00:29:35,599
+<b>So the wallet that is combined with the</b>
+
+865
+00:29:35,599 --> 00:29:36,960
+<b>app, that you have your own</b>
+
+866
+00:29:37,000 --> 00:29:39,000
+<b>wallet and you can collect</b>
+
+867
+00:29:39,839 --> 00:29:42,079
+<b>Audience. You can withdraw, you can send,</b>
+
+868
+00:29:42,319 --> 00:29:43,680
+<b>you can pay. The coin is</b>
+
+869
+00:29:43,680 --> 00:29:45,480
+<b>called Audance. Yes. Because this</b>
+
+870
+00:29:45,480 --> 00:29:47,279
+<b>is many times as well. So I was having</b>
+
+871
+00:29:47,279 --> 00:29:49,160
+<b>Ethereum and I was having, of course,</b>
+
+872
+00:29:49,559 --> 00:29:50,440
+<b>everybody had Bitcoin.</b>
+
+873
+00:29:50,440 --> 00:29:53,839
+<b>A little bit. So actually, Audance is a</b>
+
+874
+00:29:53,839 --> 00:29:58,519
+<b>token, but the token is powered by</b>
+
+875
+00:29:58,559 --> 00:29:59,519
+<b>Densecoin. So Densecoin</b>
+
+876
+00:29:59,599 --> 00:30:01,079
+<b>is the cryptocurrency that I have</b>
+
+877
+00:30:01,160 --> 00:30:02,359
+<b>created. That's why the name was</b>
+
+878
+00:30:02,359 --> 00:30:03,640
+<b>Densecoin. Yes. And Densecoin,</b>
+
+879
+00:30:03,839 --> 00:30:05,480
+<b>it's a cryptocurrency, a real</b>
+
+880
+00:30:05,519 --> 00:30:09,799
+<b>cryptocurrency, and that is linked on the</b>
+
+881
+00:30:09,799 --> 00:30:11,359
+<b>market, is on Coin Store.</b>
+
+882
+00:30:11,759 --> 00:30:13,400
+<b>But of course, Densecoin, because it's a</b>
+
+883
+00:30:13,400 --> 00:30:14,960
+<b>cryptocurrency, its</b>
+
+884
+00:30:14,960 --> 00:30:17,480
+<b>market is moving. So what I</b>
+
+885
+00:30:17,480 --> 00:30:21,759
+<b>saw with the teachers and people from the</b>
+
+886
+00:30:21,759 --> 00:30:22,920
+<b>dancing world, I</b>
+
+887
+00:30:22,920 --> 00:30:24,160
+<b>understood that they are not</b>
+
+888
+00:30:24,160 --> 00:30:27,039
+<b>traders. So they don't follow. Because</b>
+
+889
+00:30:27,039 --> 00:30:28,000
+<b>they like cash, like before.</b>
+
+890
+00:30:28,519 --> 00:30:30,319
+<b>And they need to be secure.</b>
+
+891
+00:30:30,680 --> 00:30:33,519
+<b>So they search for security that if they</b>
+
+892
+00:30:33,519 --> 00:30:38,200
+<b>have a lesson and the lesson costs $200,</b>
+
+893
+00:30:39,160 --> 00:30:42,200
+<b>that it will be always $200. If it's not,</b>
+
+894
+00:30:43,000 --> 00:30:44,920
+<b>no. Long term vision,</b>
+
+895
+00:30:44,960 --> 00:30:46,160
+<b>we don't need that. Yes.</b>
+
+896
+00:30:46,160 --> 00:30:48,799
+<b>We need today. Exactly. Tomorrow is not</b>
+
+897
+00:30:48,799 --> 00:30:49,640
+<b>important. Tomorrow, who</b>
+
+898
+00:30:49,680 --> 00:30:51,640
+<b>cares? Yes. So that's why we have</b>
+
+899
+00:30:51,640 --> 00:30:54,640
+<b>created Audance. Audance is a token that</b>
+
+900
+00:30:54,640 --> 00:30:55,839
+<b>is, of course, powered by</b>
+
+901
+00:30:55,839 --> 00:30:57,400
+<b>Densecoin. But Audance is</b>
+
+902
+00:30:57,400 --> 00:30:59,720
+<b>one-to-one with $1. So it doesn't matter</b>
+
+903
+00:30:59,720 --> 00:31:01,039
+<b>what happens. It's like a</b>
+
+904
+00:31:01,039 --> 00:31:02,759
+<b>stable. To give them that</b>
+
+905
+00:31:02,839 --> 00:31:05,720
+<b>insurance. Exactly. And that's how it</b>
+
+906
+00:31:05,759 --> 00:31:08,559
+<b>works on the platform. We</b>
+
+907
+00:31:08,559 --> 00:31:11,440
+<b>have 29 hubs around the world</b>
+
+908
+00:31:11,480 --> 00:31:13,480
+<b>where you can literally withdraw all</b>
+
+909
+00:31:13,480 --> 00:31:15,960
+<b>dance. Because</b>
+
+910
+00:31:15,960 --> 00:31:17,680
+<b>actually, Audance is literally</b>
+
+911
+00:31:17,720 --> 00:31:21,799
+<b>USDC, what is behind the background of</b>
+
+912
+00:31:22,240 --> 00:31:23,720
+<b>that. But of course... And</b>
+
+913
+00:31:23,759 --> 00:31:26,640
+<b>is it backed by the trading</b>
+
+914
+00:31:27,720 --> 00:31:29,519
+<b>in between the platform? Or is it backed</b>
+
+915
+00:31:29,519 --> 00:31:30,759
+<b>up by other businesses?</b>
+
+916
+00:31:31,160 --> 00:31:33,799
+<b>Also, it's... Because I think</b>
+
+917
+00:31:33,799 --> 00:31:36,079
+<b>the dance world, how it's moving, of</b>
+
+918
+00:31:36,079 --> 00:31:37,000
+<b>course, we think, oh my God,</b>
+
+919
+00:31:37,000 --> 00:31:38,880
+<b>there's lots of amount of money,</b>
+
+920
+00:31:38,880 --> 00:31:40,839
+<b>especially before these big competitions.</b>
+
+921
+00:31:40,880 --> 00:31:42,079
+<b>Exactly. But of</b>
+
+922
+00:31:42,079 --> 00:31:44,279
+<b>course, 90% is cash probably,</b>
+
+923
+00:31:44,279 --> 00:31:46,160
+<b>or 80%. I don't know. I don't want to</b>
+
+924
+00:31:46,359 --> 00:31:47,680
+<b>speculate anything. But</b>
+
+925
+00:31:48,319 --> 00:31:49,559
+<b>that's what we offer also with</b>
+
+926
+00:31:49,559 --> 00:31:51,400
+<b>Oswege. So if you have cash and you</b>
+
+927
+00:31:51,400 --> 00:31:52,759
+<b>wanted to travel, we can</b>
+
+928
+00:31:52,759 --> 00:31:54,160
+<b>collect your cash and you can</b>
+
+929
+00:31:54,160 --> 00:31:56,880
+<b>receive your money in the country,</b>
+
+930
+00:31:56,880 --> 00:31:57,680
+<b>wherever you are. That's a</b>
+
+931
+00:31:57,680 --> 00:31:59,240
+<b>good service. Yes. It's cost 3%,</b>
+
+932
+00:31:59,599 --> 00:32:00,440
+<b>but this is the fee that we are making.</b>
+
+933
+00:32:00,440 --> 00:32:01,359
+<b>Because I know some</b>
+
+934
+00:32:01,359 --> 00:32:02,880
+<b>stories from... Stop teachers and</b>
+
+935
+00:32:02,880 --> 00:32:04,440
+<b>they were going towards Russia and then</b>
+
+936
+00:32:04,960 --> 00:32:05,920
+<b>they didn't allow them...</b>
+
+937
+00:32:05,960 --> 00:32:06,920
+<b>Of course, now you're not</b>
+
+938
+00:32:06,920 --> 00:32:08,880
+<b>going to go with more than 10,000 euros.</b>
+
+939
+00:32:08,920 --> 00:32:11,640
+<b>Even less now, because of the new</b>
+
+940
+00:32:11,640 --> 00:32:12,799
+<b>regulation of the Mika.</b>
+
+941
+00:32:13,400 --> 00:32:18,799
+<b>It makes a lot of... Now, cash travel</b>
+
+942
+00:32:18,839 --> 00:32:20,519
+<b>difficult. And it's very</b>
+
+943
+00:32:20,599 --> 00:32:23,119
+<b>unsecure. And of course, we have</b>
+
+944
+00:32:23,240 --> 00:32:25,599
+<b>worked many years to get the license. And</b>
+
+945
+00:32:25,599 --> 00:32:26,599
+<b>do you approach the big</b>
+
+946
+00:32:26,599 --> 00:32:27,440
+<b>teachers and tell them,</b>
+
+947
+00:32:27,440 --> 00:32:29,000
+<b>guys, look what we could do for you?</b>
+
+948
+00:32:29,000 --> 00:32:29,839
+<b>Yeah, of course. And we</b>
+
+949
+00:32:29,839 --> 00:32:31,880
+<b>work with many of them.</b>
+
+950
+00:32:31,880 --> 00:32:35,599
+<b>And this is what you say on the</b>
+
+951
+00:32:35,599 --> 00:32:37,640
+<b>beginning, that the problem is that the</b>
+
+952
+00:32:37,640 --> 00:32:39,119
+<b>teachers still a little bit...</b>
+
+953
+00:32:41,599 --> 00:32:43,480
+<b>Why would I give you the money? Exactly.</b>
+
+954
+00:32:43,519 --> 00:32:44,960
+<b>Yeah. But not even...</b>
+
+955
+00:32:45,000 --> 00:32:46,039
+<b>You're not trustworthy. And you're</b>
+
+956
+00:32:46,039 --> 00:32:47,519
+<b>Polish. I'm not sure.</b>
+
+957
+00:32:47,519 --> 00:32:50,680
+<b>I think not the point is very important.</b>
+
+958
+00:32:50,680 --> 00:32:52,480
+<b>It's more that they don't want to</b>
+
+959
+00:32:52,839 --> 00:32:53,839
+<b>advertise that they're</b>
+
+960
+00:32:53,839 --> 00:32:56,119
+<b>using the service, but not because they</b>
+
+961
+00:32:56,119 --> 00:32:57,400
+<b>are not trusting. They don't</b>
+
+962
+00:32:57,400 --> 00:32:59,400
+<b>want to... That other people</b>
+
+963
+00:32:59,440 --> 00:33:02,599
+<b>that they are dealing with cash. So this</b>
+
+964
+00:33:02,599 --> 00:33:04,640
+<b>is also the issue, what</b>
+
+965
+00:33:04,640 --> 00:33:06,799
+<b>we are thinking about it,</b>
+
+966
+00:33:07,400 --> 00:33:10,960
+<b>depending if we can do some adverts about</b>
+
+967
+00:33:10,960 --> 00:33:12,039
+<b>it. Very interesting. You</b>
+
+968
+00:33:12,039 --> 00:33:12,839
+<b>see, I didn't even start</b>
+
+969
+00:33:12,839 --> 00:33:14,480
+<b>with the questions and you gave me so</b>
+
+970
+00:33:14,480 --> 00:33:15,400
+<b>much information. Thank</b>
+
+971
+00:33:15,400 --> 00:33:16,680
+<b>you for that. It's really</b>
+
+972
+00:33:16,680 --> 00:33:19,000
+<b>good to have somebody who knows what they</b>
+
+973
+00:33:19,000 --> 00:33:20,680
+<b>are doing. Yeah. I don't</b>
+
+974
+00:33:20,680 --> 00:33:22,759
+<b>have to pull out from you,</b>
+
+975
+00:33:22,759 --> 00:33:25,279
+<b>please, please tell me. No, you're ready.</b>
+
+976
+00:33:25,519 --> 00:33:28,559
+<b>You're ready. So when you enter the</b>
+
+977
+00:33:28,559 --> 00:33:29,759
+<b>program as an adult,</b>
+
+978
+00:33:29,920 --> 00:33:31,200
+<b>obviously you didn't know you're going to</b>
+
+979
+00:33:31,480 --> 00:33:33,799
+<b>have air dance. No, of course</b>
+
+980
+00:33:33,799 --> 00:33:35,519
+<b>not. Which was the business?</b>
+
+981
+00:33:36,279 --> 00:33:39,039
+<b>What's your background? How did you build</b>
+
+982
+00:33:39,039 --> 00:33:42,279
+<b>up to be the person that with...</b>
+
+983
+00:33:45,039 --> 00:33:46,640
+<b>How many years you had or two, three</b>
+
+984
+00:33:46,640 --> 00:33:48,000
+<b>years you were dancing and I was like,</b>
+
+985
+00:33:48,200 --> 00:33:50,119
+<b>"Let me build a platform for the dance</b>
+
+986
+00:33:50,119 --> 00:33:52,160
+<b>industry." Exactly. And this is not</b>
+
+987
+00:33:52,440 --> 00:33:54,920
+<b>normal. So you need to</b>
+
+988
+00:33:54,920 --> 00:33:57,640
+<b>have a background of business that you're</b>
+
+989
+00:33:57,640 --> 00:33:59,119
+<b>like, "Okay, I see an</b>
+
+990
+00:33:59,119 --> 00:34:01,200
+<b>opportunity here." Yeah. Actually,</b>
+
+991
+00:34:01,200 --> 00:34:04,640
+<b>I was for almost 20 years in business in</b>
+
+992
+00:34:04,640 --> 00:34:07,000
+<b>Precious Metal. I've got a company called</b>
+
+993
+00:34:07,039 --> 00:34:10,719
+<b>Price Project that was built in Germany.</b>
+
+994
+00:34:11,119 --> 00:34:12,239
+<b>The second one was here</b>
+
+995
+00:34:12,239 --> 00:34:13,440
+<b>in London. So I was also</b>
+
+996
+00:34:13,480 --> 00:34:15,599
+<b>based here in London for many years. So</b>
+
+997
+00:34:15,599 --> 00:34:16,679
+<b>you are dealing with</b>
+
+998
+00:34:16,679 --> 00:34:18,840
+<b>Precious Metals. Exactly. That means</b>
+
+999
+00:34:18,840 --> 00:34:21,280
+<b>from Gold, Silver, Platinum, I suppose.</b>
+
+1000
+00:34:21,280 --> 00:34:25,840
+<b>Yes. We buy from people, companies,</b>
+
+1001
+00:34:26,679 --> 00:34:29,280
+<b>pounds, scrap metals,</b>
+
+1002
+00:34:29,320 --> 00:34:32,360
+<b>and we are mounting that one and sending</b>
+
+1003
+00:34:32,400 --> 00:34:34,679
+<b>to the factory, to the</b>
+
+1004
+00:34:34,679 --> 00:34:36,280
+<b>melting factory and getting the...</b>
+
+1005
+00:34:36,280 --> 00:34:37,840
+<b>We have to talk about. Yeah. I mean, the</b>
+
+1006
+00:34:37,880 --> 00:34:39,000
+<b>investment in gold,</b>
+
+1007
+00:34:39,519 --> 00:34:40,920
+<b>the last, I don't know,</b>
+
+1008
+00:34:41,039 --> 00:34:43,079
+<b>it was the best, one of the best. One of</b>
+
+1009
+00:34:43,079 --> 00:34:45,679
+<b>the best. But now the gold is on the</b>
+
+1010
+00:34:45,719 --> 00:34:46,800
+<b>peak. So probably we</b>
+
+1011
+00:34:46,800 --> 00:34:48,119
+<b>will now approach at that time. Okay. I</b>
+
+1012
+00:34:48,119 --> 00:34:49,800
+<b>have a question for you. That's a</b>
+
+1013
+00:34:49,840 --> 00:34:50,800
+<b>question I wanted to ask</b>
+
+1014
+00:34:50,800 --> 00:34:53,199
+<b>somebody in your industry. Do you think</b>
+
+1015
+00:34:53,199 --> 00:34:54,119
+<b>silver, because they use</b>
+
+1016
+00:34:54,119 --> 00:34:55,599
+<b>silver for a lot of chips and a</b>
+
+1017
+00:34:55,599 --> 00:34:58,960
+<b>lot of other stuff that we will need for</b>
+
+1018
+00:34:58,960 --> 00:35:01,800
+<b>AI and we will need for the... For</b>
+
+1019
+00:35:01,880 --> 00:35:03,119
+<b>everything. Exactly. Do</b>
+
+1020
+00:35:03,119 --> 00:35:05,880
+<b>you think silver will go up? Yes. So a</b>
+
+1021
+00:35:05,880 --> 00:35:06,760
+<b>silver investment will</b>
+
+1022
+00:35:06,760 --> 00:35:07,880
+<b>be... I think for the next two</b>
+
+1023
+00:35:07,880 --> 00:35:12,559
+<b>years, when I will disafforticate my</b>
+
+1024
+00:35:12,559 --> 00:35:16,440
+<b>income, I will take a little bit from</b>
+
+1025
+00:35:16,760 --> 00:35:18,800
+<b>like a half from gold and go more into...</b>
+
+1026
+00:35:18,800 --> 00:35:21,000
+<b>With the silver. I like that. You see?</b>
+
+1027
+00:35:21,000 --> 00:35:22,760
+<b>You're my friend already. I</b>
+
+1028
+00:35:22,760 --> 00:35:25,800
+<b>like that. Oh, so you did that</b>
+
+1029
+00:35:26,639 --> 00:35:30,119
+<b>all your business career? Yes. Did you do</b>
+
+1030
+00:35:30,119 --> 00:35:31,400
+<b>other businesses? No,</b>
+
+1031
+00:35:31,400 --> 00:35:33,039
+<b>before I was... Oh my God,</b>
+
+1032
+00:35:33,079 --> 00:35:36,280
+<b>I have many businesses. I was even... I</b>
+
+1033
+00:35:36,280 --> 00:35:39,800
+<b>have a company that works in air</b>
+
+1034
+00:35:39,800 --> 00:35:41,519
+<b>condition. I was working</b>
+
+1035
+00:35:41,519 --> 00:35:45,519
+<b>with big companies like Metro AG for</b>
+
+1036
+00:35:45,960 --> 00:35:48,559
+<b>construction of paper markets in Poland.</b>
+
+1037
+00:35:48,599 --> 00:35:49,679
+<b>I was one of the first</b>
+
+1038
+00:35:49,679 --> 00:35:52,519
+<b>that was built. Wow. A tiny steel</b>
+
+1039
+00:35:53,360 --> 00:35:55,440
+<b>construction for all the markets, like a</b>
+
+1040
+00:35:55,440 --> 00:35:56,800
+<b>Bakari or something like</b>
+
+1041
+00:35:56,920 --> 00:35:58,719
+<b>that, that you needed to have in all the</b>
+
+1042
+00:36:00,320 --> 00:36:01,519
+<b>malls and all the things.</b>
+
+1043
+00:36:01,519 --> 00:36:03,039
+<b>Yeah, yeah. Oh, that's a big</b>
+
+1044
+00:36:05,679 --> 00:36:07,760
+<b>project you got there. Yes. I was</b>
+
+1045
+00:36:07,760 --> 00:36:09,840
+<b>going... I think it was the best new</b>
+
+1046
+00:36:09,840 --> 00:36:12,920
+<b>businesses in Europe. Yeah.</b>
+
+1047
+00:36:13,199 --> 00:36:15,760
+<b>It was a top in financial times. Yes. I</b>
+
+1048
+00:36:15,760 --> 00:36:16,559
+<b>read sometimes, I'm in the</b>
+
+1049
+00:36:16,559 --> 00:36:17,760
+<b>airport, I like to read it.</b>
+
+1050
+00:36:17,800 --> 00:36:21,079
+<b>And then it was the best company that has</b>
+
+1051
+00:36:21,079 --> 00:36:22,119
+<b>the fastest growth</b>
+
+1052
+00:36:22,119 --> 00:36:23,199
+<b>was, I think it was three,</b>
+
+1053
+00:36:23,199 --> 00:36:25,960
+<b>four years ago, was a solar company from</b>
+
+1054
+00:36:25,960 --> 00:36:27,280
+<b>Poland. Yeah. Was the</b>
+
+1055
+00:36:27,280 --> 00:36:29,000
+<b>first place in Europe,</b>
+
+1056
+00:36:29,199 --> 00:36:31,400
+<b>the fastest growing company. Yeah,</b>
+
+1057
+00:36:31,440 --> 00:36:34,400
+<b>actually that time when I was starting</b>
+
+1058
+00:36:34,719 --> 00:36:36,719
+<b>working, because I was</b>
+
+1059
+00:36:36,920 --> 00:36:39,039
+<b>working, start to work very young, my</b>
+
+1060
+00:36:39,079 --> 00:36:40,320
+<b>first company I've got with</b>
+
+1061
+00:36:40,320 --> 00:36:43,920
+<b>18. So it was the best time in</b>
+
+1062
+00:36:43,920 --> 00:36:46,039
+<b>Poland because it was the time that all</b>
+
+1063
+00:36:46,039 --> 00:36:48,920
+<b>the supermarkets,</b>
+
+1064
+00:36:48,960 --> 00:36:51,320
+<b>supermarkets, malls coming to</b>
+
+1065
+00:36:51,480 --> 00:36:53,119
+<b>Poland. To Poland. Yeah. Was the same in</b>
+
+1066
+00:36:53,119 --> 00:36:53,639
+<b>Romania, I remember.</b>
+
+1067
+00:36:53,639 --> 00:36:55,880
+<b>Exactly. And they start to build and</b>
+
+1068
+00:36:55,880 --> 00:36:59,519
+<b>they was searching for companies and</b>
+
+1069
+00:36:59,760 --> 00:37:02,920
+<b>people that can manage everything from</b>
+
+1070
+00:37:03,840 --> 00:37:04,679
+<b>Poland. Building the</b>
+
+1071
+00:37:04,679 --> 00:37:06,599
+<b>whole site. Yes, because the problem was</b>
+
+1072
+00:37:06,599 --> 00:37:09,000
+<b>always if they have another companies</b>
+
+1073
+00:37:09,000 --> 00:37:10,079
+<b>from another country,</b>
+
+1074
+00:37:10,320 --> 00:37:12,039
+<b>there was always the problem with the VIP</b>
+
+1075
+00:37:12,199 --> 00:37:14,360
+<b>gap because you cannot...</b>
+
+1076
+00:37:14,840 --> 00:37:16,320
+<b>Plus visa work allowance.</b>
+
+1077
+00:37:16,480 --> 00:37:18,719
+<b>It's complex. Exactly. And that was also</b>
+
+1078
+00:37:18,760 --> 00:37:21,400
+<b>before actually European</b>
+
+1079
+00:37:21,400 --> 00:37:23,000
+<b>Union. So there was other...</b>
+
+1080
+00:37:23,480 --> 00:37:26,159
+<b>It was like a totally different rules. Of</b>
+
+1081
+00:37:26,159 --> 00:37:29,519
+<b>course. I know when I moved to Germany,</b>
+
+1082
+00:37:29,599 --> 00:37:32,199
+<b>2001, I needed a student visa to be</b>
+
+1083
+00:37:32,199 --> 00:37:36,480
+<b>allowed to be there. So that was, from</b>
+
+1084
+00:37:36,480 --> 00:37:37,880
+<b>one side, it was actually,</b>
+
+1085
+00:37:38,119 --> 00:37:40,719
+<b>it was, I think, the dollar that gave me</b>
+
+1086
+00:37:40,719 --> 00:37:42,000
+<b>also the opportunity to</b>
+
+1087
+00:37:42,360 --> 00:37:45,199
+<b>build and to be in the business</b>
+
+1088
+00:37:45,239 --> 00:37:46,960
+<b>from the very beginning. Yes. And that's</b>
+
+1089
+00:37:47,000 --> 00:37:47,800
+<b>why... So you saw the</b>
+
+1090
+00:37:47,800 --> 00:37:49,239
+<b>opportunity in that. Very good.</b>
+
+1091
+00:37:49,639 --> 00:37:52,599
+<b>To go back to dancing from this, because</b>
+
+1092
+00:37:52,639 --> 00:37:54,199
+<b>I could talk about this all day,</b>
+
+1093
+00:37:54,840 --> 00:37:57,400
+<b>but we are still trying to help dancers.</b>
+
+1094
+00:37:57,679 --> 00:37:58,719
+<b>How do you think a dancer...</b>
+
+1095
+00:37:58,719 --> 00:38:00,679
+<b>Now you are very long in this.</b>
+
+1096
+00:38:00,719 --> 00:38:02,320
+<b>I mean, very long. 10 years. Over 10</b>
+
+1097
+00:38:02,320 --> 00:38:03,719
+<b>years now in the business.</b>
+
+1098
+00:38:04,679 --> 00:38:05,719
+<b>What would you say for a dancer?</b>
+
+1099
+00:38:05,719 --> 00:38:07,519
+<b>Because of course, plan A is I love</b>
+
+1100
+00:38:07,519 --> 00:38:08,760
+<b>dancing. I want to dance. I'm</b>
+
+1101
+00:38:08,760 --> 00:38:11,079
+<b>happy. I'm poor, but I'm happy</b>
+
+1102
+00:38:11,559 --> 00:38:13,320
+<b>if I don't have parents that they can</b>
+
+1103
+00:38:13,320 --> 00:38:15,000
+<b>support me or a club or a</b>
+
+1104
+00:38:15,000 --> 00:38:16,639
+<b>system that supports me.</b>
+
+1105
+00:38:17,559 --> 00:38:19,559
+<b>What can they do on the side? Because</b>
+
+1106
+00:38:19,559 --> 00:38:20,320
+<b>obviously you have a lot</b>
+
+1107
+00:38:20,360 --> 00:38:23,440
+<b>of ideas and you see what</b>
+
+1108
+00:38:23,440 --> 00:38:26,079
+<b>opportunities are coming now around in</b>
+
+1109
+00:38:26,079 --> 00:38:27,360
+<b>this world. What do you</b>
+
+1110
+00:38:27,360 --> 00:38:28,679
+<b>think dancers that you are,</b>
+
+1111
+00:38:28,679 --> 00:38:30,159
+<b>let's say you are quite good at a bit of</b>
+
+1112
+00:38:30,159 --> 00:38:31,320
+<b>math. You have to know a</b>
+
+1113
+00:38:31,320 --> 00:38:32,039
+<b>little bit your numbers.</b>
+
+1114
+00:38:32,800 --> 00:38:36,639
+<b>You have to be ready to go over the</b>
+
+1115
+00:38:36,639 --> 00:38:38,719
+<b>normal time. So if people</b>
+
+1116
+00:38:38,719 --> 00:38:40,239
+<b>are tired at nine o'clock,</b>
+
+1117
+00:38:40,239 --> 00:38:42,199
+<b>till one o'clock in the morning, if you</b>
+
+1118
+00:38:42,199 --> 00:38:43,360
+<b>have to, to build something.</b>
+
+1119
+00:38:43,559 --> 00:38:46,159
+<b>What do you think would be good</b>
+
+1120
+00:38:46,159 --> 00:38:49,719
+<b>businesses for dancers that they could do</b>
+
+1121
+00:38:50,280 --> 00:38:51,199
+<b>as a side? Of course,</b>
+
+1122
+00:38:51,199 --> 00:38:52,320
+<b>maybe they teach a little bit.</b>
+
+1123
+00:38:52,559 --> 00:38:55,800
+<b>They are competing maybe, whatever, a</b>
+
+1124
+00:38:55,800 --> 00:38:57,159
+<b>couple of solos nowadays.</b>
+
+1125
+00:38:57,800 --> 00:38:58,559
+<b>What do you think would be</b>
+
+1126
+00:38:58,559 --> 00:39:01,079
+<b>something that they could go into without</b>
+
+1127
+00:39:01,119 --> 00:39:05,480
+<b>taking a lot of time? It's a very</b>
+
+1128
+00:39:07,400 --> 00:39:09,960
+<b>large question because depending on what</b>
+
+1129
+00:39:10,039 --> 00:39:12,920
+<b>the dancers are representing by them,</b>
+
+1130
+00:39:13,079 --> 00:39:16,000
+<b>so like in which stage of the dancing</b>
+
+1131
+00:39:16,000 --> 00:39:17,920
+<b>they are, if they are very</b>
+
+1132
+00:39:17,920 --> 00:39:19,559
+<b>good and they are clever,</b>
+
+1133
+00:39:19,800 --> 00:39:24,199
+<b>they can literally build a school or a</b>
+
+1134
+00:39:24,199 --> 00:39:25,159
+<b>place where they can</b>
+
+1135
+00:39:25,159 --> 00:39:27,320
+<b>teach or travel. Of course,</b>
+
+1136
+00:39:27,360 --> 00:39:31,559
+<b>if you are in the top 12 or you can plan</b>
+
+1137
+00:39:31,639 --> 00:39:32,639
+<b>your future as a</b>
+
+1138
+00:39:32,639 --> 00:39:35,000
+<b>judge, as a person that is</b>
+
+1139
+00:39:35,800 --> 00:39:39,159
+<b>creating something. If you have a</b>
+
+1140
+00:39:39,199 --> 00:39:43,199
+<b>possibility to be part of any projects</b>
+
+1141
+00:39:43,199 --> 00:39:43,920
+<b>like Dancing with the</b>
+
+1142
+00:39:43,920 --> 00:39:45,159
+<b>Stars or something, you can be a</b>
+
+1143
+00:39:45,159 --> 00:39:47,719
+<b>choreographer. Or even be a</b>
+
+1144
+00:39:47,719 --> 00:39:51,679
+<b>pro. You can also, if you have</b>
+
+1145
+00:39:52,400 --> 00:39:56,079
+<b>ideas, you can make some shows in</b>
+
+1146
+00:39:56,079 --> 00:39:59,519
+<b>restaurants, in places. Make an event</b>
+
+1147
+00:39:59,519 --> 00:40:01,880
+<b>company. If you have a nice</b>
+
+1148
+00:40:01,960 --> 00:40:04,320
+<b>group of people that are working with</b>
+
+1149
+00:40:04,320 --> 00:40:14,679
+<b>you, you can build an event for the</b>
+
+1150
+00:40:14,719 --> 00:40:16,760
+<b>companies. They have many</b>
+
+1151
+00:40:17,719 --> 00:40:20,039
+<b>events where you can make a show, you can</b>
+
+1152
+00:40:20,039 --> 00:40:21,880
+<b>show it yourself or your</b>
+
+1153
+00:40:21,920 --> 00:40:23,239
+<b>people and people will pay for</b>
+
+1154
+00:40:23,239 --> 00:40:24,320
+<b>that one. Similar stuff for dance</b>
+
+1155
+00:40:24,320 --> 00:40:26,079
+<b>schools. I used to do it in Germany. I</b>
+
+1156
+00:40:26,079 --> 00:40:27,440
+<b>sent to all the dance schools</b>
+
+1157
+00:40:27,440 --> 00:40:30,440
+<b>a card with my partners. We do shows and</b>
+
+1158
+00:40:30,440 --> 00:40:31,599
+<b>we have the title. We did</b>
+
+1159
+00:40:31,599 --> 00:40:33,280
+<b>that and we did it for posts</b>
+
+1160
+00:40:33,280 --> 00:40:34,440
+<b>still because we were like, it was</b>
+
+1161
+00:40:34,440 --> 00:40:35,159
+<b>already of course the</b>
+
+1162
+00:40:35,159 --> 00:40:36,320
+<b>social media, but we were like,</b>
+
+1163
+00:40:36,559 --> 00:40:38,079
+<b>no, no, no, let's do it for posts because</b>
+
+1164
+00:40:38,920 --> 00:40:40,840
+<b>people were still liking in</b>
+
+1165
+00:40:40,840 --> 00:40:41,960
+<b>those times. Maybe nowadays,</b>
+
+1166
+00:40:41,960 --> 00:40:43,840
+<b>maybe nowadays even more, they like to</b>
+
+1167
+00:40:43,840 --> 00:40:46,760
+<b>get a proper letter with handwriting</b>
+
+1168
+00:40:46,760 --> 00:40:48,679
+<b>and everything. But to be honest,</b>
+
+1169
+00:40:48,719 --> 00:40:53,440
+<b>actually now, if you really create</b>
+
+1170
+00:40:53,440 --> 00:40:55,119
+<b>something special with your</b>
+
+1171
+00:40:55,119 --> 00:40:58,199
+<b>couple, with your dancing, it's very easy</b>
+
+1172
+00:40:58,559 --> 00:41:01,400
+<b>to be seen by other people</b>
+
+1173
+00:41:01,679 --> 00:41:04,039
+<b>that they have this lack of</b>
+
+1174
+00:41:05,519 --> 00:41:08,920
+<b>this artistic soul. So you could be</b>
+
+1175
+00:41:09,199 --> 00:41:11,760
+<b>almost an influencer in</b>
+
+1176
+00:41:11,760 --> 00:41:12,920
+<b>a good way, of course,</b>
+
+1177
+00:41:13,519 --> 00:41:15,199
+<b>that you just make other people happy</b>
+
+1178
+00:41:15,199 --> 00:41:17,679
+<b>doing maybe nice dances</b>
+
+1179
+00:41:17,679 --> 00:41:18,960
+<b>or nice shows or nice,</b>
+
+1180
+00:41:19,679 --> 00:41:21,400
+<b>even you can teach because nowadays you</b>
+
+1181
+00:41:21,400 --> 00:41:23,199
+<b>could potentially, I was</b>
+
+1182
+00:41:23,199 --> 00:41:24,280
+<b>trying and I didn't manage</b>
+
+1183
+00:41:24,280 --> 00:41:26,719
+<b>until now, just to be live on TikTok,</b>
+
+1184
+00:41:26,880 --> 00:41:27,960
+<b>share your knowledge on</b>
+
+1185
+00:41:27,960 --> 00:41:30,920
+<b>TikTok and just maybe you will get</b>
+
+1186
+00:41:30,920 --> 00:41:33,920
+<b>people that you will be somebody that</b>
+
+1187
+00:41:33,960 --> 00:41:35,360
+<b>influences people to start</b>
+
+1188
+00:41:35,360 --> 00:41:37,280
+<b>dancing, which is great for</b>
+
+1189
+00:41:37,320 --> 00:41:39,360
+<b>everyone. Of course. And I think dancing</b>
+
+1190
+00:41:39,400 --> 00:41:42,000
+<b>is like the best medicament,</b>
+
+1191
+00:41:42,360 --> 00:41:45,440
+<b>the best solution for people</b>
+
+1192
+00:41:45,639 --> 00:41:49,400
+<b>that have a gap in their life or they</b>
+
+1193
+00:41:49,400 --> 00:41:50,639
+<b>feel unwell or they</b>
+
+1194
+00:41:50,639 --> 00:41:52,880
+<b>feel like say mentally.</b>
+
+1195
+00:41:53,159 --> 00:41:56,480
+<b>And it's connected body, soul, mind,</b>
+
+1196
+00:41:56,519 --> 00:41:57,840
+<b>they're all your connected</b>
+
+1197
+00:41:57,880 --> 00:41:59,519
+<b>level. Plus you have the social</b>
+
+1198
+00:41:59,519 --> 00:42:01,199
+<b>side of it. Exactly. And the connection</b>
+
+1199
+00:42:01,199 --> 00:42:03,199
+<b>with other people and also</b>
+
+1200
+00:42:03,360 --> 00:42:05,039
+<b>building a new relation and</b>
+
+1201
+00:42:05,039 --> 00:42:07,320
+<b>everything. So also the the pro-am, I</b>
+
+1202
+00:42:07,320 --> 00:42:08,960
+<b>think also that's why it's</b>
+
+1203
+00:42:08,960 --> 00:42:10,719
+<b>such a strong because, you know,</b>
+
+1204
+00:42:10,760 --> 00:42:12,920
+<b>in our community, we have many people</b>
+
+1205
+00:42:12,920 --> 00:42:14,039
+<b>that are coming from</b>
+
+1206
+00:42:14,320 --> 00:42:16,559
+<b>many different activities,</b>
+
+1207
+00:42:16,559 --> 00:42:17,920
+<b>many different businesses. They are</b>
+
+1208
+00:42:17,920 --> 00:42:21,920
+<b>people that are presidents or directors</b>
+
+1209
+00:42:21,920 --> 00:42:23,880
+<b>of huge companies or,</b>
+
+1210
+00:42:23,880 --> 00:42:26,320
+<b>I don't know, banks or something. And</b>
+
+1211
+00:42:26,320 --> 00:42:29,280
+<b>they try to find a space</b>
+
+1212
+00:42:29,480 --> 00:42:30,840
+<b>in their life where they can</b>
+
+1213
+00:42:31,039 --> 00:42:34,159
+<b>just switch off everything that is going</b>
+
+1214
+00:42:34,199 --> 00:42:36,119
+<b>around the mind every day</b>
+
+1215
+00:42:36,440 --> 00:42:37,880
+<b>and just go on the floor and</b>
+
+1216
+00:42:38,000 --> 00:42:41,119
+<b>spend a nice time. But of course, it's</b>
+
+1217
+00:42:41,119 --> 00:42:44,119
+<b>something it's maybe not very good to</b>
+
+1218
+00:42:44,119 --> 00:42:45,679
+<b>combine it with golf,</b>
+
+1219
+00:42:45,679 --> 00:42:47,360
+<b>but this is something the same. Like you</b>
+
+1220
+00:42:47,360 --> 00:42:48,280
+<b>are going for a golf</b>
+
+1221
+00:42:48,280 --> 00:42:50,119
+<b>course just to play with a ball.</b>
+
+1222
+00:42:50,840 --> 00:42:54,440
+<b>But every time you go for a tee time, you</b>
+
+1223
+00:42:54,920 --> 00:42:55,639
+<b>don't know with who</b>
+
+1224
+00:42:55,639 --> 00:42:57,079
+<b>you play. You can have</b>
+
+1225
+00:42:57,079 --> 00:42:58,800
+<b>other people. You have like four people</b>
+
+1226
+00:42:58,800 --> 00:43:00,039
+<b>that are going with you and</b>
+
+1227
+00:43:00,079 --> 00:43:01,760
+<b>you build. And that passion</b>
+
+1228
+00:43:02,119 --> 00:43:04,920
+<b>connects much better than anything else.</b>
+
+1229
+00:43:04,920 --> 00:43:07,679
+<b>And then after one. You</b>
+
+1230
+00:43:07,679 --> 00:43:08,719
+<b>can find business partners,</b>
+
+1231
+00:43:08,719 --> 00:43:11,119
+<b>you can find life partners. Exactly. The</b>
+
+1232
+00:43:11,119 --> 00:43:12,440
+<b>same in dancing. The</b>
+
+1233
+00:43:12,440 --> 00:43:15,159
+<b>same. So that's actually,</b>
+
+1234
+00:43:15,599 --> 00:43:17,760
+<b>I think the most important thing is the</b>
+
+1235
+00:43:17,760 --> 00:43:21,079
+<b>way how you look on it. If</b>
+
+1236
+00:43:21,079 --> 00:43:22,920
+<b>you are looking only like</b>
+
+1237
+00:43:23,880 --> 00:43:26,119
+<b>people that are making steps, then this</b>
+
+1238
+00:43:26,119 --> 00:43:27,960
+<b>is very empty. But if you</b>
+
+1239
+00:43:27,960 --> 00:43:30,280
+<b>are looking at dancing as a</b>
+
+1240
+00:43:30,800 --> 00:43:34,840
+<b>global industry that makes really that's</b>
+
+1241
+00:43:34,840 --> 00:43:36,239
+<b>changed lives. People 100</b>
+
+1242
+00:43:36,320 --> 00:43:38,119
+<b>percent. That's people take it</b>
+
+1243
+00:43:38,119 --> 00:43:40,599
+<b>so for granted because dancing was in our</b>
+
+1244
+00:43:40,599 --> 00:43:42,440
+<b>roots since since the</b>
+
+1245
+00:43:42,440 --> 00:43:44,039
+<b>beginning of time. We burn.</b>
+
+1246
+00:43:44,039 --> 00:43:46,159
+<b>And we come to the life. We already</b>
+
+1247
+00:43:46,280 --> 00:43:47,760
+<b>condense. Correct. And as I</b>
+
+1248
+00:43:47,760 --> 00:43:48,960
+<b>said, people, I can't dance.</b>
+
+1249
+00:43:48,960 --> 00:43:50,480
+<b>Can you walk? Yes. When you walk, you</b>
+
+1250
+00:43:50,480 --> 00:43:53,119
+<b>have a rhythm. So that's</b>
+
+1251
+00:43:53,440 --> 00:43:54,480
+<b>your dance already there.</b>
+
+1252
+00:43:54,960 --> 00:43:57,280
+<b>You don't have to go left and right. Just</b>
+
+1253
+00:43:57,280 --> 00:43:58,360
+<b>go forward. That's it.</b>
+
+1254
+00:43:58,360 --> 00:43:59,239
+<b>And you have your dance.</b>
+
+1255
+00:43:59,440 --> 00:44:01,559
+<b>Just put a beat on that and there you go.</b>
+
+1256
+00:44:01,559 --> 00:44:02,360
+<b>And you will see the</b>
+
+1257
+00:44:02,360 --> 00:44:03,960
+<b>rhythm. Exactly. If you want to do</b>
+
+1258
+00:44:03,960 --> 00:44:05,239
+<b>more, you can do more. You don't have to.</b>
+
+1259
+00:44:05,280 --> 00:44:06,679
+<b>At least you have foot</b>
+
+1260
+00:44:06,679 --> 00:44:08,079
+<b>rhythm. That's already one rhythm.</b>
+
+1261
+00:44:08,239 --> 00:44:10,320
+<b>Yes. It's enough. You have to do shimmy</b>
+
+1262
+00:44:10,320 --> 00:44:12,599
+<b>and hips. I totally agree.</b>
+
+1263
+00:44:13,440 --> 00:44:15,280
+<b>I'm always like, it's okay.</b>
+
+1264
+00:44:15,280 --> 00:44:17,639
+<b>If you want to believe that you cannot do</b>
+
+1265
+00:44:17,639 --> 00:44:19,599
+<b>it, you cannot do it. Well</b>
+
+1266
+00:44:19,599 --> 00:44:21,639
+<b>done. Yes. If you can do it,</b>
+
+1267
+00:44:21,719 --> 00:44:23,840
+<b>you can do it. Exactly. And if you cannot</b>
+
+1268
+00:44:23,840 --> 00:44:24,800
+<b>do it, then don't you</b>
+
+1269
+00:44:24,800 --> 00:44:27,360
+<b>know, we had now Peter Maxwell,</b>
+
+1270
+00:44:27,360 --> 00:44:29,559
+<b>the last you saw maybe maybe this week we</b>
+
+1271
+00:44:29,559 --> 00:44:30,559
+<b>had him and he was like,</b>
+
+1272
+00:44:31,599 --> 00:44:33,519
+<b>guys, I can't even be bothered</b>
+
+1273
+00:44:34,159 --> 00:44:35,920
+<b>to make you believe what what I'm telling</b>
+
+1274
+00:44:35,920 --> 00:44:36,880
+<b>you. If you want to</b>
+
+1275
+00:44:36,960 --> 00:44:38,119
+<b>listen to what I'm telling you,</b>
+
+1276
+00:44:38,119 --> 00:44:40,760
+<b>good. If not, it's your choice. Enjoy</b>
+
+1277
+00:44:40,760 --> 00:44:43,360
+<b>your life. No. He was so dry. No. I was</b>
+
+1278
+00:44:43,360 --> 00:44:44,639
+<b>like, yes, Peter. I got</b>
+
+1279
+00:44:44,639 --> 00:44:47,360
+<b>you. Yeah, it's easy, but it's not easy</b>
+
+1280
+00:44:47,360 --> 00:44:48,360
+<b>to just say like that.</b>
+
+1281
+00:44:50,079 --> 00:44:53,519
+<b>Blackpool in 2018, when you already</b>
+
+1282
+00:44:53,559 --> 00:44:55,320
+<b>danced three years, two and a half, three</b>
+
+1283
+00:44:55,320 --> 00:44:56,760
+<b>years. Yes. Two and a</b>
+
+1284
+00:44:56,760 --> 00:44:59,800
+<b>half. Yes. What made you think,</b>
+
+1285
+00:44:59,840 --> 00:45:02,639
+<b>okay, the dance world needs air dance in</b>
+
+1286
+00:45:02,639 --> 00:45:08,079
+<b>the time? Like I say, from</b>
+
+1287
+00:45:08,079 --> 00:45:11,280
+<b>the very beginning, I was</b>
+
+1288
+00:45:11,960 --> 00:45:14,639
+<b>watching the dancers and I have already</b>
+
+1289
+00:45:15,519 --> 00:45:16,559
+<b>the privilege to dance</b>
+
+1290
+00:45:16,559 --> 00:45:17,519
+<b>with very good partners</b>
+
+1291
+00:45:17,519 --> 00:45:19,760
+<b>because my second partner was Marek Vixa.</b>
+
+1292
+00:45:20,119 --> 00:45:22,000
+<b>So one of the best dancers</b>
+
+1293
+00:45:22,000 --> 00:45:23,800
+<b>in Poland at the moment. And</b>
+
+1294
+00:45:23,800 --> 00:45:26,199
+<b>actually it was just after he finished</b>
+
+1295
+00:45:26,199 --> 00:45:28,199
+<b>his career in international,</b>
+
+1296
+00:45:28,519 --> 00:45:32,679
+<b>he finished the career in 2016,</b>
+
+1297
+00:45:33,199 --> 00:45:36,039
+<b>I think or 17. And I start to dance with</b>
+
+1298
+00:45:36,039 --> 00:45:37,840
+<b>him half a year after he</b>
+
+1299
+00:45:37,840 --> 00:45:40,679
+<b>finished the career. So I saw it</b>
+
+1300
+00:45:40,679 --> 00:45:45,280
+<b>also that even for him, the journey in</b>
+
+1301
+00:45:45,280 --> 00:45:46,559
+<b>Pro-Am was something that</b>
+
+1302
+00:45:47,039 --> 00:45:48,840
+<b>makes him happy because he can</b>
+
+1303
+00:45:49,280 --> 00:45:51,960
+<b>debug still on the floor. Maybe not with</b>
+
+1304
+00:45:51,960 --> 00:45:53,159
+<b>such a pressure, like, you</b>
+
+1305
+00:45:53,159 --> 00:45:54,159
+<b>know, in your competitive</b>
+
+1306
+00:45:54,159 --> 00:45:57,000
+<b>life, but still you can be in all the</b>
+
+1307
+00:45:57,000 --> 00:45:59,920
+<b>places where there are the most important</b>
+
+1308
+00:45:59,920 --> 00:46:00,960
+<b>for every dancer. So</b>
+
+1309
+00:46:00,960 --> 00:46:03,360
+<b>like international, Blackpool, UK. So all</b>
+
+1310
+00:46:03,360 --> 00:46:04,960
+<b>the floors that was the</b>
+
+1311
+00:46:05,039 --> 00:46:06,679
+<b>most important, you can still</b>
+
+1312
+00:46:07,159 --> 00:46:09,559
+<b>you can achieve a very good result. Yes.</b>
+
+1313
+00:46:09,559 --> 00:46:12,199
+<b>Still in the Pro-Am. But what</b>
+
+1314
+00:46:12,199 --> 00:46:14,840
+<b>I saw also, it's like I say,</b>
+
+1315
+00:46:15,119 --> 00:46:16,880
+<b>that was the struggle that the people</b>
+
+1316
+00:46:17,079 --> 00:46:18,840
+<b>that even would like to</b>
+
+1317
+00:46:18,840 --> 00:46:22,400
+<b>have lesson and get the lesson.</b>
+
+1318
+00:46:24,000 --> 00:46:27,599
+<b>The problem was that the best dancers,</b>
+
+1319
+00:46:27,599 --> 00:46:28,920
+<b>the best teachers, they were not</b>
+
+1320
+00:46:29,039 --> 00:46:30,480
+<b>available in the places</b>
+
+1321
+00:46:30,599 --> 00:46:33,840
+<b>they are. So the idea was to connect the</b>
+
+1322
+00:46:33,840 --> 00:46:35,800
+<b>teacher with the dancer</b>
+
+1323
+00:46:36,119 --> 00:46:37,840
+<b>through an online platform where</b>
+
+1324
+00:46:37,840 --> 00:46:41,159
+<b>the dancer can pay just for the</b>
+
+1325
+00:46:41,159 --> 00:46:42,599
+<b>subscription. Yes. For the</b>
+
+1326
+00:46:42,599 --> 00:46:44,920
+<b>subscription to get there. Yes.</b>
+
+1327
+00:46:44,960 --> 00:46:46,679
+<b>There was a subscription that you that</b>
+
+1328
+00:46:46,679 --> 00:46:48,840
+<b>give you the basic access for</b>
+
+1329
+00:46:48,840 --> 00:46:51,519
+<b>the, let's say, group lesson,</b>
+
+1330
+00:46:51,559 --> 00:46:55,000
+<b>where it was information for like we were</b>
+
+1331
+00:46:55,039 --> 00:46:56,159
+<b>like you are doing here.</b>
+
+1332
+00:46:56,400 --> 00:46:57,719
+<b>Like the white audience. Yes.</b>
+
+1333
+00:46:58,400 --> 00:47:00,719
+<b>And then you can book a lesson directly</b>
+
+1334
+00:47:01,239 --> 00:47:02,239
+<b>with the teacher. Yeah.</b>
+
+1335
+00:47:02,440 --> 00:47:05,679
+<b>Exactly. So that was the idea</b>
+
+1336
+00:47:05,880 --> 00:47:08,800
+<b>that we are skipping all the costs for</b>
+
+1337
+00:47:08,800 --> 00:47:10,719
+<b>the travel, for the staying for. So more</b>
+
+1338
+00:47:10,719 --> 00:47:11,519
+<b>or less you wanted to</b>
+
+1339
+00:47:11,519 --> 00:47:13,800
+<b>be in a war show with your partner and</b>
+
+1340
+00:47:13,800 --> 00:47:14,920
+<b>have lessons with a</b>
+
+1341
+00:47:14,920 --> 00:47:16,360
+<b>teacher, maybe from London. Yes.</b>
+
+1342
+00:47:16,559 --> 00:47:18,639
+<b>Or from Hong Kong. Exactly. Exactly.</b>
+
+1343
+00:47:18,639 --> 00:47:21,000
+<b>Asia. Yeah. Yes. And that was the idea</b>
+
+1344
+00:47:21,039 --> 00:47:23,440
+<b>how we can help those</b>
+
+1345
+00:47:23,519 --> 00:47:26,320
+<b>people to get the knowledge a bit closer.</b>
+
+1346
+00:47:26,320 --> 00:47:27,519
+<b>Yes. Okay. Because of</b>
+
+1347
+00:47:27,519 --> 00:47:28,840
+<b>course it was already time that</b>
+
+1348
+00:47:28,840 --> 00:47:31,760
+<b>YouTube was there, but nobody was giving</b>
+
+1349
+00:47:31,760 --> 00:47:33,800
+<b>the lesson on YouTube.</b>
+
+1350
+00:47:33,960 --> 00:47:34,880
+<b>And especially not private</b>
+
+1351
+00:47:34,880 --> 00:47:36,920
+<b>lessons and even groups. And you know,</b>
+
+1352
+00:47:36,920 --> 00:47:38,159
+<b>but the problem was also</b>
+
+1353
+00:47:38,159 --> 00:47:39,719
+<b>that the people that not not</b>
+
+1354
+00:47:39,719 --> 00:47:41,519
+<b>seeing that, of course, for every lesson</b>
+
+1355
+00:47:41,519 --> 00:47:42,800
+<b>that those teachers give it</b>
+
+1356
+00:47:42,800 --> 00:47:44,960
+<b>to Erdens, we pay. Of course.</b>
+
+1357
+00:47:45,599 --> 00:47:49,760
+<b>So if somebody is recording a teacher for</b>
+
+1358
+00:47:49,760 --> 00:47:52,000
+<b>YouTube or for Instagram,</b>
+
+1359
+00:47:52,159 --> 00:47:54,719
+<b>he's recording a lesson that</b>
+
+1360
+00:47:54,760 --> 00:47:58,360
+<b>it's actually, let's say, not payable.</b>
+
+1361
+00:47:58,639 --> 00:48:01,119
+<b>And we have paid for the lessons. So the</b>
+
+1362
+00:48:01,159 --> 00:48:02,440
+<b>teacher has also the</b>
+
+1363
+00:48:02,960 --> 00:48:05,960
+<b>feeling that he's still working. So he</b>
+
+1364
+00:48:05,960 --> 00:48:08,800
+<b>got paid. So he would like to give the</b>
+
+1365
+00:48:08,800 --> 00:48:09,400
+<b>knowledge. Of course.</b>
+
+1366
+00:48:09,440 --> 00:48:10,960
+<b>It's like a big group of people paying</b>
+
+1367
+00:48:10,960 --> 00:48:12,239
+<b>for a teacher. Exactly.</b>
+
+1368
+00:48:12,440 --> 00:48:13,880
+<b>Yes. No, it makes total sense.</b>
+
+1369
+00:48:14,400 --> 00:48:16,960
+<b>Brilliant. I have for you 25 questions.</b>
+
+1370
+00:48:17,639 --> 00:48:20,480
+<b>25? Yes. We have three minutes. Three</b>
+
+1371
+00:48:20,480 --> 00:48:21,639
+<b>minutes, 25 questions.</b>
+
+1372
+00:48:21,639 --> 00:48:24,800
+<b>So no, 20 questions, but they are fast.</b>
+
+1373
+00:48:25,000 --> 00:48:25,760
+<b>Fast questions. So</b>
+
+1374
+00:48:25,760 --> 00:48:27,239
+<b>you can answer yes, no.</b>
+
+1375
+00:48:28,159 --> 00:48:30,519
+<b>Maybe, yeah. Or one word or two words or</b>
+
+1376
+00:48:30,519 --> 00:48:32,440
+<b>one sentence. Okay. So let's</b>
+
+1377
+00:48:32,480 --> 00:48:33,320
+<b>go for it. That's difficult.</b>
+
+1378
+00:48:33,519 --> 00:48:36,079
+<b>Let's go for it. You can do it, Jana. All</b>
+
+1379
+00:48:36,079 --> 00:48:39,519
+<b>right. One, texting or calling? Texting.</b>
+
+1380
+00:48:40,400 --> 00:48:43,320
+<b>Movies at home or going out? Movies at</b>
+
+1381
+00:48:43,320 --> 00:48:45,360
+<b>home. Should students be</b>
+
+1382
+00:48:45,400 --> 00:48:47,280
+<b>able to replay a class?</b>
+
+1383
+00:48:47,880 --> 00:48:53,039
+<b>Yes. Can watching a top dancer change how</b>
+
+1384
+00:48:53,039 --> 00:48:54,199
+<b>you train? Of course.</b>
+
+1385
+00:48:55,000 --> 00:48:55,800
+<b>You see, you're great.</b>
+
+1386
+00:48:56,880 --> 00:48:59,960
+<b>What song do you know all the words to?</b>
+
+1387
+00:49:01,079 --> 00:49:03,159
+<b>All the words? Yeah. Oh</b>
+
+1388
+00:49:03,159 --> 00:49:05,280
+<b>my God. That's a difficult</b>
+
+1389
+00:49:05,320 --> 00:49:07,920
+<b>I don't know if I know a song with all</b>
+
+1390
+00:49:07,920 --> 00:49:09,440
+<b>the words, but I. Celine</b>
+
+1391
+00:49:09,440 --> 00:49:11,119
+<b>Dion, something. Someone of those</b>
+
+1392
+00:49:11,119 --> 00:49:14,880
+<b>dramatic ones. All of me. All of me. Oh,</b>
+
+1393
+00:49:14,880 --> 00:49:16,679
+<b>there you go. I'm gonna</b>
+
+1394
+00:49:16,679 --> 00:49:18,400
+<b>hear it live. Next video,</b>
+
+1395
+00:49:18,400 --> 00:49:20,639
+<b>you will watch Jana singing All of Me. Oh</b>
+
+1396
+00:49:20,639 --> 00:49:24,519
+<b>my God. Better not. Better</b>
+
+1397
+00:49:24,519 --> 00:49:26,239
+<b>watching, just like I'm dancing.</b>
+
+1398
+00:49:26,519 --> 00:49:28,440
+<b>Just switch the volume is just the</b>
+
+1399
+00:49:28,440 --> 00:49:31,039
+<b>performance. Yes. Would you</b>
+
+1400
+00:49:31,039 --> 00:49:33,360
+<b>take lessons from a robot? No.</b>
+
+1401
+00:49:35,159 --> 00:49:37,000
+<b>All right. Even if it looks like human,</b>
+
+1402
+00:49:37,400 --> 00:49:40,159
+<b>but there is no personality. I need the</b>
+
+1403
+00:49:40,880 --> 00:49:42,960
+<b>maybe they could have personality. I hope</b>
+
+1404
+00:49:42,960 --> 00:49:44,360
+<b>not. Yeah, you hope not.</b>
+
+1405
+00:49:45,079 --> 00:49:46,400
+<b>Because that will be very,</b>
+
+1406
+00:49:46,480 --> 00:49:49,400
+<b>very strange and difficult time for us.</b>
+
+1407
+00:49:49,440 --> 00:49:52,679
+<b>If technology will take</b>
+
+1408
+00:49:52,880 --> 00:49:55,280
+<b>the part that it's only</b>
+
+1409
+00:49:56,400 --> 00:50:00,239
+<b>purchased for the human. I get it. Are</b>
+
+1410
+00:50:00,239 --> 00:50:01,599
+<b>you usually early or late?</b>
+
+1411
+00:50:05,119 --> 00:50:08,719
+<b>I'm late. Are you early today? You see?</b>
+
+1412
+00:50:08,719 --> 00:50:09,559
+<b>Yeah, you see you're</b>
+
+1413
+00:50:09,559 --> 00:50:10,599
+<b>getting better. That's important.</b>
+
+1414
+00:50:11,119 --> 00:50:12,920
+<b>What was the best compliment you ever</b>
+
+1415
+00:50:12,920 --> 00:50:14,920
+<b>got? The best compliment.</b>
+
+1416
+00:50:18,440 --> 00:50:21,880
+<b>If I think because now actually dancing</b>
+
+1417
+00:50:21,920 --> 00:50:23,360
+<b>is for me the most important part.</b>
+
+1418
+00:50:23,719 --> 00:50:26,000
+<b>It's about my, my, my, my dancing,</b>
+
+1419
+00:50:26,000 --> 00:50:27,840
+<b>developing. And what was the compliment?</b>
+
+1420
+00:50:28,679 --> 00:50:29,920
+<b>That I'm dancing like a</b>
+
+1421
+00:50:30,440 --> 00:50:33,199
+<b>wow. That's beautiful. Yes. And this is</b>
+
+1422
+00:50:33,199 --> 00:50:34,920
+<b>something that gives me a</b>
+
+1423
+00:50:34,920 --> 00:50:36,679
+<b>huge power. Okay. I need to say</b>
+
+1424
+00:50:36,800 --> 00:50:38,519
+<b>number nine. What was your first job?</b>
+
+1425
+00:50:39,679 --> 00:50:41,960
+<b>Selling cars. Well done.</b>
+
+1426
+00:50:42,119 --> 00:50:43,920
+<b>What is your hidden talent?</b>
+
+1427
+00:50:44,039 --> 00:50:47,599
+<b>Somebody doesn't know about cooking. All</b>
+
+1428
+00:50:47,599 --> 00:50:49,039
+<b>right. There we go. We</b>
+
+1429
+00:50:49,159 --> 00:50:50,039
+<b>have to do a cooking show.</b>
+
+1430
+00:50:50,880 --> 00:50:52,599
+<b>11. If you were a</b>
+
+1431
+00:50:52,639 --> 00:50:55,159
+<b>ghost, who would you hunt?</b>
+
+1432
+00:50:58,360 --> 00:51:04,199
+<b>So the poor guy can't sleep properly. Do</b>
+
+1433
+00:51:04,800 --> 00:51:07,079
+<b>you pack light for a trip or</b>
+
+1434
+00:51:07,239 --> 00:51:09,280
+<b>very, very big? Like you go</b>
+
+1435
+00:51:09,280 --> 00:51:10,960
+<b>big all the time. I go big.</b>
+
+1436
+00:51:11,760 --> 00:51:14,440
+<b>Unfortunately. Also when I go to London</b>
+
+1437
+00:51:14,440 --> 00:51:16,519
+<b>for my room that has eight</b>
+
+1438
+00:51:16,559 --> 00:51:20,119
+<b>meters, it's happening only in this</b>
+
+1439
+00:51:21,320 --> 00:51:24,360
+<b>country. So you love</b>
+
+1440
+00:51:24,360 --> 00:51:26,280
+<b>Blackpool, I'm sure. Yes, I love it.</b>
+
+1441
+00:51:26,599 --> 00:51:30,840
+<b>Can a phone camera catch details? What a</b>
+
+1442
+00:51:30,840 --> 00:51:32,360
+<b>dancer could maybe</b>
+
+1443
+00:51:32,360 --> 00:51:33,320
+<b>see through the camera?</b>
+
+1444
+00:51:33,800 --> 00:51:36,719
+<b>So to learn through. Yes, I think so. Of</b>
+
+1445
+00:51:36,719 --> 00:51:37,840
+<b>course. A most</b>
+
+1446
+00:51:37,840 --> 00:51:39,119
+<b>difficult dance figure for you?</b>
+
+1447
+00:51:40,119 --> 00:51:43,800
+<b>Most difficult, a rhomba walk. And</b>
+
+1448
+00:51:43,800 --> 00:51:46,039
+<b>spinning. I love that.</b>
+
+1449
+00:51:46,239 --> 00:51:48,480
+<b>That's the perfect answer. I know.</b>
+
+1450
+00:51:48,679 --> 00:51:50,199
+<b>I know. I heard top teachers as well</b>
+
+1451
+00:51:50,199 --> 00:51:51,880
+<b>saying the same. I can do</b>
+
+1452
+00:51:51,880 --> 00:51:54,079
+<b>it, I don't know. Forever.</b>
+
+1453
+00:51:54,079 --> 00:51:55,719
+<b>Forever. And I will never perfect. See</b>
+
+1454
+00:51:55,719 --> 00:51:57,239
+<b>you in 2035. I'm still</b>
+
+1455
+00:51:57,239 --> 00:51:58,840
+<b>practicing rhomba. Yes, exactly.</b>
+
+1456
+00:51:59,599 --> 00:52:01,599
+<b>You see, that's why you will be a great</b>
+
+1457
+00:52:01,880 --> 00:52:03,239
+<b>dancer. That's, I think,</b>
+
+1458
+00:52:03,239 --> 00:52:04,480
+<b>the key for Latin, definitely.</b>
+
+1459
+00:52:04,840 --> 00:52:08,480
+<b>Have you ever tried skydiving? No. Would</b>
+
+1460
+00:52:08,480 --> 00:52:10,599
+<b>you try? I'm open to</b>
+
+1461
+00:52:10,679 --> 00:52:12,239
+<b>new challenges. Yeah.</b>
+
+1462
+00:52:12,800 --> 00:52:14,559
+<b>All right. Would you dance in a</b>
+
+1463
+00:52:14,559 --> 00:52:15,800
+<b>supermarket if your song</b>
+
+1464
+00:52:15,880 --> 00:52:17,480
+<b>came on? Yes, for sure.</b>
+
+1465
+00:52:19,199 --> 00:52:22,440
+<b>Should every dancer try a class with a</b>
+
+1466
+00:52:22,440 --> 00:52:25,360
+<b>world teacher as their</b>
+
+1467
+00:52:25,360 --> 00:52:26,280
+<b>last dance? Let's say they</b>
+
+1468
+00:52:26,280 --> 00:52:28,719
+<b>want to stop their career. You have one</b>
+
+1469
+00:52:28,719 --> 00:52:30,480
+<b>more lesson and to get a</b>
+
+1470
+00:52:30,480 --> 00:52:31,719
+<b>lesson from a top teacher.</b>
+
+1471
+00:52:31,719 --> 00:52:33,880
+<b>Do you think it would be inspiring or</b>
+
+1472
+00:52:33,880 --> 00:52:35,960
+<b>would be? I think that</b>
+
+1473
+00:52:36,000 --> 00:52:39,360
+<b>every dancer should try a lesson</b>
+
+1474
+00:52:39,519 --> 00:52:43,119
+<b>with a champion and a top teacher. I</b>
+
+1475
+00:52:43,119 --> 00:52:45,239
+<b>don't know if this is, if</b>
+
+1476
+00:52:45,239 --> 00:52:47,079
+<b>that should be the last lesson.</b>
+
+1477
+00:52:47,400 --> 00:52:52,320
+<b>But definitely, I think that the touch</b>
+
+1478
+00:52:52,760 --> 00:52:54,559
+<b>and the energy of a</b>
+
+1479
+00:52:54,559 --> 00:52:58,440
+<b>champion can change the energy of</b>
+
+1480
+00:52:58,519 --> 00:53:02,679
+<b>person and the way how they think. That's</b>
+
+1481
+00:53:02,679 --> 00:53:04,400
+<b>100% sure. It doesn't</b>
+
+1482
+00:53:04,400 --> 00:53:06,480
+<b>matter how big will be the cost.</b>
+
+1483
+00:53:07,039 --> 00:53:08,840
+<b>If you have somebody that is inspiring</b>
+
+1484
+00:53:08,840 --> 00:53:11,440
+<b>you and it's a person that</b>
+
+1485
+00:53:11,559 --> 00:53:12,840
+<b>achieved something that you</b>
+
+1486
+00:53:12,840 --> 00:53:15,119
+<b>wanted to achieve, it's definitely the</b>
+
+1487
+00:53:15,119 --> 00:53:16,119
+<b>best. I think I teach it</b>
+
+1488
+00:53:16,119 --> 00:53:17,559
+<b>many times like a motivational</b>
+
+1489
+00:53:17,559 --> 00:53:19,360
+<b>teacher that is just changing your</b>
+
+1490
+00:53:19,360 --> 00:53:20,360
+<b>mindset. Exactly. And</b>
+
+1491
+00:53:20,360 --> 00:53:21,679
+<b>you're like, "Oh my God, I didn't</b>
+
+1492
+00:53:21,679 --> 00:53:24,639
+<b>know. I can do this." Sometimes you need</b>
+
+1493
+00:53:24,639 --> 00:53:26,239
+<b>just one word. Exactly.</b>
+
+1494
+00:53:26,239 --> 00:53:28,440
+<b>Even not a move. Just one word.</b>
+
+1495
+00:53:28,840 --> 00:53:31,119
+<b>That could be the click in your head.</b>
+
+1496
+00:53:31,159 --> 00:53:34,159
+<b>Yeah. And then you see... Okay.</b>
+
+1497
+00:53:35,000 --> 00:53:37,519
+<b>I was just telling you as well. I wanted</b>
+
+1498
+00:53:37,519 --> 00:53:38,519
+<b>to know stuff. Anyway,</b>
+
+1499
+00:53:38,599 --> 00:53:39,280
+<b>18, three more questions.</b>
+
+1500
+00:53:39,480 --> 00:53:41,000
+<b>Would you use time travel to see your</b>
+
+1501
+00:53:41,000 --> 00:53:44,920
+<b>first lesson? I still see it. You still</b>
+
+1502
+00:53:44,920 --> 00:53:45,559
+<b>have it in your mind.</b>
+
+1503
+00:53:45,920 --> 00:53:50,480
+<b>Well done. Could an app make it easier to</b>
+
+1504
+00:53:50,480 --> 00:53:51,440
+<b>find the right dance</b>
+
+1505
+00:53:51,440 --> 00:53:54,199
+<b>coach? Yes. And last question,</b>
+
+1506
+00:53:54,239 --> 00:53:56,039
+<b>would you practice choreography in the</b>
+
+1507
+00:53:56,039 --> 00:53:58,280
+<b>elevator? Yes. In the two,</b>
+
+1508
+00:53:58,280 --> 00:53:59,559
+<b>three... Of course, I do it.</b>
+
+1509
+00:54:00,679 --> 00:54:03,159
+<b>That was it. Well done. Well done. Thank</b>
+
+1510
+00:54:03,159 --> 00:54:04,840
+<b>you very much. We were close.</b>
+
+1511
+00:54:06,519 --> 00:54:08,920
+<b>All right. So now we have the world</b>
+
+1512
+00:54:08,960 --> 00:54:13,679
+<b>Atlas. So let's see which just open</b>
+
+1513
+00:54:13,679 --> 00:54:15,360
+<b>randomly or you can maybe turn...</b>
+
+1514
+00:54:15,360 --> 00:54:19,960
+<b>Oh my God. Oh, Fiji. Fiji. There you go.</b>
+
+1515
+00:54:20,679 --> 00:54:22,480
+<b>Where are you Fiji? No,</b>
+
+1516
+00:54:22,480 --> 00:54:24,159
+<b>I wasn't, but I like the</b>
+
+1517
+00:54:24,239 --> 00:54:26,960
+<b>place and I... Looks good. On social</b>
+
+1518
+00:54:26,960 --> 00:54:30,840
+<b>media. And also they have a very... I</b>
+
+1519
+00:54:30,840 --> 00:54:32,519
+<b>like the water, Fiji.</b>
+
+1520
+00:54:32,599 --> 00:54:35,920
+<b>Yes. Yes. It looks wonderful. But do you</b>
+
+1521
+00:54:35,920 --> 00:54:37,000
+<b>think they do more than...</b>
+
+1522
+00:54:37,039 --> 00:54:38,079
+<b>For sure, they will probably do</b>
+
+1523
+00:54:38,119 --> 00:54:40,400
+<b>cultural dances as well, but do you think</b>
+
+1524
+00:54:40,400 --> 00:54:42,239
+<b>they do something in like</b>
+
+1525
+00:54:42,280 --> 00:54:44,840
+<b>organized dance board in any form?</b>
+
+1526
+00:54:44,840 --> 00:54:46,840
+<b>Maybe salsa, maybe they do. You know, I</b>
+
+1527
+00:54:46,840 --> 00:54:50,039
+<b>was traveling a lot and I saw it many</b>
+
+1528
+00:54:50,320 --> 00:54:51,880
+<b>small islands and small</b>
+
+1529
+00:54:51,920 --> 00:54:55,079
+<b>places and actually, to be honest, in the</b>
+
+1530
+00:54:55,760 --> 00:54:58,320
+<b>very small community,</b>
+
+1531
+00:54:58,880 --> 00:55:02,480
+<b>dancing is very important part of</b>
+
+1532
+00:55:03,840 --> 00:55:06,400
+<b>these people. So I don't know because</b>
+
+1533
+00:55:06,400 --> 00:55:09,039
+<b>like I say, I've never been there, but</b>
+
+1534
+00:55:09,039 --> 00:55:10,280
+<b>probably I think they</b>
+
+1535
+00:55:10,280 --> 00:55:13,719
+<b>for sure have some rituals or some</b>
+
+1536
+00:55:14,840 --> 00:55:18,719
+<b>dancing that they use to celebrate a</b>
+
+1537
+00:55:18,719 --> 00:55:20,599
+<b>special day or special</b>
+
+1538
+00:55:21,599 --> 00:55:24,679
+<b>moments or something like that. Yeah. So</b>
+
+1539
+00:55:25,119 --> 00:55:25,599
+<b>we're going to do a</b>
+
+1540
+00:55:25,599 --> 00:55:27,360
+<b>research. Yes. We're going to try to</b>
+
+1541
+00:55:27,559 --> 00:55:30,880
+<b>see if we find something, but yeah, I</b>
+
+1542
+00:55:30,880 --> 00:55:32,320
+<b>mean, it would be great to have a prime</b>
+
+1543
+00:55:32,320 --> 00:55:33,280
+<b>competition in Fiji.</b>
+
+1544
+00:55:33,400 --> 00:55:36,400
+<b>Of course. Amazing. That's a new idea for</b>
+
+1545
+00:55:36,400 --> 00:55:37,800
+<b>you. Yes, look at the beach.</b>
+
+1546
+00:55:38,039 --> 00:55:39,880
+<b>I can go there. I'm sure we</b>
+
+1547
+00:55:39,880 --> 00:55:42,400
+<b>will have a lot of happy people to be</b>
+
+1548
+00:55:42,400 --> 00:55:44,360
+<b>there. Yes. The results</b>
+
+1549
+00:55:44,360 --> 00:55:45,960
+<b>will not be important at all.</b>
+
+1550
+00:55:46,639 --> 00:55:49,639
+<b>No, but the week after. Exactly. But this</b>
+
+1551
+00:55:49,639 --> 00:55:53,039
+<b>is also what is very good in pro-em</b>
+
+1552
+00:55:54,280 --> 00:55:56,840
+<b>competition. Actually, there are</b>
+
+1553
+00:55:56,880 --> 00:56:00,599
+<b>competitions that are where you can focus</b>
+
+1554
+00:56:00,599 --> 00:56:02,239
+<b>on really developing</b>
+
+1555
+00:56:02,280 --> 00:56:04,400
+<b>your dancing, on the results, on be</b>
+
+1556
+00:56:04,400 --> 00:56:06,920
+<b>competitive. And they are competition.</b>
+
+1557
+00:56:06,920 --> 00:56:08,519
+<b>They are more for pleasure,</b>
+
+1558
+00:56:08,679 --> 00:56:10,920
+<b>like very luxury hotel. Like the</b>
+
+1559
+00:56:10,920 --> 00:56:12,360
+<b>international. Exactly. You just said</b>
+
+1560
+00:56:12,360 --> 00:56:13,639
+<b>yesterday. Yes. And like</b>
+
+1561
+00:56:13,679 --> 00:56:16,280
+<b>London ball, London ball is the different</b>
+
+1562
+00:56:16,280 --> 00:56:17,599
+<b>way. So you are celebrating.</b>
+
+1563
+00:56:18,239 --> 00:56:19,159
+<b>Intercontinental hotel.</b>
+
+1564
+00:56:19,360 --> 00:56:22,159
+<b>Amazing hotel. You start with a great</b>
+
+1565
+00:56:22,159 --> 00:56:25,039
+<b>dinner with amazing shows with a great</b>
+
+1566
+00:56:25,039 --> 00:56:26,280
+<b>champagne. Very good.</b>
+
+1567
+00:56:27,440 --> 00:56:30,199
+<b>And then you compete tomorrow, you know,</b>
+
+1568
+00:56:30,199 --> 00:56:33,719
+<b>very normal time you compete to</b>
+
+1569
+00:56:33,760 --> 00:56:36,079
+<b>Empress Orchestra. So it's also something</b>
+
+1570
+00:56:36,079 --> 00:56:37,639
+<b>that is unusual. Yes. Very good.</b>
+
+1571
+00:56:37,639 --> 00:56:38,639
+<b>Actually, also. Yeah.</b>
+
+1572
+00:56:39,079 --> 00:56:41,320
+<b>I love Empress Orchestra. Oh my god. It's</b>
+
+1573
+00:56:41,320 --> 00:56:43,400
+<b>also LP yesterday. And now the new one,</b>
+
+1574
+00:56:43,559 --> 00:56:45,679
+<b>the creative one from. Yeah, that was</b>
+
+1575
+00:56:45,679 --> 00:56:46,280
+<b>something very</b>
+
+1576
+00:56:46,320 --> 00:56:48,280
+<b>interesting. Very nice. Yeah.</b>
+
+1577
+00:56:48,480 --> 00:56:51,079
+<b>I really loved it. Unfortunately, Ross</b>
+
+1578
+00:56:51,079 --> 00:56:52,880
+<b>Mitchell stopped. We had Ross</b>
+
+1579
+00:56:52,880 --> 00:56:54,199
+<b>Mitchell as well. Last year,</b>
+
+1580
+00:56:54,239 --> 00:56:56,800
+<b>we had him in the studio. I was playing</b>
+
+1581
+00:56:56,800 --> 00:56:59,440
+<b>with him because he really</b>
+
+1582
+00:56:59,760 --> 00:57:00,960
+<b>is a fan of my wife's. And he</b>
+
+1583
+00:57:00,960 --> 00:57:02,519
+<b>was like, oh my god, I love everything</b>
+
+1584
+00:57:02,519 --> 00:57:03,480
+<b>what you guys are doing.</b>
+
+1585
+00:57:03,719 --> 00:57:06,719
+<b>And I was like, I like musical</b>
+
+1586
+00:57:06,760 --> 00:57:07,880
+<b>instruments. I have a lot also in the</b>
+
+1587
+00:57:07,880 --> 00:57:09,320
+<b>studio for my kids. And I'm</b>
+
+1588
+00:57:09,320 --> 00:57:10,280
+<b>teaching my students. I'm like,</b>
+
+1589
+00:57:10,320 --> 00:57:11,679
+<b>guys, you need to know what these</b>
+
+1590
+00:57:11,679 --> 00:57:12,639
+<b>instruments are because the</b>
+
+1591
+00:57:12,639 --> 00:57:14,119
+<b>music doesn't just come from</b>
+
+1592
+00:57:14,400 --> 00:57:16,639
+<b>there. Stuff happening. The band is</b>
+
+1593
+00:57:16,639 --> 00:57:17,960
+<b>playing and you have to understand a</b>
+
+1594
+00:57:17,960 --> 00:57:18,800
+<b>little bit. And I was</b>
+
+1595
+00:57:18,840 --> 00:57:22,800
+<b>playing with them. It's such a good</b>
+
+1596
+00:57:22,800 --> 00:57:24,079
+<b>feeling. Such a good</b>
+
+1597
+00:57:24,079 --> 00:57:25,960
+<b>feeling. And but now also the</b>
+
+1598
+00:57:26,000 --> 00:57:27,719
+<b>discretive orchestra. I was like, oh, I'm</b>
+
+1599
+00:57:27,719 --> 00:57:29,599
+<b>going to miss Ross so much. And of</b>
+
+1600
+00:57:29,599 --> 00:57:30,679
+<b>course, I miss some of</b>
+
+1601
+00:57:30,679 --> 00:57:33,320
+<b>the song. And of course, that's also very</b>
+
+1602
+00:57:33,320 --> 00:57:35,280
+<b>important. Yes. That the,</b>
+
+1603
+00:57:35,559 --> 00:57:37,239
+<b>you know, like in technology,</b>
+
+1604
+00:57:37,400 --> 00:57:39,400
+<b>the world of dancing is also developing.</b>
+
+1605
+00:57:39,559 --> 00:57:40,840
+<b>So you need to have</b>
+
+1606
+00:57:40,840 --> 00:57:43,679
+<b>something new that will also bring</b>
+
+1607
+00:57:43,719 --> 00:57:46,480
+<b>you back the flow and the energy that</b>
+
+1608
+00:57:46,599 --> 00:57:48,800
+<b>something changes. That is not</b>
+
+1609
+00:57:48,800 --> 00:57:50,400
+<b>constant. Yeah. Yeah. I mean,</b>
+
+1610
+00:57:50,760 --> 00:57:52,719
+<b>I mean, both sides, I think, are good.</b>
+
+1611
+00:57:52,719 --> 00:57:55,000
+<b>You need constant stability</b>
+
+1612
+00:57:55,320 --> 00:57:56,920
+<b>and you need development and</b>
+
+1613
+00:57:57,000 --> 00:57:59,559
+<b>to see the future to embrace the</b>
+
+1614
+00:57:59,559 --> 00:58:01,480
+<b>technology. Like, of course, you are</b>
+
+1615
+00:58:01,519 --> 00:58:03,119
+<b>doing. Were you always in tech?</b>
+
+1616
+00:58:03,159 --> 00:58:05,960
+<b>Were you always fascinated by tech? You</b>
+
+1617
+00:58:05,960 --> 00:58:08,000
+<b>know, I am a person that</b>
+
+1618
+00:58:08,000 --> 00:58:10,239
+<b>actually is fascinating with</b>
+
+1619
+00:58:10,280 --> 00:58:14,119
+<b>everything what it's new. I like. So</b>
+
+1620
+00:58:14,119 --> 00:58:15,320
+<b>you're bored very fast.</b>
+
+1621
+00:58:15,320 --> 00:58:17,840
+<b>Yes. Maybe not bored very fast,</b>
+
+1622
+00:58:17,840 --> 00:58:21,440
+<b>but I think I need, I like changes. Yeah.</b>
+
+1623
+00:58:21,440 --> 00:58:22,760
+<b>I like changes and I like</b>
+
+1624
+00:58:22,760 --> 00:58:24,760
+<b>to see that something is</b>
+
+1625
+00:58:24,880 --> 00:58:27,320
+<b>developing and something is bringing new</b>
+
+1626
+00:58:27,320 --> 00:58:28,639
+<b>opportunity, new door</b>
+
+1627
+00:58:28,639 --> 00:58:29,880
+<b>opens, because that gives</b>
+
+1628
+00:58:29,880 --> 00:58:33,039
+<b>you also the possibility to learn and to</b>
+
+1629
+00:58:33,320 --> 00:58:35,199
+<b>know new people and to see</b>
+
+1630
+00:58:35,400 --> 00:58:38,119
+<b>what you can do in this life.</b>
+
+1631
+00:58:38,159 --> 00:58:40,199
+<b>You know, we are all mortal. So we have a</b>
+
+1632
+00:58:40,360 --> 00:58:43,039
+<b>limit time on this planet. So</b>
+
+1633
+00:58:43,039 --> 00:58:43,960
+<b>my idea of my life. To enjoy.</b>
+
+1634
+00:58:44,360 --> 00:58:46,039
+<b>Let's do the best. Exactly. I wanted to</b>
+
+1635
+00:58:46,039 --> 00:58:48,199
+<b>live my life the best</b>
+
+1636
+00:58:48,199 --> 00:58:49,880
+<b>way I can do it. Of course.</b>
+
+1637
+00:58:50,159 --> 00:58:53,000
+<b>That's the right approach, I would say.</b>
+
+1638
+00:58:54,639 --> 00:58:57,119
+<b>How do you make the online teaching more</b>
+
+1639
+00:58:57,119 --> 00:58:58,079
+<b>affordable? Because,</b>
+
+1640
+00:58:58,079 --> 00:58:59,679
+<b>of course, many people are like, oh, my</b>
+
+1641
+00:58:59,679 --> 00:59:00,639
+<b>God, this is going more</b>
+
+1642
+00:59:00,639 --> 00:59:02,440
+<b>expensive. This is the inflation.</b>
+
+1643
+00:59:02,440 --> 00:59:05,039
+<b>And you know, you can always find excuses</b>
+
+1644
+00:59:05,480 --> 00:59:07,119
+<b>not to have time, first of</b>
+
+1645
+00:59:07,119 --> 00:59:08,440
+<b>all, and then money for your</b>
+
+1646
+00:59:08,599 --> 00:59:10,480
+<b>for your hobbies at the beginning and</b>
+
+1647
+00:59:10,480 --> 00:59:12,639
+<b>then for your proper passion. I think</b>
+
+1648
+00:59:12,639 --> 00:59:13,800
+<b>that most important by</b>
+
+1649
+00:59:13,840 --> 00:59:17,280
+<b>online teaching is that the people, also</b>
+
+1650
+00:59:17,280 --> 00:59:18,400
+<b>the dancer, they need to</b>
+
+1651
+00:59:18,400 --> 00:59:20,000
+<b>understand that that should be</b>
+
+1652
+00:59:21,159 --> 00:59:23,920
+<b>like a continuation of what they did with</b>
+
+1653
+00:59:23,920 --> 00:59:26,599
+<b>the teacher in person. So</b>
+
+1654
+00:59:26,599 --> 00:59:28,119
+<b>let's say they have one or</b>
+
+1655
+00:59:28,119 --> 00:59:32,440
+<b>two lessons like here was your camp in</b>
+
+1656
+00:59:32,599 --> 00:59:35,440
+<b>London. And of course, do not forgot they</b>
+
+1657
+00:59:35,440 --> 00:59:36,679
+<b>should have like one</b>
+
+1658
+00:59:36,679 --> 00:59:39,480
+<b>week or two times per week online</b>
+
+1659
+00:59:39,480 --> 00:59:41,159
+<b>connection with the teacher that the</b>
+
+1660
+00:59:41,159 --> 00:59:43,679
+<b>teacher still because it's</b>
+
+1661
+00:59:43,920 --> 00:59:46,079
+<b>possible that after one or two lessons,</b>
+
+1662
+00:59:46,119 --> 00:59:47,360
+<b>you remember everything</b>
+
+1663
+00:59:47,360 --> 00:59:48,559
+<b>what the teacher tells you.</b>
+
+1664
+00:59:48,880 --> 00:59:51,000
+<b>So the most important in online lessons</b>
+
+1665
+00:59:51,039 --> 00:59:52,679
+<b>is to understand that this is a</b>
+
+1666
+00:59:52,719 --> 00:59:54,199
+<b>continuation of what</b>
+
+1667
+00:59:54,320 --> 00:59:56,480
+<b>is not substitute. It will be not</b>
+
+1668
+00:59:57,320 --> 00:59:58,960
+<b>something that you can only take the</b>
+
+1669
+00:59:58,960 --> 01:00:00,239
+<b>lesson with the online.</b>
+
+1670
+01:00:00,599 --> 01:00:02,199
+<b>But if you have the possibility to</b>
+
+1671
+01:00:02,239 --> 01:00:02,880
+<b>connect with the</b>
+
+1672
+01:00:02,880 --> 01:00:04,960
+<b>teacher for one hour per week,</b>
+
+1673
+01:00:05,320 --> 01:00:08,559
+<b>that he check your strategy like you are</b>
+
+1674
+01:00:08,559 --> 01:00:10,239
+<b>doing with the app. He</b>
+
+1675
+01:00:10,239 --> 01:00:12,320
+<b>said if you are doing OK,</b>
+
+1676
+01:00:12,639 --> 01:00:15,760
+<b>because many people don't understand that</b>
+
+1677
+01:00:15,840 --> 01:00:16,960
+<b>they think that, OK, I</b>
+
+1678
+01:00:16,960 --> 01:00:18,400
+<b>paid three hundred pounds for</b>
+
+1679
+01:00:18,400 --> 01:00:22,440
+<b>a lesson. So I now I know everything is</b>
+
+1680
+01:00:22,679 --> 01:00:23,519
+<b>what I'm going to practice</b>
+
+1681
+01:00:23,519 --> 01:00:24,679
+<b>for a year and then I'm coming</b>
+
+1682
+01:00:24,679 --> 01:00:26,119
+<b>back. That's what. And then you come</b>
+
+1683
+01:00:26,119 --> 01:00:27,159
+<b>after the year like this and</b>
+
+1684
+01:00:27,159 --> 01:00:29,679
+<b>like, but I thought, yes, you</b>
+
+1685
+01:00:29,679 --> 01:00:31,800
+<b>thought and this is the right question.</b>
+
+1686
+01:00:31,840 --> 01:00:33,719
+<b>Don't think don't think just check.</b>
+
+1687
+01:00:33,719 --> 01:00:34,840
+<b>You're not there yet. Yes.</b>
+
+1688
+01:00:36,840 --> 01:00:38,760
+<b>Really sorry, but you're not there yet to</b>
+
+1689
+01:00:38,760 --> 01:00:40,159
+<b>think as a dancer. You can</b>
+
+1690
+01:00:40,159 --> 01:00:41,159
+<b>think as a normal person,</b>
+
+1691
+01:00:41,159 --> 01:00:43,719
+<b>yeah, great. But as a dancer, you need a</b>
+
+1692
+01:00:43,719 --> 01:00:44,760
+<b>little bit of guidance.</b>
+
+1693
+01:00:44,800 --> 01:00:46,280
+<b>Exactly. And you need mentorship.</b>
+
+1694
+01:00:46,280 --> 01:00:49,920
+<b>Exactly. Listen, for me, I think, of</b>
+
+1695
+01:00:49,920 --> 01:00:52,119
+<b>course, dancing is art, but</b>
+
+1696
+01:00:52,199 --> 01:00:54,199
+<b>it's sport. It's also sport.</b>
+
+1697
+01:00:54,519 --> 01:00:57,559
+<b>And like 100 percent in in every sport,</b>
+
+1698
+01:00:57,599 --> 01:00:58,840
+<b>you look like a proper</b>
+
+1699
+01:00:58,840 --> 01:01:01,079
+<b>athlete, like he's running</b>
+
+1700
+01:01:01,119 --> 01:01:04,239
+<b>marathons easily. You know, so it's</b>
+
+1701
+01:01:04,239 --> 01:01:06,480
+<b>definitely a sport. Yes. And also you</b>
+
+1702
+01:01:06,480 --> 01:01:07,559
+<b>need to understand that</b>
+
+1703
+01:01:07,639 --> 01:01:12,000
+<b>in every sport, the mental side, the</b>
+
+1704
+01:01:12,000 --> 01:01:15,320
+<b>mental preparation and the</b>
+
+1705
+01:01:15,320 --> 01:01:19,440
+<b>mind makes actually 90 percent</b>
+
+1706
+01:01:19,480 --> 01:01:22,079
+<b>of the work. Then you have five percent</b>
+
+1707
+01:01:22,119 --> 01:01:23,800
+<b>for your talent, four percent</b>
+
+1708
+01:01:23,800 --> 01:01:27,000
+<b>for your working. But if the</b>
+
+1709
+01:01:27,000 --> 01:01:29,960
+<b>head is not working properly, nothing</b>
+
+1710
+01:01:30,000 --> 01:01:32,440
+<b>will be working. I 100</b>
+
+1711
+01:01:32,519 --> 01:01:35,800
+<b>percent agree. We try through the</b>
+
+1712
+01:01:35,840 --> 01:01:37,880
+<b>podcast as well. This podcast is called</b>
+
+1713
+01:01:37,880 --> 01:01:39,519
+<b>Break the Routine. So we like people who</b>
+
+1714
+01:01:39,559 --> 01:01:40,559
+<b>do stuff differently.</b>
+
+1715
+01:01:40,880 --> 01:01:42,440
+<b>And you definitely did a lot of stuff</b>
+
+1716
+01:01:42,440 --> 01:01:44,679
+<b>differently. And you don't care about</b>
+
+1717
+01:01:44,679 --> 01:01:45,760
+<b>what's happening left</b>
+
+1718
+01:01:45,760 --> 01:01:47,239
+<b>and right. You have your vision and you</b>
+
+1719
+01:01:47,239 --> 01:01:49,360
+<b>have your direction. And you definitely</b>
+
+1720
+01:01:49,360 --> 01:01:50,320
+<b>make the dance world</b>
+
+1721
+01:01:50,320 --> 01:01:52,480
+<b>a better place. That's what we are trying</b>
+
+1722
+01:01:52,480 --> 01:01:54,519
+<b>as well to achieve. And I'm</b>
+
+1723
+01:01:54,519 --> 01:01:56,800
+<b>sure you're quite happy with</b>
+
+1724
+01:01:56,800 --> 01:01:59,320
+<b>your results already over the last six,</b>
+
+1725
+01:01:59,320 --> 01:02:03,039
+<b>seven, eight years now. How</b>
+
+1726
+01:02:03,239 --> 01:02:05,559
+<b>can you make the dance world</b>
+
+1727
+01:02:05,559 --> 01:02:09,119
+<b>even better, even, I don't know, through</b>
+
+1728
+01:02:09,119 --> 01:02:11,960
+<b>innovation or through maybe somehow</b>
+
+1729
+01:02:12,840 --> 01:02:14,960
+<b>educating people in a way</b>
+
+1730
+01:02:14,960 --> 01:02:17,400
+<b>or another? I think for now the most</b>
+
+1731
+01:02:17,400 --> 01:02:20,519
+<b>important thing is that we</b>
+
+1732
+01:02:20,800 --> 01:02:23,840
+<b>try to connect all the people</b>
+
+1733
+01:02:24,519 --> 01:02:27,719
+<b>from dancing, because the last two years</b>
+
+1734
+01:02:28,000 --> 01:02:33,400
+<b>we have so many borders with too many</b>
+
+1735
+01:02:33,400 --> 01:02:34,960
+<b>federations, too many</b>
+
+1736
+01:02:35,239 --> 01:02:37,760
+<b>people that are too much concentrated</b>
+
+1737
+01:02:37,840 --> 01:02:41,880
+<b>about business, actually.</b>
+
+1738
+01:02:42,079 --> 01:02:43,440
+<b>About their agenda, usually.</b>
+
+1739
+01:02:43,920 --> 01:02:45,960
+<b>They have their agenda and they forgot</b>
+
+1740
+01:02:45,960 --> 01:02:48,159
+<b>that the business will be</b>
+
+1741
+01:02:48,159 --> 01:02:49,719
+<b>working when the dancers will be</b>
+
+1742
+01:02:49,719 --> 01:02:54,079
+<b>there. And if we, it is like in every</b>
+
+1743
+01:02:54,079 --> 01:02:55,480
+<b>business or in every world,</b>
+
+1744
+01:02:55,519 --> 01:02:57,599
+<b>if you share to small cut it</b>
+
+1745
+01:02:57,840 --> 01:03:00,360
+<b>and you cut the cake in very small</b>
+
+1746
+01:03:00,360 --> 01:03:02,840
+<b>pieces, it will not taste</b>
+
+1747
+01:03:03,320 --> 01:03:06,599
+<b>the same. So the most important</b>
+
+1748
+01:03:06,599 --> 01:03:09,480
+<b>thing is to make this dancing world</b>
+
+1749
+01:03:09,480 --> 01:03:13,960
+<b>better, is that we dance. That we don't</b>
+
+1750
+01:03:13,960 --> 01:03:15,800
+<b>forget why we are doing it,</b>
+
+1751
+01:03:16,159 --> 01:03:18,480
+<b>for what we are doing it. And that the</b>
+
+1752
+01:03:18,480 --> 01:03:20,639
+<b>dancers, they are the most important</b>
+
+1753
+01:03:20,639 --> 01:03:21,719
+<b>people in this world.</b>
+
+1754
+01:03:21,719 --> 01:03:25,199
+<b>Not the teachers, not the judges, not the</b>
+
+1755
+01:03:25,199 --> 01:03:27,440
+<b>organizers, because without</b>
+
+1756
+01:03:27,440 --> 01:03:29,599
+<b>dancers we will not exist.</b>
+
+1757
+01:03:30,159 --> 01:03:32,840
+<b>Came over. Yes. We can pack and go home.</b>
+
+1758
+01:03:33,280 --> 01:03:36,280
+<b>Yes, exactly. Maybe light, but</b>
+
+1759
+01:03:38,320 --> 01:03:40,159
+<b>in a little hotel in London and go home.</b>
+
+1760
+01:03:42,360 --> 01:03:43,840
+<b>No, it's very good, very,</b>
+
+1761
+01:03:43,840 --> 01:03:45,440
+<b>very good. I love it. I love it</b>
+
+1762
+01:03:45,440 --> 01:03:47,119
+<b>so much. Is it something that you want to</b>
+
+1763
+01:03:47,119 --> 01:03:48,320
+<b>say that maybe I didn't ask you?</b>
+
+1764
+01:03:48,320 --> 01:03:49,360
+<b>Something that you say,</b>
+
+1765
+01:03:49,639 --> 01:03:52,079
+<b>oh, that would be an important point for</b>
+
+1766
+01:03:52,079 --> 01:03:53,400
+<b>the dance community to know.</b>
+
+1767
+01:03:54,400 --> 01:03:58,440
+<b>Actually, I just wanted to say that I</b>
+
+1768
+01:03:58,440 --> 01:04:03,000
+<b>think that dancing is a great</b>
+
+1769
+01:04:03,280 --> 01:04:05,400
+<b>thing that can happen in our</b>
+
+1770
+01:04:05,400 --> 01:04:08,960
+<b>life. And we should feel very special</b>
+
+1771
+01:04:09,320 --> 01:04:12,000
+<b>that we are the dancers. And</b>
+
+1772
+01:04:12,039 --> 01:04:14,400
+<b>I am feeling also very special</b>
+
+1773
+01:04:14,719 --> 01:04:18,599
+<b>that I can name myself a dancer. And</b>
+
+1774
+01:04:18,599 --> 01:04:21,960
+<b>that's really give me a</b>
+
+1775
+01:04:22,199 --> 01:04:24,719
+<b>big shot of energy and proud.</b>
+
+1776
+01:04:24,960 --> 01:04:28,000
+<b>Of course. And I think that's the message</b>
+
+1777
+01:04:28,000 --> 01:04:29,320
+<b>to all the dancers around</b>
+
+1778
+01:04:29,320 --> 01:04:31,079
+<b>the world is that don't think</b>
+
+1779
+01:04:31,079 --> 01:04:33,159
+<b>about the result. Don't think about</b>
+
+1780
+01:04:33,159 --> 01:04:34,679
+<b>nothing. Just take</b>
+
+1781
+01:04:35,000 --> 01:04:37,000
+<b>everything what you can take from the</b>
+
+1782
+01:04:37,000 --> 01:04:39,840
+<b>pleasureness and the energy that your</b>
+
+1783
+01:04:39,840 --> 01:04:42,960
+<b>body creates. Especially you said I can</b>
+
+1784
+01:04:42,960 --> 01:04:43,880
+<b>call myself a dancer.</b>
+
+1785
+01:04:44,639 --> 01:04:46,679
+<b>Is somebody thinking about doing program</b>
+
+1786
+01:04:46,679 --> 01:04:47,840
+<b>or just dancing and they</b>
+
+1787
+01:04:47,840 --> 01:04:48,960
+<b>don't know where to start? What</b>
+
+1788
+01:04:49,039 --> 01:04:51,199
+<b>would you say? What should be the first</b>
+
+1789
+01:04:51,199 --> 01:04:53,079
+<b>step? The first step? Yeah.</b>
+
+1790
+01:04:53,239 --> 01:04:55,840
+<b>Just go to a studio and book a</b>
+
+1791
+01:04:55,840 --> 01:04:59,360
+<b>lesson. And if this is something for you,</b>
+
+1792
+01:05:00,039 --> 01:05:02,280
+<b>it will be happening like a</b>
+
+1793
+01:05:02,320 --> 01:05:04,800
+<b>fairy tale. It will be the</b>
+
+1794
+01:05:04,800 --> 01:05:09,239
+<b>day one when you go on the floor and your</b>
+
+1795
+01:05:09,239 --> 01:05:10,800
+<b>body is feeling the rhythm</b>
+
+1796
+01:05:10,800 --> 01:05:12,480
+<b>and that body is feeling that</b>
+
+1797
+01:05:12,519 --> 01:05:15,480
+<b>you do the first two steps, it will be</b>
+
+1798
+01:05:15,480 --> 01:05:16,800
+<b>working. You will know if</b>
+
+1799
+01:05:16,800 --> 01:05:18,480
+<b>it's there or not. Yes, exactly.</b>
+
+1800
+01:05:18,679 --> 01:05:21,360
+<b>And if it is there, nothing will stop</b>
+
+1801
+01:05:21,360 --> 01:05:23,559
+<b>you. Very good. Love it.</b>
+
+1802
+01:05:24,119 --> 01:05:25,920
+<b>Love it. Love it. Love it. Oh,</b>
+
+1803
+01:05:25,920 --> 01:05:31,000
+<b>my God. You have so much in your bag of</b>
+
+1804
+01:05:31,000 --> 01:05:32,760
+<b>knowledge, we could call it,</b>
+
+1805
+01:05:33,039 --> 01:05:34,480
+<b>that you could help a lot of</b>
+
+1806
+01:05:34,559 --> 01:05:36,960
+<b>people. You could definitely think about</b>
+
+1807
+01:05:36,960 --> 01:05:37,960
+<b>mentorship, I think.</b>
+
+1808
+01:05:38,039 --> 01:05:39,159
+<b>Oh, thank you. I think you</b>
+
+1809
+01:05:39,159 --> 01:05:40,920
+<b>should because you could inspire quite a</b>
+
+1810
+01:05:40,920 --> 01:05:42,000
+<b>few people and I think</b>
+
+1811
+01:05:42,360 --> 01:05:43,840
+<b>that courage, that first step,</b>
+
+1812
+01:05:44,239 --> 01:05:46,440
+<b>just to go for your passion, for your</b>
+
+1813
+01:05:46,440 --> 01:05:48,119
+<b>goal, for your vision. Even if you think,</b>
+
+1814
+01:05:48,119 --> 01:05:49,000
+<b>"Oh, I cannot dance."</b>
+
+1815
+01:05:49,000 --> 01:05:51,000
+<b>And everybody else around me tells me, "I</b>
+
+1816
+01:05:51,000 --> 01:05:53,199
+<b>cannot dance." They can</b>
+
+1817
+01:05:53,199 --> 01:05:54,559
+<b>dance as well. So they should</b>
+
+1818
+01:05:54,559 --> 01:05:57,599
+<b>just keep their opinions for themselves.</b>
+
+1819
+01:05:58,400 --> 01:06:00,440
+<b>When people share opinions,</b>
+
+1820
+01:06:00,440 --> 01:06:02,400
+<b>I'm like, "Guys, come on."</b>
+
+1821
+01:06:02,639 --> 01:06:04,480
+<b>But this is also what's built you inside.</b>
+
+1822
+01:06:04,679 --> 01:06:06,159
+<b>If you want to say something positive,</b>
+
+1823
+01:06:06,199 --> 01:06:07,440
+<b>something that would help my life,</b>
+
+1824
+01:06:07,519 --> 01:06:09,719
+<b>please. But if you just want</b>
+
+1825
+01:06:09,719 --> 01:06:10,880
+<b>to tell me, "My business is not</b>
+
+1826
+01:06:10,880 --> 01:06:13,480
+<b>going to work," or "My English is not</b>
+
+1827
+01:06:13,480 --> 01:06:16,000
+<b>good enough," or "My..." I don't know.</b>
+
+1828
+01:06:17,119 --> 01:06:18,119
+<b>It's okay, it's your opinion,</b>
+
+1829
+01:06:18,119 --> 01:06:19,559
+<b>keep it for yourself. I'm fine. Exactly.</b>
+
+1830
+01:06:19,800 --> 01:06:21,159
+<b>I don't need it. It's like,</b>
+
+1831
+01:06:21,400 --> 01:06:24,079
+<b>help me be better. And I think</b>
+
+1832
+01:06:24,519 --> 01:06:27,039
+<b>you would help also through your persona</b>
+
+1833
+01:06:27,039 --> 01:06:29,039
+<b>here to just make other</b>
+
+1834
+01:06:29,039 --> 01:06:30,280
+<b>people feel, "Oh, I could do that.</b>
+
+1835
+01:06:30,800 --> 01:06:34,360
+<b>I could do that. I worked for 20 years</b>
+
+1836
+01:06:34,360 --> 01:06:36,960
+<b>and I can actually retire</b>
+
+1837
+01:06:36,960 --> 01:06:38,159
+<b>and I can do whatever I want."</b>
+
+1838
+01:06:38,159 --> 01:06:39,119
+<b>And there is never too late. There is</b>
+
+1839
+01:06:39,800 --> 01:06:44,519
+<b>actually no age that it's not</b>
+
+1840
+01:06:46,079 --> 01:06:48,400
+<b>qualifying you for a start to</b>
+
+1841
+01:06:48,400 --> 01:06:50,239
+<b>dancing. Exactly. And I want you to say,</b>
+
+1842
+01:06:50,320 --> 01:06:51,239
+<b>Jay, before, they are now</b>
+
+1843
+01:06:51,280 --> 01:06:52,920
+<b>in WSF, they do senior five.</b>
+
+1844
+01:06:53,480 --> 01:06:55,480
+<b>And they do World Championship senior</b>
+
+1845
+01:06:55,480 --> 01:06:57,519
+<b>five now. That's over</b>
+
+1846
+01:06:57,519 --> 01:06:59,800
+<b>65. They are so happy.</b>
+
+1847
+01:07:00,440 --> 01:07:02,800
+<b>You see now senior three, they dance the</b>
+
+1848
+01:07:02,800 --> 01:07:04,320
+<b>level, like I would say</b>
+
+1849
+01:07:04,320 --> 01:07:06,960
+<b>15 years, 15, 20 years ago,</b>
+
+1850
+01:07:06,960 --> 01:07:09,480
+<b>it's senior one. They are so good. They</b>
+
+1851
+01:07:09,480 --> 01:07:10,559
+<b>are so, so good</b>
+
+1852
+01:07:10,559 --> 01:07:13,480
+<b>technically as well, body-wise. It's</b>
+
+1853
+01:07:13,480 --> 01:07:16,039
+<b>unbelievable. So the longevity they have</b>
+
+1854
+01:07:16,039 --> 01:07:17,199
+<b>through the dancing and of</b>
+
+1855
+01:07:17,199 --> 01:07:18,840
+<b>course the happier they get,</b>
+
+1856
+01:07:18,840 --> 01:07:20,960
+<b>they are healthier, they are keeping</b>
+
+1857
+01:07:20,960 --> 01:07:21,960
+<b>their friends longer.</b>
+
+1858
+01:07:21,960 --> 01:07:23,760
+<b>It's important to have a goal</b>
+
+1859
+01:07:23,760 --> 01:07:28,119
+<b>in your life. You know what makes you</b>
+
+1860
+01:07:28,840 --> 01:07:34,159
+<b>feel age that you are old? The worst</b>
+
+1861
+01:07:34,159 --> 01:07:35,159
+<b>thing that can happen</b>
+
+1862
+01:07:35,159 --> 01:07:40,280
+<b>in your life is to lose the possibility</b>
+
+1863
+01:07:40,320 --> 01:07:42,000
+<b>to be important for</b>
+
+1864
+01:07:42,000 --> 01:07:44,440
+<b>someone, that you can do something</b>
+
+1865
+01:07:44,800 --> 01:07:46,960
+<b>and that you feel that your body is still</b>
+
+1866
+01:07:46,960 --> 01:07:48,880
+<b>challenging. That's</b>
+
+1867
+01:07:48,880 --> 01:07:50,079
+<b>the most important thing.</b>
+
+1868
+01:07:50,199 --> 01:07:51,840
+<b>I think that's the attention almost to</b>
+
+1869
+01:07:51,840 --> 01:07:52,880
+<b>someone. Because now</b>
+
+1870
+01:07:53,039 --> 01:07:54,440
+<b>social media is fighting for our</b>
+
+1871
+01:07:54,480 --> 01:07:57,239
+<b>attention. Exactly. That's so good. It's</b>
+
+1872
+01:07:57,239 --> 01:07:58,960
+<b>a very tough time now. So</b>
+
+1873
+01:07:59,000 --> 01:08:00,000
+<b>we have a question for you</b>
+
+1874
+01:08:00,000 --> 01:08:03,119
+<b>from our previous guest, Lene Mikkelsen.</b>
+
+1875
+01:08:03,400 --> 01:08:06,119
+<b>What caused you for you to become</b>
+
+1876
+01:08:06,119 --> 01:08:07,199
+<b>involved in dancing?</b>
+
+1877
+01:08:07,760 --> 01:08:10,760
+<b>What was the reason that you became</b>
+
+1878
+01:08:10,760 --> 01:08:12,320
+<b>involved? Very nice.</b>
+
+1879
+01:08:12,760 --> 01:08:14,440
+<b>Actually, that's a very long story.</b>
+
+1880
+01:08:15,320 --> 01:08:18,720
+<b>We need to have hours well done. Joanna</b>
+
+1881
+01:08:18,720 --> 01:08:23,520
+<b>is coming back. UK is not so far away.</b>
+
+1882
+01:08:24,880 --> 01:08:27,159
+<b>What was the reason? The reason actually</b>
+
+1883
+01:08:27,159 --> 01:08:31,079
+<b>was pretty personal. In</b>
+
+1884
+01:08:31,079 --> 01:08:34,039
+<b>2015, I was living in Miami</b>
+
+1885
+01:08:34,039 --> 01:08:38,520
+<b>with my family. Actually, it was from the</b>
+
+1886
+01:08:38,520 --> 01:08:42,079
+<b>way business, of course, achievement and</b>
+
+1887
+01:08:43,039 --> 01:08:46,960
+<b>all the money and everything was an</b>
+
+1888
+01:08:46,960 --> 01:08:49,399
+<b>amazing time. But because I</b>
+
+1889
+01:08:49,399 --> 01:08:51,399
+<b>was building at the time a big</b>
+
+1890
+01:08:51,439 --> 01:08:58,199
+<b>company and I was, let's say, my home was</b>
+
+1891
+01:08:58,600 --> 01:09:00,079
+<b>in Miami, but the company</b>
+
+1892
+01:09:00,159 --> 01:09:02,199
+<b>was in London and in Germany.</b>
+
+1893
+01:09:02,960 --> 01:09:05,319
+<b>I've had this problem that the markets</b>
+
+1894
+01:09:05,359 --> 01:09:06,520
+<b>open for the precious metal</b>
+
+1895
+01:09:06,520 --> 01:09:10,880
+<b>always at one hour. The hour</b>
+
+1896
+01:09:11,039 --> 01:09:16,680
+<b>3 a.m. Miami time. I was permanently</b>
+
+1897
+01:09:16,720 --> 01:09:18,640
+<b>literally through almost</b>
+
+1898
+01:09:18,640 --> 01:09:21,239
+<b>eight months waking up at three,</b>
+
+1899
+01:09:21,640 --> 01:09:25,039
+<b>working till seven, and then I could go</b>
+
+1900
+01:09:25,039 --> 01:09:27,520
+<b>back to sleep. But at the</b>
+
+1901
+01:09:27,520 --> 01:09:30,039
+<b>moment, I was a very young</b>
+
+1902
+01:09:30,720 --> 01:09:33,239
+<b>girl. Two girls. They are now old, of</b>
+
+1903
+01:09:33,239 --> 01:09:34,960
+<b>course. Jessica and Emma.</b>
+
+1904
+01:09:35,000 --> 01:09:37,279
+<b>Jessica is now 19 and Emma is</b>
+
+1905
+01:09:37,279 --> 01:09:41,600
+<b>13. But at the moment, she was very</b>
+
+1906
+01:09:41,600 --> 01:09:43,319
+<b>small. Two years. She was</b>
+
+1907
+01:09:43,319 --> 01:09:45,359
+<b>very small. So, of course,</b>
+
+1908
+01:09:45,600 --> 01:09:49,359
+<b>when seven a.m. at the morning, when I</b>
+
+1909
+01:09:49,359 --> 01:09:51,880
+<b>was done with my job and I</b>
+
+1910
+01:09:51,880 --> 01:09:53,119
+<b>wanted to go to back to sleep,</b>
+
+1911
+01:09:53,199 --> 01:09:55,960
+<b>my daughter wake up. Of course, I have a</b>
+
+1912
+01:09:55,960 --> 01:09:57,239
+<b>nanny and everything, but</b>
+
+1913
+01:09:57,479 --> 01:09:58,600
+<b>she don't want to do nanny. She</b>
+
+1914
+01:09:58,600 --> 01:10:00,800
+<b>wanted to spend the time with with Mama.</b>
+
+1915
+01:10:01,199 --> 01:10:02,399
+<b>And for her, it was not</b>
+
+1916
+01:10:02,399 --> 01:10:03,800
+<b>interesting that I need to do</b>
+
+1917
+01:10:03,880 --> 01:10:06,560
+<b>any job. So, of course, that everything</b>
+
+1918
+01:10:06,600 --> 01:10:08,439
+<b>put my body in a</b>
+
+1919
+01:10:10,039 --> 01:10:13,279
+<b>very, let's say, difficult</b>
+
+1920
+01:10:14,399 --> 01:10:17,760
+<b>stand of emotional and stress, continuous</b>
+
+1921
+01:10:17,760 --> 01:10:20,159
+<b>stress and everything. And</b>
+
+1922
+01:10:20,159 --> 01:10:21,720
+<b>that was a very, very, very</b>
+
+1923
+01:10:21,840 --> 01:10:25,399
+<b>tough moment for me. So I tried to search</b>
+
+1924
+01:10:25,640 --> 01:10:27,600
+<b>some help also through</b>
+
+1925
+01:10:27,600 --> 01:10:29,800
+<b>meditation, through connection</b>
+
+1926
+01:10:29,800 --> 01:10:33,720
+<b>with teacher, mental teachers. And at the</b>
+
+1927
+01:10:33,720 --> 01:10:35,560
+<b>moment, from 2011,</b>
+
+1928
+01:10:35,560 --> 01:10:39,560
+<b>actually, I first time I read a book</b>
+
+1929
+01:10:39,640 --> 01:10:42,600
+<b>secret and I read the secret as well.</b>
+
+1930
+01:10:42,600 --> 01:10:44,000
+<b>Yes. And I read the secret</b>
+
+1931
+01:10:44,000 --> 01:10:47,640
+<b>100 times even more. Wow. But</b>
+
+1932
+01:10:47,880 --> 01:10:53,479
+<b>that gave me a nice direction of how I</b>
+
+1933
+01:10:53,479 --> 01:10:56,760
+<b>can maybe work balance</b>
+
+1934
+01:10:56,760 --> 01:10:59,479
+<b>with my mind, with my life.</b>
+
+1935
+01:11:00,159 --> 01:11:03,560
+<b>And at that point, I there is a very old</b>
+
+1936
+01:11:03,560 --> 01:11:05,399
+<b>hotel in Miami Standard</b>
+
+1937
+01:11:05,399 --> 01:11:07,199
+<b>Hotel. It's the place where</b>
+
+1938
+01:11:07,279 --> 01:11:10,079
+<b>actually the Miami was built from the</b>
+
+1939
+01:11:10,359 --> 01:11:13,880
+<b>beginning. Wow. And I go there for some</b>
+
+1940
+01:11:15,159 --> 01:11:19,960
+<b>session with meditation and I meet there</b>
+
+1941
+01:11:20,199 --> 01:11:22,840
+<b>one of the teachers that was</b>
+
+1942
+01:11:23,319 --> 01:11:26,640
+<b>reading the story in the secret. And I go</b>
+
+1943
+01:11:26,640 --> 01:11:27,920
+<b>for a meditation and I</b>
+
+1944
+01:11:27,920 --> 01:11:31,520
+<b>go for a private section</b>
+
+1945
+01:11:31,840 --> 01:11:35,520
+<b>with the teacher. And because the teacher</b>
+
+1946
+01:11:35,560 --> 01:11:37,920
+<b>talked with me and she said</b>
+
+1947
+01:11:37,920 --> 01:11:39,720
+<b>that she need, if I allowed,</b>
+
+1948
+01:11:39,800 --> 01:11:42,359
+<b>she will put me in a very small hypnosis</b>
+
+1949
+01:11:43,000 --> 01:11:44,680
+<b>to go inside my body</b>
+
+1950
+01:11:44,680 --> 01:11:46,600
+<b>because she need to find something</b>
+
+1951
+01:11:46,680 --> 01:11:51,199
+<b>what triggers you, triggers me. Yes. And</b>
+
+1952
+01:11:52,000 --> 01:11:54,359
+<b>I say, okay, I was actually I was</b>
+
+1953
+01:11:54,359 --> 01:11:55,520
+<b>desperate at the moment</b>
+
+1954
+01:11:55,520 --> 01:11:57,560
+<b>there because I couldn't not find</b>
+
+1955
+01:11:58,039 --> 01:12:00,520
+<b>happiness. You know, this is a very</b>
+
+1956
+01:12:00,560 --> 01:12:03,000
+<b>difficult stage in your life</b>
+
+1957
+01:12:03,039 --> 01:12:05,920
+<b>that everything around is perfect. Like</b>
+
+1958
+01:12:05,920 --> 01:12:07,520
+<b>you have no problems, but</b>
+
+1959
+01:12:07,520 --> 01:12:09,560
+<b>inside you live in Miami, you have</b>
+
+1960
+01:12:09,560 --> 01:12:11,119
+<b>a good, good life. You have beautiful,</b>
+
+1961
+01:12:11,119 --> 01:12:12,039
+<b>exact children.</b>
+
+1962
+01:12:12,079 --> 01:12:13,800
+<b>Everything is business is booming.</b>
+
+1963
+01:12:13,840 --> 01:12:16,279
+<b>Everything is fine, but something is</b>
+
+1964
+01:12:16,520 --> 01:12:18,399
+<b>missing and you cannot</b>
+
+1965
+01:12:18,399 --> 01:12:21,720
+<b>find the way what is missing.</b>
+
+1966
+01:12:23,000 --> 01:12:26,560
+<b>So after this session, she gave me a</b>
+
+1967
+01:12:26,800 --> 01:12:28,720
+<b>piece of paper. She told me</b>
+
+1968
+01:12:28,720 --> 01:12:30,039
+<b>that I should go back home,</b>
+
+1969
+01:12:32,159 --> 01:12:34,079
+<b>take a glass of wine, sit at my perfect</b>
+
+1970
+01:12:34,079 --> 01:12:36,760
+<b>place and just read it.</b>
+
+1971
+01:12:36,760 --> 01:12:40,439
+<b>And if this is something that should</b>
+
+1972
+01:12:40,439 --> 01:12:43,840
+<b>work, it will like work immediately.</b>
+
+1973
+01:12:44,520 --> 01:12:48,039
+<b>So I go back home, I take the piece of</b>
+
+1974
+01:12:48,039 --> 01:12:49,479
+<b>paper and there was only</b>
+
+1975
+01:12:49,680 --> 01:12:52,079
+<b>three words, like three points.</b>
+
+1976
+01:12:52,359 --> 01:12:55,000
+<b>We want to know. I told you that's all.</b>
+
+1977
+01:12:55,079 --> 01:12:56,079
+<b>That was a good build up.</b>
+
+1978
+01:12:56,319 --> 01:12:57,239
+<b>That was a good build up.</b>
+
+1979
+01:12:58,000 --> 01:13:00,640
+<b>Tell us. So the first thing was that I</b>
+
+1980
+01:13:00,640 --> 01:13:02,720
+<b>need to spend more time</b>
+
+1981
+01:13:03,199 --> 01:13:04,760
+<b>in the nature. So like</b>
+
+1982
+01:13:05,199 --> 01:13:08,039
+<b>words, greens, flowers, anything. So</b>
+
+1983
+01:13:08,039 --> 01:13:09,359
+<b>that's why from that moment</b>
+
+1984
+01:13:09,359 --> 01:13:10,319
+<b>to reconnect to the nature.</b>
+
+1985
+01:13:11,000 --> 01:13:13,439
+<b>I need to have in my home always fresh</b>
+
+1986
+01:13:13,439 --> 01:13:15,119
+<b>flowers. So it's like it</b>
+
+1987
+01:13:15,119 --> 01:13:17,359
+<b>must be the first time. First</b>
+
+1988
+01:13:17,359 --> 01:13:19,840
+<b>thing when I arrived back home from</b>
+
+1989
+01:13:19,880 --> 01:13:22,479
+<b>airport, I stopped by a</b>
+
+1990
+01:13:22,479 --> 01:13:25,199
+<b>shop. Wow. I need it. It's like</b>
+
+1991
+01:13:26,079 --> 01:13:28,920
+<b>medical meant for me. Yes. That's a nice</b>
+
+1992
+01:13:28,920 --> 01:13:31,479
+<b>medicine. Yes. The second was that</b>
+
+1993
+01:13:31,840 --> 01:13:33,159
+<b>because of my job and</b>
+
+1994
+01:13:33,239 --> 01:13:35,359
+<b>the way I am connecting also with the</b>
+
+1995
+01:13:35,359 --> 01:13:37,119
+<b>family and everything, I</b>
+
+1996
+01:13:37,119 --> 01:13:39,439
+<b>need to find space every morning</b>
+
+1997
+01:13:39,720 --> 01:13:41,800
+<b>just to five minutes, but only for</b>
+
+1998
+01:13:41,800 --> 01:13:45,359
+<b>myself. Like sit in quietly. I</b>
+
+1999
+01:13:45,359 --> 01:13:46,399
+<b>don't know if you need coffee,</b>
+
+2000
+01:13:46,399 --> 01:13:48,399
+<b>you like to come because I like every</b>
+
+2001
+01:13:48,399 --> 01:13:49,399
+<b>morning I need to have my</b>
+
+2002
+01:13:49,399 --> 01:13:52,119
+<b>coffee. So just five minutes</b>
+
+2003
+01:13:52,199 --> 01:13:54,880
+<b>without thoughts. That's extremely hard.</b>
+
+2004
+01:13:55,159 --> 01:13:56,960
+<b>You cannot imagine how hard</b>
+
+2005
+01:13:56,960 --> 01:13:57,880
+<b>it is to be, I don't know,</b>
+
+2006
+01:13:58,000 --> 01:13:59,720
+<b>10 seconds or 30 seconds without</b>
+
+2007
+01:13:59,760 --> 01:14:01,800
+<b>thoughts. The thoughts are</b>
+
+2008
+01:14:01,800 --> 01:14:02,840
+<b>all the time. That's why you</b>
+
+2009
+01:14:02,840 --> 01:14:04,560
+<b>try to meditate. Yeah. That's why I'm</b>
+
+2010
+01:14:04,560 --> 01:14:06,880
+<b>trying to meditate. And the number three</b>
+
+2011
+01:14:07,640 --> 01:14:08,840
+<b>is called dance classes.</b>
+
+2012
+01:14:09,399 --> 01:14:13,039
+<b>No. Yes. Didn't she? Yes. And I was like,</b>
+
+2013
+01:14:13,279 --> 01:14:14,560
+<b>okay, I'm number one</b>
+
+2014
+01:14:14,560 --> 01:14:15,399
+<b>and two, I understand.</b>
+
+2015
+01:14:15,439 --> 01:14:20,640
+<b>But it's number two. This lady has some</b>
+
+2016
+01:14:20,640 --> 01:14:21,239
+<b>connection with the</b>
+
+2017
+01:14:21,239 --> 01:14:22,600
+<b>dance studio on the corner.</b>
+
+2018
+01:14:23,319 --> 01:14:26,439
+<b>So I read it, but of course I didn't</b>
+
+2019
+01:14:26,680 --> 01:14:28,159
+<b>start to do it. So the</b>
+
+2020
+01:14:28,199 --> 01:14:29,680
+<b>first two points I start,</b>
+
+2021
+01:14:29,760 --> 01:14:33,640
+<b>like I do it instantly. I try to... It</b>
+
+2022
+01:14:33,640 --> 01:14:34,840
+<b>makes perfect sense. But</b>
+
+2023
+01:14:34,840 --> 01:14:37,760
+<b>what about is this dancing?</b>
+
+2024
+01:14:37,760 --> 01:14:41,279
+<b>So cool about it. So I leave it. Yeah.</b>
+
+2025
+01:14:41,319 --> 01:14:42,399
+<b>And there was another</b>
+
+2026
+01:14:42,399 --> 01:14:44,000
+<b>situation in my family because</b>
+
+2027
+01:14:44,840 --> 01:14:48,039
+<b>we promised to come back to Poland for</b>
+
+2028
+01:14:48,039 --> 01:14:51,640
+<b>Eastern, but unfortunately my daughter</b>
+
+2029
+01:14:52,960 --> 01:14:57,880
+<b>go for ice skating and she broke it. One,</b>
+
+2030
+01:14:57,880 --> 01:14:58,960
+<b>two, three, four, five.</b>
+
+2031
+01:14:59,399 --> 01:15:01,520
+<b>No. She was built like that.</b>
+
+2032
+01:15:01,520 --> 01:15:03,279
+<b>So you were for sure no ice skating for</b>
+
+2033
+01:15:03,279 --> 01:15:06,439
+<b>me? And no, and no, and there was no</b>
+
+2034
+01:15:08,399 --> 01:15:10,039
+<b>trouble. Yeah. Because the airplane</b>
+
+2035
+01:15:10,039 --> 01:15:10,960
+<b>say... She couldn't travel</b>
+
+2036
+01:15:10,960 --> 01:15:12,520
+<b>there. Yeah. So we need to stay</b>
+
+2037
+01:15:12,560 --> 01:15:15,600
+<b>one and a half months. And when we come</b>
+
+2038
+01:15:15,600 --> 01:15:21,960
+<b>back to Poland, I go for a speedway</b>
+
+2039
+01:15:23,720 --> 01:15:26,600
+<b>competition in Zsolnagura. Speedway is</b>
+
+2040
+01:15:26,600 --> 01:15:29,039
+<b>very famous. Yeah. So they are like...</b>
+
+2041
+01:15:29,039 --> 01:15:30,359
+<b>It's like speed dating for dancing.</b>
+
+2042
+01:15:30,399 --> 01:15:32,880
+<b>Exactly. Yeah. So, and I was</b>
+
+2043
+01:15:32,880 --> 01:15:36,279
+<b>going there and there I met</b>
+
+2044
+01:15:36,399 --> 01:15:38,880
+<b>some people that I know and they was like</b>
+
+2045
+01:15:40,399 --> 01:15:43,840
+<b>in full makeup with these shiny hairs.</b>
+
+2046
+01:15:44,000 --> 01:15:46,920
+<b>And I didn't know what's happening there.</b>
+
+2047
+01:15:46,920 --> 01:15:47,680
+<b>Yeah. This is what</b>
+
+2048
+01:15:47,680 --> 01:15:49,119
+<b>normal people see. My room</b>
+
+2049
+01:15:49,119 --> 01:15:51,960
+<b>dance is like, "What's going on there?"</b>
+
+2050
+01:15:51,960 --> 01:15:53,800
+<b>And they are like staying there and</b>
+
+2051
+01:15:53,800 --> 01:15:54,760
+<b>waiting for something.</b>
+
+2052
+01:15:54,760 --> 01:15:57,199
+<b>And they come to them and say, "What's</b>
+
+2053
+01:15:57,199 --> 01:15:58,359
+<b>happening? What are you</b>
+
+2054
+01:15:58,439 --> 01:16:00,159
+<b>doing here?" And they told me,</b>
+
+2055
+01:16:00,159 --> 01:16:02,600
+<b>there is a competition, a dance</b>
+
+2056
+01:16:02,600 --> 01:16:06,279
+<b>competition in Zsolnagura. And if you</b>
+
+2057
+01:16:06,279 --> 01:16:07,319
+<b>wanted to go, you can say</b>
+
+2058
+01:16:07,359 --> 01:16:09,159
+<b>there were dancers who are dancing there.</b>
+
+2059
+01:16:09,640 --> 01:16:11,039
+<b>And then they told me</b>
+
+2060
+01:16:11,079 --> 01:16:12,960
+<b>about the pro-em system and</b>
+
+2061
+01:16:12,960 --> 01:16:15,079
+<b>everything that you can start to dance</b>
+
+2062
+01:16:15,079 --> 01:16:16,000
+<b>with the pro. You can</b>
+
+2063
+01:16:16,000 --> 01:16:17,199
+<b>learn to dance and say,</b>
+
+2064
+01:16:17,840 --> 01:16:21,000
+<b>"Okay, so maybe I try." So next day after</b>
+
+2065
+01:16:21,000 --> 01:16:22,159
+<b>this... But did you try</b>
+
+2066
+01:16:22,159 --> 01:16:23,720
+<b>because it was written on your</b>
+
+2067
+01:16:23,720 --> 01:16:26,000
+<b>paper? No, actually I... You forgot about</b>
+
+2068
+01:16:26,000 --> 01:16:28,239
+<b>it. I forgot about it. But</b>
+
+2069
+01:16:28,560 --> 01:16:30,159
+<b>you know, the moment that I</b>
+
+2070
+01:16:30,159 --> 01:16:34,640
+<b>come to Grazia studio and I go with</b>
+
+2071
+01:16:34,640 --> 01:16:36,399
+<b>sneakers, never ever</b>
+
+2072
+01:16:36,399 --> 01:16:39,600
+<b>danced before, on the floor and</b>
+
+2073
+01:16:39,600 --> 01:16:41,119
+<b>Thomas showed me like, you know, three</b>
+
+2074
+01:16:41,960 --> 01:16:43,359
+<b>basic steps in Cha-Cha.</b>
+
+2075
+01:16:44,960 --> 01:16:47,439
+<b>Boom. That's it. I love it. Now I</b>
+
+2076
+01:16:47,439 --> 01:16:50,199
+<b>understood. Wow. And that's changed</b>
+
+2077
+01:16:50,199 --> 01:16:50,560
+<b>everything. That's a</b>
+
+2078
+01:16:50,560 --> 01:16:52,079
+<b>beautiful journey you had there. Yes.</b>
+
+2079
+01:16:52,720 --> 01:16:55,680
+<b>Very cool. I love it. Very nice. Thank</b>
+
+2080
+01:16:55,680 --> 01:16:59,680
+<b>you so much for that. We have a... Sorry,</b>
+
+2081
+01:16:59,760 --> 01:17:01,880
+<b>we have a BTR playlist. Which is your</b>
+
+2082
+01:17:01,880 --> 01:17:03,640
+<b>favorite song right now? We</b>
+
+2083
+01:17:03,640 --> 01:17:05,279
+<b>want to add it to the playlist</b>
+
+2084
+01:17:05,279 --> 01:17:09,520
+<b>on Spotify. We will have it. For now, I</b>
+
+2085
+01:17:09,520 --> 01:17:10,880
+<b>really, really like</b>
+
+2086
+01:17:11,119 --> 01:17:14,359
+<b>all of you. Obviously.</b>
+
+2087
+01:17:15,600 --> 01:17:17,960
+<b>Every morning in the shower. Yeah,</b>
+
+2088
+01:17:17,960 --> 01:17:19,640
+<b>because it's a very great room. But</b>
+
+2089
+01:17:19,640 --> 01:17:21,000
+<b>actually I like the version</b>
+
+2090
+01:17:21,039 --> 01:17:25,520
+<b>of "Rosemiceau" that is from UK and</b>
+
+2091
+01:17:25,520 --> 01:17:27,880
+<b>international. It's one of</b>
+
+2092
+01:17:28,319 --> 01:17:30,920
+<b>that one. And I love also</b>
+
+2093
+01:17:32,119 --> 01:17:35,039
+<b>a song that we have performed to our</b>
+
+2094
+01:17:35,039 --> 01:17:37,640
+<b>show. It's "Wicked Game".</b>
+
+2095
+01:17:39,479 --> 01:17:41,880
+<b>Okay. We will add maybe both because</b>
+
+2096
+01:17:41,880 --> 01:17:43,760
+<b>"Rosemiceau" is always a</b>
+
+2097
+01:17:43,760 --> 01:17:46,399
+<b>yes. Yes. And he makes it really</b>
+
+2098
+01:17:47,319 --> 01:17:50,720
+<b>special. Perfect. So the question usually</b>
+
+2099
+01:17:50,720 --> 01:17:52,720
+<b>is now, how did you break</b>
+
+2100
+01:17:52,720 --> 01:17:53,720
+<b>your routine in your dance</b>
+
+2101
+01:17:53,720 --> 01:17:55,239
+<b>career? But I think everything what you</b>
+
+2102
+01:17:55,239 --> 01:17:56,720
+<b>said today, you broke</b>
+
+2103
+01:17:56,720 --> 01:17:58,279
+<b>every routine, every rule,</b>
+
+2104
+01:17:58,319 --> 01:18:01,119
+<b>every direction, what anybody can even</b>
+
+2105
+01:18:01,119 --> 01:18:01,960
+<b>imagine. You can choose whatever you</b>
+
+2106
+01:18:01,960 --> 01:18:03,920
+<b>want. You can share it.</b>
+
+2107
+01:18:04,199 --> 01:18:09,119
+<b>You're so your own persona that you don't</b>
+
+2108
+01:18:09,119 --> 01:18:12,039
+<b>even ask anyone for a</b>
+
+2109
+01:18:12,039 --> 01:18:13,439
+<b>direction. You're like, guys,</b>
+
+2110
+01:18:13,439 --> 01:18:15,359
+<b>I know, I know, it's fine. Don't worry</b>
+
+2111
+01:18:15,359 --> 01:18:16,159
+<b>about it. I know the</b>
+
+2112
+01:18:16,159 --> 01:18:18,199
+<b>way. I love that. That's so,</b>
+
+2113
+01:18:18,199 --> 01:18:20,279
+<b>so good. Yeah, that's amazing. Thank you</b>
+
+2114
+01:18:20,279 --> 01:18:21,079
+<b>so much for being here.</b>
+
+2115
+01:18:21,159 --> 01:18:21,840
+<b>Thank you very much. I wish you</b>
+
+2116
+01:18:21,840 --> 01:18:24,560
+<b>good luck tonight for the London ball.</b>
+
+2117
+01:18:25,279 --> 01:18:26,560
+<b>Tomorrow. Tonight, I</b>
+
+2118
+01:18:26,760 --> 01:18:28,439
+<b>just... Tonight is the dinner.</b>
+
+2119
+01:18:28,439 --> 01:18:29,880
+<b>It's the dinner, yeah. Oh, beautiful.</b>
+
+2120
+01:18:29,880 --> 01:18:31,640
+<b>Tonight is the dinner. All right. Yeah,</b>
+
+2121
+01:18:31,680 --> 01:18:32,520
+<b>definitely. Good luck</b>
+
+2122
+01:18:32,680 --> 01:18:35,479
+<b>all your career and your projects and all</b>
+
+2123
+01:18:35,479 --> 01:18:37,359
+<b>dance and everything else,</b>
+
+2124
+01:18:37,359 --> 01:18:38,199
+<b>what you do for the dance</b>
+
+2125
+01:18:38,199 --> 01:18:40,079
+<b>community. Your Christmas, amazing</b>
+
+2126
+01:18:40,079 --> 01:18:43,439
+<b>Christmas, week, 10 days ball</b>
+
+2127
+01:18:43,800 --> 01:18:44,920
+<b>is going to be a long party.</b>
+
+2128
+01:18:44,920 --> 01:18:48,119
+<b>That will be. And yeah, we... I invite</b>
+
+2129
+01:18:48,119 --> 01:18:49,680
+<b>everyone, of course, you</b>
+
+2130
+01:18:49,680 --> 01:18:51,279
+<b>can join us. You can find the</b>
+
+2131
+01:18:51,319 --> 01:18:53,199
+<b>registration on Flymark now, Elizabeth</b>
+
+2132
+01:18:53,199 --> 01:18:55,319
+<b>advertising or Eric and</b>
+
+2133
+01:18:55,319 --> 01:18:57,720
+<b>Stephen's. So it will be amazing to</b>
+
+2134
+01:18:57,720 --> 01:18:59,800
+<b>have you all with us. Maybe you can also</b>
+
+2135
+01:18:59,800 --> 01:19:00,560
+<b>come. That would be</b>
+
+2136
+01:19:00,560 --> 01:19:03,840
+<b>great. We will try our best. We</b>
+
+2137
+01:19:03,840 --> 01:19:05,479
+<b>wait for a baby now. So that's why we</b>
+
+2138
+01:19:05,479 --> 01:19:06,720
+<b>are... Yeah, that's maybe... We don't</b>
+
+2139
+01:19:06,720 --> 01:19:07,640
+<b>know what's going on.</b>
+
+2140
+01:19:08,039 --> 01:19:11,520
+<b>But yeah, we would love that. That would</b>
+
+2141
+01:19:11,520 --> 01:19:12,880
+<b>be great. And six years is</b>
+
+2142
+01:19:13,239 --> 01:19:14,119
+<b>a good number. Well done.</b>
+
+2143
+01:19:14,319 --> 01:19:16,079
+<b>Very, very good. Thank you so much. Thank</b>
+
+2144
+01:19:16,079 --> 01:19:16,840
+<b>you. Thank you, dear</b>
+
+2145
+01:19:16,840 --> 01:19:18,319
+<b>listeners, for being with us and</b>
+
+2146
+01:19:18,319 --> 01:19:20,760
+<b>listening to this unbelievable discussion</b>
+
+2147
+01:19:20,760 --> 01:19:22,199
+<b>that we had and all the</b>
+
+2148
+01:19:22,199 --> 01:19:24,640
+<b>knowledge, the insight, everything</b>
+
+2149
+01:19:24,640 --> 01:19:27,159
+<b>of course, we were speaking first time</b>
+
+2150
+01:19:27,159 --> 01:19:28,680
+<b>about the prime world and how</b>
+
+2151
+01:19:28,840 --> 01:19:30,119
+<b>that works, how it develops,</b>
+
+2152
+01:19:30,279 --> 01:19:33,479
+<b>how far it can go. And I'm sure you have</b>
+
+2153
+01:19:33,479 --> 01:19:34,960
+<b>questions. You have maybe</b>
+
+2154
+01:19:35,439 --> 01:19:37,520
+<b>someone that could maybe go into</b>
+
+2155
+01:19:37,520 --> 01:19:39,640
+<b>this world, send them this video. It's</b>
+
+2156
+01:19:39,640 --> 01:19:40,880
+<b>very inspirational. I'm</b>
+
+2157
+01:19:40,880 --> 01:19:42,279
+<b>sure to do the first step</b>
+
+2158
+01:19:42,399 --> 01:19:44,800
+<b>into this wonderful dance world. And</b>
+
+2159
+01:19:44,800 --> 01:19:47,920
+<b>please don't forget, like, subscribe and</b>
+
+2160
+01:19:47,920 --> 01:19:48,960
+<b>notification. We need</b>
+
+2161
+01:19:48,960 --> 01:19:50,960
+<b>everything from you. Please. Otherwise,</b>
+
+2162
+01:19:50,960 --> 01:19:53,079
+<b>the channel will not exist. So we would</b>
+
+2163
+01:19:53,119 --> 01:19:54,600
+<b>love for you to do that.</b>
+
+2164
+01:19:54,600 --> 01:19:57,439
+<b>And yeah, if you have guests that you</b>
+
+2165
+01:19:57,439 --> 01:19:58,600
+<b>think would be perfect for</b>
+
+2166
+01:19:58,600 --> 01:20:00,560
+<b>our podcast, please write us.</b>
+
+2167
+01:20:01,159 --> 01:20:04,079
+<b>All the best and see you next time. Bye.</b>
+
+2168
+01:20:04,079 --> 01:20:05,479
+<b>Break the routine. Thank you, John.</b>
+
+2169
+01:20:05,479 --> 01:20:07,720
+<b>Bye.</b>
+
+2170
+01:20:13,479 --> 01:20:15,680
+<b>(upbeat music)</b>
+
+2171
+01:20:17,000 --> 01:20:20,680
+<b>[MUSIC]</b>
+
