@@ -364,3 +364,5 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   faces of comparable size sitting apart (> 15 % of the width, so a face in the background doesn't count).
   `reel_repicture(only_if_changed=True)` returns {"unchanged"} without rendering when the piece kinds are the same.
   Boot one-shot wide_split_1118: Joanna's reels still in preview are checked, changed ones re-rendered and sent.
+  Tool reels_reframe(nums) → `reframe_reels`: Loïc can ask the chat « recadre le 4 et le 9 / le plan large n'est pas en
+  split » without a code request: repicture with only_if_changed, validated reels untouched, unchanged ones told.

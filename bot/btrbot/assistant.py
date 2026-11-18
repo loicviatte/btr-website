@@ -439,6 +439,12 @@ TOOLS = [
                                          "(« renvoie-moi les reels », « remontre-moi le 1, 2, 3 », « je veux les revoir »). "
                                          "Sans liste = tous les reels validés ou à valider. Instantané.",
      "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
+    {"name": "reels_reframe", "description": "RECADRER des reels en attente (« recrop », « refais le cadrage », « le plan "
+                                            "large n'est pas en split screen », « on voit le décor et pas la guest ») : "
+                                            "l'image est refaite avec les règles de cadrage actuelles (plan large = écran "
+                                            "partagé guest en haut / Marius en bas), son, durée et sous-titres gardés. "
+                                            "Sans liste = tous les reels en attente.",
+     "input_schema": {"type": "object", "properties": {"nums": {"type": "array", "items": {"type": "integer"}}}}},
     {"name": "reels_stop", "description": "Annuler les reels en attente d'être refaits (« non refais pas », « arrête », "
                                          "« annule ») : ils gardent leur version actuelle.",
      "input_schema": {"type": "object", "properties": {}}},

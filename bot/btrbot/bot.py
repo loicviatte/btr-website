@@ -1014,6 +1014,37 @@ CONTEXTE SERVEUR (relevé par le bot au moment de la demande)
         MEMORY.add("assistant", "Demande pour Claude envoyée en fichier : " + request[:300])
 
 
+async def reframe_reels(ctx, ep, nums: list[int]):
+    """Loïc 18.11: « refais les reels 4 et 9 en faisant gaffe à bien crop les plans larges en split screen ». The
+    picture of each kept edit worked out again with the current framing rules (`reel_repicture`); only the reels whose
+    framing changes are rendered and sent again; sound, length and subtitles stay."""
+    same = []
+    for n in nums:
+        item, cand = reel_item(ep, n), reel_cand(ep, n)
+        if not item or not cand or not pipe.reel_edit_kept(ep, n):
+            await say(ctx, f"Reel {n} : son montage n'est plus sur le serveur, je ne peux pas le recadrer.")
+            continue
+        if item.get("status") == "ok":
+            await say(ctx, f"Reel {n} est déjà validé : je n'y touche pas (dis « rouvre le reel {n} » d'abord).")
+            continue
+        try:
+            res = await run(pipe.reel_repicture, ep, dict(cand), list(item["shift"]), list(item["cuts"]), True)
+        except Exception as e:  # noqa: BLE001
+            await say(ctx, f"⚠️ Reel {n} : recadrage impossible ({esc(str(e)[:200])}).")
+            continue
+        if res.get("unchanged"):
+            same.append(n)
+            continue
+        item.update(file=res["file"], size_mb=res["size_mb"])
+        RS(ep).save()
+        await say(ctx, f"🎞️ Reel {n} recadré (plans larges en écran partagé, guest en haut). Son, durée et sous-titres "
+                       "identiques :")
+        await send_reel(ctx, ep, n)
+    if same:
+        await say(ctx, "Reels " + ", ".join(map(str, same)) + " : le cadrage ne change pas avec les règles actuelles. "
+                       "Si un plan est encore mal cadré, dis-moi à quelle seconde, j'envoie une demande pour Claude.")
+
+
 async def on_ask_button(ctx, data: str):
     pend = reg.data.pop("pending_ask", None)
     reg.save()
@@ -1400,6 +1431,16 @@ def tool_handlers(ctx, images: list) -> dict:
                                                        if it.get("status") in ("ok", "preview"))
         asyncio.create_task(show_reels(ctx, ep, nums))     # just sending files: no need to wait for the heavy queue
         return f"j'envoie les reels {', '.join(map(str, nums))} tels quels (sans rien refaire)"
+
+    async def reels_reframe(nums=None):
+        ep = reels_or_fail()
+        nums = [int(x) for x in nums or []] or sorted(int(k) for k, it in RS(ep).data["items"].items()
+                                                       if it.get("status") == "preview")
+        if not nums:
+            return "aucun reel en attente : dis-moi lesquels"
+        bg(ctx, "Reels (recadrage)", reframe_reels(ctx, ep, nums))
+        return (f"je revérifie le cadrage des reels {', '.join(map(str, nums))} (plans larges en écran partagé, "
+                "guest en haut) ; ceux qui changent sont refaits et renvoyés, son et sous-titres identiques")
 
     async def reels_stop():
         ep = reels_or_fail()
@@ -1862,7 +1903,7 @@ def tool_handlers(ctx, images: list) -> dict:
     return {"reupload_choice": reupload_choice,"teaser_captions": teaser_captions, "teaser_file": teaser_file, "reel_covers_name": reel_covers_name, "reels_propose": reels_propose, "reels_select": reels_select, "reel_adjust": reel_adjust,
             "reel_subtitles": reel_subtitles, "reels_resend": reels_resend, "reel_cover": reel_cover,
             "reels_file": reels_file, "reel_undrop": reel_undrop, "reels_cover_search": reels_cover_search,
-            "reels_show": reels_show, "reels_stop": reels_stop,
+            "reels_show": reels_show, "reels_stop": reels_stop, "reels_reframe": reels_reframe,
             "posts_make": posts_make_t, "post_feedback": post_feedback, "post_photos": post_photos, "post_zoom": post_zoom,
             "post_text_move": post_text_move, "post_text_size": post_text_size, "post_publish_now": post_publish_now, "post_photo_choices": post_photo_choices, "post_photo_pick": post_photo_pick,
             "post_moment_choices": post_moment_choices, "post_moment_pick": post_moment_pick,
