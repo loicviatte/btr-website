@@ -1,83 +1,88 @@
 {
  "date": "2026-11-18",
- "at": "2026-11-18T19:46Z",
+ "at": "2026-11-18T21:46Z",
  "instagram": {
-  "followers": 1721,
+  "followers": 1727,
   "reels": [
+   [
+    "20261118",
+    "https://www.instagram.com/reel/Df5O81WAf_g/",
+    1352
+   ],
    [
     "20261117",
     "https://www.instagram.com/reel/Df2r4evy45M/",
-    15157
+    16002
    ],
    [
     "20261116",
     "https://www.instagram.com/reel/Df0GGi2gV1f/",
-    3540
+    3569
    ],
    [
     "20261115",
     "https://www.instagram.com/reel/DfxD9TbActp/",
-    8844
+    8881
    ],
    [
     "20261114",
     "https://www.instagram.com/reel/Dfu7zp3gVPp/",
-    5734
+    5757
    ],
    [
     "20261114",
     "https://www.instagram.com/reel/DfuZc2GAeQx/",
-    5203
+    5220
    ],
    [
     "20261113",
     "https://www.instagram.com/reel/DfsXAzGgV6a/",
-    27857
+    27875
    ],
    [
     "20261113",
     "https://www.instagram.com/reel/Dfr6Gl_gQvC/",
-    31584
+    31610
    ],
    [
     "20261109",
     "https://www.instagram.com/reel/DfiD22RgamN/",
-    2687
+    2690
    ],
    [
     "20261108",
     "https://www.instagram.com/reel/DfffD9JgT4E/",
-    5677
+    5682
    ],
    [
     "20261107",
     "https://www.instagram.com/reel/Dfc6RD0AVOS/",
-    5020
+    5028
    ],
    [
     "20261106",
     "https://www.instagram.com/reel/DfaVcWcAd9_/",
-    2788
+    2792
    ],
    [
     "20261105",
     "https://www.instagram.com/reel/DfXwnLDgWMV/",
-    4037
+    4043
    ],
    [
     "20261104",
     "https://www.instagram.com/reel/DfVLz25AeDJ/",
-    1869
+    1872
    ],
    [
     "20261103",
     "https://www.instagram.com/reel/DfSi5qvATfg/",
-    8292
+    8293
    ],
    [
     "20261102",
     "https://www.instagram.com/reel/DfQCQ3cAXjU/",
-    3621
+    3623
    ],
    [
     "20261101",
@@ -87,7 +92,7 @@
    [
     "20261031",
     "https://www.instagram.com/reel/DfIoSidgTzw/",
-    2135
+    2136
    ],
    [
     "20261029",
@@ -97,12 +102,12 @@
    [
     "20261027",
     "https://www.instagram.com/reel/DfAxw-6DS1P/",
-    2448
+    2450
    ],
    [
     "20261027",
     "https://www.instagram.com/reel/De_zqOAoGR0/",
-    6053
+    6054
    ],
    [
     "20261026",
@@ -122,22 +127,22 @@
    [
     "20261023",
     "https://www.instagram.com/reel/De2Mb74CtD5/",
-    14392
+    14394
    ],
    [
     "20261023",
     "https://www.instagram.com/reel/De0-CkNirnP/",
-    19303
+    19304
    ],
    [
     "20261019",
     "https://www.instagram.com/reel/Der6C99CPNU/",
-    6807
+    6811
    ],
    [
     "20261017",
     "https://www.instagram.com/reel/Dem6eBsgKRj/",
-    5333
+    5335
    ],
    [
     "20261016",
@@ -157,27 +162,27 @@
    [
     "20261012",
     "https://www.instagram.com/reel/DeZ4JHdDNlb/",
-    4315
+    4316
    ],
    [
     "20261011",
     "https://www.instagram.com/reel/DeXTPEFje76/",
-    6713
+    6714
    ],
    [
     "20261010",
     "https://www.instagram.com/reel/DeUxucbjEeS/",
-    22358
+    22380
    ],
    [
     "20261009",
     "https://www.instagram.com/reel/DeSKchhCVaZ/",
-    13795
+    13797
    ],
    [
     "20261007",
     "https://www.instagram.com/reel/DeM-sjLI7ko/",
-    16018
+    16019
    ],
    [
     "20261005",
@@ -317,7 +322,7 @@
    [
     "20260823",
     "https://www.instagram.com/reel/DcZTLikohMo/",
-    2768
+    2769
    ],
    [
     "20260822",
@@ -352,17 +357,17 @@
    [
     "20260816",
     "https://www.instagram.com/reel/DcHHcCvtJGq/",
-    4926
+    4931
    ],
    [
     "20260815",
     "https://www.instagram.com/reel/DcEafEyIrit/",
-    3335
+    3337
    ],
    [
     "20260814",
     "https://www.instagram.com/reel/DcB1KiTonPe/",
-    3286
+    3288
    ],
    [
     "20260813",
@@ -372,12 +377,12 @@
    [
     "20260812",
     "https://www.instagram.com/reel/Db8vPUbKVYe/",
-    3552
+    3554
    ],
    [
     "20260811",
     "https://www.instagram.com/reel/Db6BcAmA8Fq/",
-    13779
+    13781
    ],
    [
     "20260809",
@@ -487,18 +492,23 @@
    [
     "20260707",
     "https://www.instagram.com/reel/DagEiXRo67G/",
-    38633
+    38634
    ]
   ]
  },
  "tiktok": {
   "followers": 59,
-  "likes": 2800,
+  "likes": 2805,
   "videos": [
+   [
+    "20261118",
+    "7709605927950830880",
+    296
+   ],
    [
     "20261117",
     "7709282386034429217",
-    691
+    692
    ],
    [
     "20261116",
@@ -548,7 +558,7 @@
    [
     "20261108",
     "7705929089747651872",
-    554
+    555
    ],
    [
     "20261107",
@@ -608,7 +618,7 @@
    [
     "20261102",
     "7703560546838154518",
-    3813
+    3818
    ],
    [
     "20261102",
@@ -623,7 +633,7 @@
    [
     "20261101",
     "7703196174710246678",
-    33198
+    33260
    ],
    [
     "20261031",
