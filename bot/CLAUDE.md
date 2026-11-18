@@ -358,3 +358,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   centre piece are listed to Loïc. `faces.Faces.LOCK`: the shared YuNet / SFace are used by one thread at a time
   (OpenCV 5 « buf.shape() == m.shape() » when two threads changed the input size: image search failed 17.11).
   `on_text` ignores updates without a text message.
+  18.11 (Loïc: Joanna reel 4's opening wide shot of both came out as a guest crop, « pourtant dans d'autres reels le
+  plan large faisait le split »): their faces were under the 5 % height `classify` needs, so the shot was « center » and
+  the rescue only knew one person. `rescue_center` now gives a « split » (guest top, Marius below) when it finds two
+  faces of comparable size sitting apart (> 15 % of the width, so a face in the background doesn't count).
+  `reel_repicture(only_if_changed=True)` returns {"unchanged"} without rendering when the piece kinds are the same.
+  Boot one-shot wide_split_1118: Joanna's reels still in preview are checked, changed ones re-rendered and sent.

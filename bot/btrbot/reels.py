@@ -539,8 +539,9 @@ def shot_layouts(samples: list[tuple[float, dict]], cuts: list[float], a: float,
 def rescue_center(shots: list[dict], clip: Path, faces, work: Path) -> int:
     """A shot where the 1280 px samples found nobody was framed on the middle of the picture: on Joanna's reel 4
     (Loïc 17.11) the wide shot showed the porthole of the set and not her. Look again on the full-resolution clip
-    (3 frames), with a lower detector score and smaller faces allowed; the crop then follows the guest (Marius only
-    when he is the one face found). Returns how many shots were rescued."""
+    (3 frames), with a lower detector score and smaller faces allowed. Two people at comparable sizes = the usual wide
+    shot → split screen, guest on top, Marius below (Loïc 18.11: the same opening shot then came out as a guest crop);
+    one person = the crop follows them (the guest first). Returns how many shots were rescued."""
     from .faces import MATCH
     import cv2
     work.mkdir(parents=True, exist_ok=True)
@@ -548,7 +549,7 @@ def rescue_center(shots: list[dict], clip: Path, faces, work: Path) -> int:
     for i, sh in enumerate(shots):
         if sh["kind"] != "center":
             continue
-        found = []
+        singles, pairs = [], []
         for k in (0.25, 0.5, 0.75):
             t = sh["a"] + (sh["b"] - sh["a"]) * k
             out = work / f"rescue_{i}_{int(k * 100)}.jpg"
@@ -558,19 +559,35 @@ def rescue_center(shots: list[dict], clip: Path, faces, work: Path) -> int:
             if img is None:
                 continue
             H, W = img.shape[:2]
-            fs = [f for f in faces.analyse(img, min_score=0.5) if f.box[3] / H > 0.02]
+            fs = sorted([f for f in faces.analyse(img, min_score=0.5) if f.box[3] / H > 0.02], key=lambda f: -f.box[3])
             if not fs:
+                continue
+
+            def info(f):
+                x, y, w, h = f.box
+                return {"cx": (x + w / 2) / W, "cy": (y + h / 2) / H, "fh": h / H}
+            far = [g for g in fs[1:] if g.box[3] >= 0.4 * fs[0].box[3]
+                   and abs((g.box[0] + g.box[2] / 2) - (fs[0].box[0] + fs[0].box[2] / 2)) > 0.15 * W]
+            if far:                                   # two people sitting apart (not a face in the background)
+                two = [fs[0], far[0]]
+                mf = max(two, key=lambda f: f.sim_marius)
+                gf = two[0] if two[1] is mf else two[1]
+                pairs.append({"marius": info(mf), "guest": info(gf)})
                 continue
             guests = [f for f in fs if f.sim_marius < MATCH]
             f = max(guests or fs, key=lambda f: f.box[3])
-            x, y, w, h = f.box
-            found.append({"kind": "guest" if f.sim_marius < MATCH else "marius", "cx": (x + w / 2) / W,
-                          "cy": (y + h / 2) / H, "fh": h / H})
-        if not found:
+            singles.append({"kind": "guest" if f.sim_marius < MATCH else "marius", **info(f)})
+        if pairs and len(pairs) >= len(singles):
+            sh.update({"kind": "split", "rescued": True,
+                       "guest": {k: _median([p["guest"] for p in pairs], k) for k in ("cx", "cy", "fh")},
+                       "marius": {k: _median([p["marius"] for p in pairs], k) for k in ("cx", "cy", "fh")}})
+            done += 1
             continue
-        kinds = [f["kind"] for f in found]
+        if not singles:
+            continue
+        kinds = [f["kind"] for f in singles]
         kind = "guest" if "guest" in kinds else "marius"
-        fs = [f for f in found if f["kind"] == kind]
+        fs = [f for f in singles if f["kind"] == kind]
         xs = [f["cx"] for f in fs]
         sh.update({"kind": kind, **{k: _median(fs, k) for k in ("cx", "cy", "fh")},
                    "cx_lo": float(min(xs)), "cx_hi": float(max(xs)),

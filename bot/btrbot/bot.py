@@ -4647,6 +4647,46 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reel7, when=110, name="reel7-flash-1103")
+    if not reg.data.get("wide_split_1118"):         # Loïc 18.11: Joanna reel 4, the opening wide shot (both people,
+        reg.data["wide_split_1118"] = True            # small faces) came out as a guest crop → split screen now
+        reg.save()
+
+        async def _split(ctx):
+            ep = reg.episode("UL72rwUr5og")
+            todo = [int(k) for k, it in sorted(RS(ep).data.get("items", {}).items(), key=lambda kv: int(kv[0]))
+                    if it.get("status") == "preview"]
+            if not todo:
+                return
+            tok = topics.TOPIC.set("reels")
+            try:
+                async def go():
+                    redone = []
+                    for n in todo:
+                        item, cand = reel_item(ep, n), reel_cand(ep, n)
+                        if not cand or not pipe.reel_edit_kept(ep, n):
+                            continue
+                        try:
+                            res = await run(pipe.reel_repicture, ep, dict(cand), list(item["shift"]), list(item["cuts"]),
+                                            True)
+                        except Exception as e:  # noqa: BLE001
+                            await say(ctx, f"⚠️ Reel {n} : cadrage du plan large impossible à refaire ({esc(str(e)[:200])}).")
+                            continue
+                        if res.get("unchanged"):
+                            continue
+                        item.update(file=res["file"], size_mb=res["size_mb"])
+                        RS(ep).save()
+                        redone.append(n)
+                        await say(ctx, f"🎞️ Reel {n} : le plan large où on les voit tous les deux est maintenant en écran "
+                                       "partagé, Joanna en haut, Marius en bas. Son, durée et sous-titres identiques :")
+                        await send_reel(ctx, ep, n)
+                    others = [n for n in todo if n not in redone]
+                    if others:
+                        await say(ctx, "Vérifié aussi : reels " + ", ".join(map(str, others))
+                                       + " (en attente) n'ont pas ce problème, rien changé.")
+                bg(ctx, "Reels (écran partagé)", go())
+            finally:
+                topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_split, when=120, name="wide-split-1118")
     if not reg.data.get("wide_rescue_1117"):        # Loïc 17.11: Joanna reel 4, the wide shot showed the porthole
         reg.data["wide_rescue_1117"] = True           # (no face found → centre crop): picture made again, crop on her
         reg.save()

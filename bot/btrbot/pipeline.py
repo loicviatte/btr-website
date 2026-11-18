@@ -743,7 +743,7 @@ class Pipeline:
         return {**self.reel_subtitles(ep, cand, fixes or [], note), "status": "preview", "confidence": round(conf),
                 "shots": {k: kinds.count(k) for k in set(kinds)}, "missing_cuts": missing, "doubts": doubts}
 
-    def reel_repicture(self, ep: Episode, cand: dict, shift: list, cuts: list) -> dict:
+    def reel_repicture(self, ep: Episode, cand: dict, shift: list, cuts: list, only_if_changed: bool = False) -> dict:
         """The picture of a kept edit made again (new framing rules), the sound and the subtitles (subs.ass) as they
         are. The cut is worked out again from the kept clip, words and SRT choices, and must give exactly the stored
         pieces, else nothing changes."""
@@ -782,6 +782,8 @@ class Pipeline:
         pcs = R.pieces(ranges, shots, info["fps"], info["duration"])
         if [(round(p["out"], 3), p["frames"]) for p in pcs] != [(round(p["out"], 3), p["frames"]) for p in edit["layout"]]:
             raise RuntimeError("le découpage ne retombe pas exactement sur le montage gardé : rien changé")
+        if only_if_changed and [p["kind"] for p in pcs] == [p.get("kind") for p in edit["layout"]]:
+            return {"unchanged": True, "rescued": rescued}
         held = [round(p["out"], 2) for p in pcs if "hold" in p]
         video = R.render_video(clip, pcs, info, work / "pieces")
         video.replace(work / "base.mp4")
@@ -796,7 +798,8 @@ class Pipeline:
         total = edit["frames"] / edit["fps"]
         out = R.final_mux(work / "base.mp4", work / "audio.m4a", work / "subs.ass", fonts,
                           work / f"BTR_reel_{n:02d}_{slug}.mp4", total, edit["frames"])
-        return {"file": str(out), "held": held, "rescued": rescued, "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
+        return {"file": str(out), "held": held, "rescued": rescued, "kinds": [p["kind"] for p in pcs],
+                "size_mb": round(out.stat().st_size / 2 ** 20, 1)}
 
     def reel_subtitles(self, ep: Episode, cand: dict, fixes: list, note: str = "") -> dict:
         """Subtitles + final file from the kept edit (base picture + sound): a few seconds, no new cut.
