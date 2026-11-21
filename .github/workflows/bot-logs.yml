@@ -34,8 +34,8 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
       - name: Journal
         env:
-          PAT: ${{ github.event.inputs.grep || 'ERROR|WARNING|Traceback' }}
-          SINCE: ${{ github.event.inputs.since || '-6h' }}
+          PAT: ${{ github.event.inputs.grep || 'ERROR|Traceback|ig_|Instagram|Short|TikTok|eel|scheduled' }}
+          SINCE: ${{ github.event.inputs.since || '-3d' }}
         run: |
           ssh root@"$HOST" "journalctl -u btr-bot --since '$SINCE' --no-pager -o cat" \
             | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
