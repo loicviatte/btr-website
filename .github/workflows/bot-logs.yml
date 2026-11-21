@@ -35,7 +35,7 @@ jobs:
       - name: Journal
         env:
           PAT: ${{ github.event.inputs.grep || 'ERROR|Traceback|ig_|Instagram|Short|TikTok|eel|scheduled' }}
-          SINCE: ${{ github.event.inputs.since || '-3d' }}
+          SINCE: ${{ github.event.inputs.since || '-1h' }}
         run: |
           ssh root@"$HOST" "journalctl -u btr-bot --since '$SINCE' --no-pager -o cat" \
             | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
@@ -52,9 +52,9 @@ jobs:
           " "$f"; done'
       - name: Reels state
         run: |
-          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in $(ls -t */reels.json | head -3); do echo "== $f"; python3 -c "
+          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in $(ls -t */reels.json | head -2); do echo "== $f"; python3 -c "
           import json,sys
           d=json.load(open(sys.argv[1]))
           for k,it in sorted(d.get(\"items\",{}).items(), key=lambda kv: int(kv[0])):
-              print(k, it.get(\"status\"), \"ig\", it.get(\"instagram\"), \"cover_ok\", it.get(\"cover_ok\"), \"short_at\", it.get(\"short_at\"), \"short\", (it.get(\"short\") or {}).get(\"status\") if isinstance(it.get(\"short\"), dict) else it.get(\"short\"), \"igs\", {x: (it.get(\"ig\") or {}).get(x) for x in (\"status\", \"at\", \"tries\", \"error\", \"link\")} if isinstance(it.get(\"ig\"), dict) else it.get(\"ig\"), \"task\", it.get(\"task\") or it.get(\"clickup\"))
+              print(k, it.get(\"status\"), \"filed\", it.get(\"filed\"), \"feed\", it.get(\"instagram\"), \"cover_ok\", it.get(\"cover_ok\"), \"yt\", it.get(\"yt_short\"), \"ig\", it.get(\"ig_post\"), \"tt\", it.get(\"tt\"), \"task\", it.get(\"task_id\") or it.get(\"clickup\"))
           " "$f"; done'
