@@ -10,6 +10,10 @@ on:
         description: "extra pattern to look for in the journal"
         required: false
         default: "ERROR|WARNING|Traceback"
+      since:
+        description: "how far back in the journal (journalctl --since)"
+        required: false
+        default: "-6h"
 jobs:
   logs:
     runs-on: ubuntu-latest
@@ -28,11 +32,12 @@ jobs:
           { echo "-----BEGIN OPENSSH PRIVATE KEY-----"; printf '%s' "$body" | fold -w 70; echo; echo "-----END OPENSSH PRIVATE KEY-----"; } > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Journal (last 6 h)
+      - name: Journal
         env:
           PAT: ${{ github.event.inputs.grep || 'ERROR|WARNING|Traceback' }}
+          SINCE: ${{ github.event.inputs.since || '-6h' }}
         run: |
-          ssh root@"$HOST" "journalctl -u btr-bot --since '-6h' --no-pager -o cat" \
+          ssh root@"$HOST" "journalctl -u btr-bot --since '$SINCE' --no-pager -o cat" \
             | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
             | grep -v 'getUpdates\|Running job\|executed successfully' | grep -E -A14 "$PAT" | tail -300
       - name: Posts state
@@ -44,4 +49,12 @@ jobs:
           for k,it in d.get(\"items\",{}).items():
               print(k, it.get(\"status\"), \"files\", len(it.get(\"files\") or []), \"skip\", it.get(\"skip\"), \"task\", it.get(\"task\"), \"at\", it.get(\"at\"), \"drive\", bool(it.get(\"drive\")), \"attached\", bool(it.get(\"attached\")), \"filed\", it.get(\"filed\"), \"warn\", it.get(\"warn\"))
           print(\"shots:\", sorted(d.get(\"shots\",{})))
+          " "$f"; done'
+      - name: Reels state
+        run: |
+          ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in $(ls -t */reels.json | head -3); do echo "== $f"; python3 -c "
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          for k,it in sorted(d.get(\"items\",{}).items(), key=lambda kv: int(kv[0])):
+              print(k, it.get(\"status\"), \"ig\", it.get(\"instagram\"), \"cover_ok\", it.get(\"cover_ok\"), \"short_at\", it.get(\"short_at\"), \"short\", (it.get(\"short\") or {}).get(\"status\") if isinstance(it.get(\"short\"), dict) else it.get(\"short\"), \"igs\", {x: (it.get(\"ig\") or {}).get(x) for x in (\"status\", \"at\", \"tries\", \"error\", \"link\")} if isinstance(it.get(\"ig\"), dict) else it.get(\"ig\"), \"task\", it.get(\"task\") or it.get(\"clickup\"))
           " "$f"; done'
