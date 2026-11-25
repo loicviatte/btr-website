@@ -372,3 +372,10 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   waits (systemd Restart=always starts it again; reg.data["ytdlp_restart"] → « ✅ yt-dlp mis à jour … relance X »).
   Daily at 04:20 London, and right away from `guarded` when a job fails with a YouTube refusal (`ytdlp_blocked`); same
   version = Loïc is pointed to the cookies / a video still processing.
+- Two guests on one camera (Loïc 25.11, EP17 Amanda & Sarah: « pas de plan guest trouvé » on every story, Marius used
+  instead): `posts.classify` had no « guest » for two non-Marius faces. Now two guest faces of comparable size (≥ 10 %
+  of the height, no Marius) = kind « guest » framed on the pair (face.cx = middle, face.span = width they cover,
+  face.duo); `pages.ph` / `pair_place` zoom out so the span fits the box (min 0.45, set generated as for post_zoom);
+  `Maker.refine` keeps a duo face as is. posts_scan.json gets "_v": 2 (old caches classified again). Reels: two guest
+  faces apart without Marius = « both » → split screen, left guest on top. Boot one-shot duo_guests_1125: the latest
+  episodes' posts not validated whose warnings say « pas de plan guest » get new photos (posts_make photos=True).

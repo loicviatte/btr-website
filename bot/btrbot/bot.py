@@ -4746,6 +4746,32 @@ async def on_boot(app):
             finally:
                 topics.TOPIC.reset(tok)
         app.job_queue.run_once(_reel7, when=110, name="reel7-flash-1103")
+    if not reg.data.get("duo_guests_1125"):         # Loïc 25.11, EP17 Amanda & Sarah (two guests, one camera):
+        reg.data["duo_guests_1125"] = True            # « pas de plan guest trouvé » on every post → photos made again
+        reg.save()
+
+        async def _duo(ctx):
+            import json as _json
+            for f in sorted((reg.root / "episodes").glob("*/posts.json"), key=lambda f: f.stat().st_mtime)[-2:]:
+                try:
+                    items = _json.loads(f.read_text()).get("items", {})
+                except (OSError, ValueError):
+                    continue
+                keys = [k for k, it in items.items() if it.get("status") not in ("ok", "posted")
+                        and any("pas de plan" in str(w) and "guest" in str(w) for w in it.get("warn") or [])]
+                if not keys:
+                    continue
+                ep = reg.episode(f.parent.name)
+                tok = topics.TOPIC.set("stories")
+                try:
+                    await say(ctx, f"🔁 {esc(ep.get('guest_name') or ep.video_id)} : les deux invitées sont sur le même plan, "
+                                   "je n'avais trouvé aucun « plan guest ». C'est corrigé : je refais les photos de "
+                                   + ", ".join(esc(post_name(ep, k)) for k in keys) + " (textes gardés).")
+                    bg(ctx, f"Carrousels & stories · {ep.get('guest_name') or ep.video_id}",
+                       posts_make(ctx, ep, keys, photos=True))
+                finally:
+                    topics.TOPIC.reset(tok)
+        app.job_queue.run_once(_duo, when=150, name="duo-guests-1125")
     if not reg.data.get("wide_split_1118"):         # Loïc 18.11: Joanna reel 4, the opening wide shot (both people,
         reg.data["wide_split_1118"] = True            # small faces) came out as a guest crop → split screen now
         reg.save()

@@ -342,6 +342,8 @@ class Maker:
             cache = json.loads(cache_f.read_text())
         except (OSError, ValueError):
             cache = {}
+        if cache.get("_v") != 2:                           # 25.11: two guests on one camera = a « guest » shot
+            cache = {"_v": 2}
         faces = self.pipe.faces
         out = []
         for t, p in fr:
@@ -493,7 +495,7 @@ class Maker:
                         frames.grab(str(ep.file("scan.mp4")), c["t"], out)
                 size = Image.open(out).size
                 shot = {"file": str(out), "t": c["t"], "size": list(size), "who": nd["who"],
-                        "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+                        "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top", "span") if x in c}}
                 try:
                     self.refine(shot)
                     if not self.right_person(shot):          # Marius taken for the guest (or the reverse): next one
@@ -594,7 +596,7 @@ class Maker:
             except Exception:  # noqa: BLE001
                 frames.grab(str(ep.file("scan.mp4")), c["t"], f)
             shot = {"file": str(f), "t": c["t"], "size": list(Image.open(f).size), "who": who,
-                    "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+                    "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top", "span") if x in c}}
             try:
                 self.refine(shot)
                 if not self.right_person(shot):
@@ -689,6 +691,8 @@ class Maker:
         """The face measured again on the 4K photo itself (the 720p scan is only a guide): size and eye height exact,
         so two faces side by side can be matched (The Chain, Question / answer)."""
         import cv2
+        if (shot.get("face") or {}).get("span"):            # two guests framed together: keep the pair (25.11)
+            return shot
         img = cv2.imread(shot["file"])
         if img is None or shot.get("who") not in ("guest", "marius", "prev"):
             return shot
@@ -834,7 +838,7 @@ class Maker:
                 log.exception("prev choice grab")
                 continue
             shot = {"file": str(f), "t": None, "pt": a + c["t"], "size": list(Image.open(f).size), "who": "prev",
-                    "video": vid, "name": name, "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top") if x in c}}
+                    "video": vid, "name": name, "face": {x: c[x] for x in ("cx", "cy", "fh", "fw", "top", "span") if x in c}}
             try:
                 self.refine(shot)
             except Exception:  # noqa: BLE001

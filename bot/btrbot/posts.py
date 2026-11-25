@@ -357,6 +357,9 @@ def pair_place(src: list[str], faces: list[dict], sizes: list[tuple[int, int]], 
         if "eyes" in f:                                  # place the eyes (not the face centre) on the line
             f["cy"] = f["eyes"]
         z *= float((sh or {}).get("zoom_adj") or 1.0)
+        if f.get("span"):                                # two guests framed together: both inside the box
+            seen = box[2] / (size[0] * max(box[2] / size[0], box[3] / size[1]))
+            z = min(z, max(0.45, seen / (f["span"] * 1.25)))
         out.append(place(s_, size, box, f or None, 0.5, eye_y, z, css, sh, sid, free_y=0.3))
     return out
 
@@ -468,7 +471,12 @@ def pages(kind: str, c: dict, shots: dict, ctx: dict, b: bool = False) -> list[d
     def ph(sid, box, cx=0.5, cy=None, zoom=1.0, css=""):
         s = shots.get(sid) or {}
         z = zoom * float(s.get("zoom_adj") or 1.0)
-        return place(uri(sid), tuple(s.get("size") or (3840, 2160)), box, s.get("face"), cx, cy, z, css, s, sid)
+        size = tuple(s.get("size") or (3840, 2160))
+        span = float((s.get("face") or {}).get("span") or 0)
+        if span:                                       # two guests side by side: both inside the box (set generated)
+            seen = box[2] / (size[0] * max(box[2] / size[0], box[3] / size[1]))   # width fraction the box shows at zoom 1
+            z = min(z, max(0.45, seen / (span * 1.25)))
+        return place(uri(sid), size, box, s.get("face"), cx, cy, z, css, s, sid)
 
     def logo_x(sid):
         f = (shots.get(sid) or {}).get("face") or {}
@@ -622,6 +630,15 @@ def classify(faces_found: list, W: int, H: int, match: float, not_match: float) 
         who = "marius" if f.sim_marius >= match else ("guest" if f.sim_marius < not_match else None)
         info.append({"who": who, "cx": (x + w / 2) / W, "cy": (y + h / 2) / H, "fw": w / W, "fh": h / H, "top": y / H})
     big = [i for i in info if i["fh"] >= 0.16]
+    # Two guests on the same camera, without Marius (Loïc 25.11, EP17 Amanda & Sarah: « pas de plan guest trouvé »
+    # everywhere, one guest-only face never happens): « guest » framed on the pair, span = width they cover
+    gs = sorted([i for i in info if i["who"] == "guest"], key=lambda i: -i["fh"])
+    if (not any(i["who"] == "marius" for i in info) and len(gs) >= 2 and gs[1]["fh"] >= 0.5 * gs[0]["fh"]
+            and gs[0]["fh"] >= 0.10):
+        a, b = gs[0], gs[1]
+        lo, hi = min(a["cx"] - a["fw"] / 2, b["cx"] - b["fw"] / 2), max(a["cx"] + a["fw"] / 2, b["cx"] + b["fw"] / 2)
+        return {"kind": "guest", "cx": (lo + hi) / 2, "cy": (a["cy"] + b["cy"]) / 2, "fh": max(a["fh"], b["fh"]),
+                "fw": max(a["fw"], b["fw"]), "top": min(a["top"], b["top"]), "span": hi - lo, "duo": True}
     if len(fs) >= 2 and {i["who"] for i in info} >= {"marius", "guest"}:
         ms = [i for i in info if i["who"] == "marius"][0]
         gs = [i for i in info if i["who"] == "guest"][0]

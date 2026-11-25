@@ -492,6 +492,12 @@ def classify(img, faces) -> dict:
         gf = [f for f in fs if f is not mf][0]
         if mf.sim_marius >= NOT_MATCH and min(mf.box[3], gf.box[3]) >= 0.4 * max(mf.box[3], gf.box[3]):
             return {"kind": "both", "marius": info(mf), "guest": info(gf)}
+        # Two guests on one camera, no Marius (Loïc 25.11, EP17 Amanda & Sarah): split screen, left guest on top
+        a, b = fs[0], fs[1]
+        if (max(a.sim_marius, b.sim_marius) < NOT_MATCH and b.box[3] >= 0.5 * a.box[3]
+                and abs((a.box[0] + a.box[2] / 2) - (b.box[0] + b.box[2] / 2)) > 0.15 * W):
+            left, right = sorted((a, b), key=lambda f: f.box[0])
+            return {"kind": "both", "guest": info(left), "marius": info(right), "duo": True}
     f = info(fs[0])
     who = "marius" if f["sim"] >= MATCH else ("guest" if f["sim"] < NOT_MATCH else "unsure")
     return {"kind": who, "face": f}
