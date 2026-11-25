@@ -40,9 +40,9 @@ jobs:
           ssh root@"$HOST" "journalctl -u btr-bot --since '$SINCE' --no-pager -o cat" \
             | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
             | grep -v 'getUpdates\|Running job\|executed successfully' | grep -E -A14 "$PAT" | tail -300
-      - name: yt-dlp check with the newest version (temporary venv)
+      - name: yt-dlp check (bot venv)
         run: |
-          ssh root@"$HOST" 'cd /opt/btr-bot && rm -rf /tmp/ytt && python3 -m venv /tmp/ytt && /tmp/ytt/bin/pip install -q -U "yt-dlp[default]" && echo "yt-dlp $(/tmp/ytt/bin/yt-dlp --version)" && timeout 180 /tmp/ytt/bin/yt-dlp --cookies secrets/youtube_cookies.txt --no-warnings -F "https://www.youtube.com/watch?v=lcGtQMjiQWI" 2>&1 | tail -12; rm -rf /tmp/ytt'
+          ssh root@"$HOST" 'cd /opt/btr-bot && echo "yt-dlp $(.venv/bin/yt-dlp --version)" && timeout 180 .venv/bin/yt-dlp --cookies secrets/youtube_cookies.txt --no-warnings -F "https://www.youtube.com/watch?v=lcGtQMjiQWI" 2>&1 | tail -3'
       - name: Posts state
         run: |
           ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in */posts.json; do echo "== $f"; python3 -c "
