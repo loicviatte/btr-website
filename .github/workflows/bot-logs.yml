@@ -40,9 +40,9 @@ jobs:
           ssh root@"$HOST" "journalctl -u btr-bot --since '$SINCE' --no-pager -o cat" \
             | sed -E 's#/bot[0-9]+:[A-Za-z0-9_-]+/#/bot<hidden>/#g; s#(token|secret|key)=[^ &]*#\1=<hidden>#gI' \
             | grep -v 'getUpdates\|Running job\|executed successfully' | grep -E -A14 "$PAT" | tail -300
-      - name: yt-dlp check (read only)
+      - name: yt-dlp check with the newest version (temporary venv)
         run: |
-          ssh root@"$HOST" 'cd /opt/btr-bot && echo "yt-dlp $(.venv/bin/yt-dlp --version)"; deno --version | head -1; ls -la secrets/youtube_cookies.txt | cut -c1-60; for c in "--cookies secrets/youtube_cookies.txt" ""; do echo "== with: ${c:-no cookies}"; timeout 120 .venv/bin/yt-dlp $c --no-warnings -F "https://www.youtube.com/watch?v=lcGtQMjiQWI" 2>&1 | grep -v "^\[" | tail -8; done; echo "== verbose"; timeout 120 .venv/bin/yt-dlp --cookies secrets/youtube_cookies.txt -v -F "https://www.youtube.com/watch?v=lcGtQMjiQWI" 2>&1 | grep -i "warn\|error\|challenge\|po token\|js\|sign in\|bot" | head -15'
+          ssh root@"$HOST" 'cd /opt/btr-bot && rm -rf /tmp/ytt && python3 -m venv /tmp/ytt && /tmp/ytt/bin/pip install -q -U "yt-dlp[default]" && echo "yt-dlp $(/tmp/ytt/bin/yt-dlp --version)" && timeout 180 /tmp/ytt/bin/yt-dlp --cookies secrets/youtube_cookies.txt --no-warnings -F "https://www.youtube.com/watch?v=lcGtQMjiQWI" 2>&1 | tail -12; rm -rf /tmp/ytt'
       - name: Posts state
         run: |
           ssh root@"$HOST" 'cd /opt/btr-bot/data/episodes && for f in */posts.json; do echo "== $f"; python3 -c "
