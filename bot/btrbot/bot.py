@@ -275,10 +275,56 @@ async def guarded(ctx, label: str, coro, limit: int | None = None):
             await say(ctx, f"🧪 {esc(e)}")
         except Exception as e:  # noqa: BLE001
             log.exception(label)
-            await say(ctx, f"⚠️ {esc(label)} a échoué : <code>{esc(e)}</code>\n<pre>{esc(traceback.format_exc()[-800:])}</pre>")
+            if ytdlp_blocked(e):
+                await say(ctx, f"⚠️ {esc(label)} : YouTube refuse le téléchargement (<code>{esc(str(e)[:160])}</code>). "
+                               "Ça arrive quand YouTube change quelque chose : je mets yt-dlp à jour ; s'il y a une "
+                               "nouvelle version je redémarre (1-2 min) et je te dis quand relancer.")
+                ctx.application.job_queue.run_once(lambda c, lb=label: ytdlp_update(c, lb), 5, name="ytdlp-now")
+            else:
+                await say(ctx, f"⚠️ {esc(label)} a échoué : <code>{esc(e)}</code>\n<pre>{esc(traceback.format_exc()[-800:])}</pre>")
         finally:
             RUNNING.clear()
             LAST.update(label=label, at=time.time(), ok=ok)
+
+
+def ytdlp_blocked(e) -> bool:
+    t = str(e)
+    return "No video formats found" in t or "confirm you" in t.lower() and "not a bot" in t.lower() or (
+        "yt_dlp" in type(e).__module__ and "Requested format is not available" in t)
+
+
+async def ytdlp_update(ctx, label: str = ""):
+    """Loïc 25.11 (« Recherche d'images a échoué : No video formats found! », yt-dlp 2026.10.26 while 2026.11.23 worked):
+    YouTube changes often and yt-dlp was only updated when the service restarted (ExecStartPre). Update it in the venv;
+    a new version needs a fresh process, so the bot exits when nothing is running and systemd starts it again
+    (Restart=always). Daily at 04:20 London, and right away when a download is refused."""
+    import subprocess
+    import sys
+    import yt_dlp.version
+    old = yt_dlp.version.__version__
+    try:
+        await asyncio.to_thread(subprocess.run, [sys.executable, "-m", "pip", "install", "-q", "-U", "yt-dlp[default]"],
+                                capture_output=True, text=True, timeout=600)
+        r = await asyncio.to_thread(subprocess.run, [sys.executable, "-c",
+                                                     "import importlib.metadata as m; print(m.version('yt-dlp'))"],
+                                    capture_output=True, text=True, timeout=60)
+        new = r.stdout.strip()
+    except Exception as e:  # noqa: BLE001
+        log.warning("yt-dlp update: %s", e)
+        return
+    if not new or new == old:
+        if label:
+            await say(ctx, f"yt-dlp est déjà à jour ({esc(old)}) : ça ne vient pas de là. Souvent ce sont les cookies "
+                           "YouTube du compte secondaire à réexporter (BOT_YT_COOKIES, voir btr-bot.md › Maintenance), "
+                           "ou une vidéo encore en traitement chez YouTube : réessaie dans un moment.")
+        return
+    if RUNNING or WAITING:                                # never cut a job: try again in 10 min
+        ctx.application.job_queue.run_once(lambda c, lb=label: ytdlp_update(c, lb), 600, name="ytdlp-later")
+        return
+    reg.data["ytdlp_restart"] = {"old": old, "new": new, "label": label}
+    reg.save()
+    log.warning("yt-dlp %s → %s: restarting", old, new)
+    os._exit(0)
 
 
 WAITING: dict = {}          # jobs waiting for the one running (label → since)
@@ -4410,6 +4456,18 @@ def start_polling(app):
         app.job_queue.run_daily(insights_job, time=_time(18, 30, tzinfo=_Z("Europe/London")), days=(2,), name="insights")
     if not app.job_queue.get_jobs_by_name("posts"):
         app.job_queue.run_repeating(posts_tick, interval=60, first=50, name="posts")
+    if not app.job_queue.get_jobs_by_name("ytdlp"):
+        from datetime import time as _time
+        from zoneinfo import ZoneInfo as _Z
+        app.job_queue.run_daily(lambda c: ytdlp_update(c), time=_time(4, 20, tzinfo=_Z("Europe/London")), name="ytdlp")
+    if reg.data.get("ytdlp_restart"):
+        _yr = reg.data.pop("ytdlp_restart")
+        reg.save()
+        if _yr.get("label"):
+            async def _yt_back(ctx, yr=_yr):
+                await say(ctx, f"✅ yt-dlp mis à jour ({esc(yr['old'])} → {esc(yr['new'])}). Tu peux relancer "
+                               f"« {esc(yr['label'])} ».")
+            app.job_queue.run_once(_yt_back, 30, name="ytdlp-back")
         app.job_queue.run_repeating(community_tick, interval=60, first=70, name="community")
         app.job_queue.run_repeating(posts_refresh, interval=600, first=120, name="posts_refresh")
 

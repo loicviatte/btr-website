@@ -366,3 +366,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   Boot one-shot wide_split_1118: Joanna's reels still in preview are checked, changed ones re-rendered and sent.
   Tool reels_reframe(nums) → `reframe_reels`: Loïc can ask the chat « recadre le 4 et le 9 / le plan large n'est pas en
   split » without a code request: repicture with only_if_changed, validated reels untouched, unchanged ones told.
+- yt-dlp kept up to date (Loïc 25.11: « Recherche d'images a échoué : No video formats found! » on lcGtQMjiQWI with
+  yt-dlp 2026.10.26; 2026.11.23 lists every format with the same cookies). It was only updated at service start
+  (ExecStartPre). `ytdlp_update`: pip -U in the venv, and when the version changed the bot exits once nothing runs or
+  waits (systemd Restart=always starts it again; reg.data["ytdlp_restart"] → « ✅ yt-dlp mis à jour … relance X »).
+  Daily at 04:20 London, and right away from `guarded` when a job fails with a YouTube refusal (`ytdlp_blocked`); same
+  version = Loïc is pointed to the cookies / a video still processing.
