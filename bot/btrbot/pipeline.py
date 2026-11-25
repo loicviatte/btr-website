@@ -321,7 +321,7 @@ class Pipeline:
 
     def publish(self, ep: Episode) -> None:
         self._guard(ep)
-        desc = ep["description"].replace("{CHAPTERS}", "").replace("{{CHAPTERS}}", "")
+        desc = (ep.get("description") or "").replace("{CHAPTERS}", "").replace("{{CHAPTERS}}", "")
         desc = re.sub(r"\n{3,}", "\n\n", desc).strip()
         self.yt.update_metadata(ep.video_id, ep["final"]["title"], desc)
         self.yt.set_thumbnail(ep.video_id, ep.dir / "render" / "thumb_youtube.jpg")
@@ -375,7 +375,7 @@ class Pipeline:
 
     def description_for_youtube(self, ep: Episode) -> str:
         """The episode's description as published: the chapters in place once they are on YouTube (stage done)."""
-        desc = ep["description"] or ""
+        desc = ep.get("description") or ""
         block = "\n".join(f"{t} {title}" for t, title in ep.get("chapters") or [])
         if ep.stage == "done" and block:
             if "{CHAPTERS}" in desc or "{{CHAPTERS}}" in desc:
@@ -429,7 +429,7 @@ class Pipeline:
         ep["chapters_in_description"] = False
         ch = self.chapters(ep)
         block = "\n".join(f"{t} {title}" for t, title in ch)
-        base = ep["description"]
+        base = ep.get("description") or self.description(ep)        # none yet when Loïc made the thumbnail himself
         if "{CHAPTERS}" in base or "{{CHAPTERS}}" in base:
             base = base.replace("{{CHAPTERS}}", block).replace("{CHAPTERS}", block)
         elif block not in base:

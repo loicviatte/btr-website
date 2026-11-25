@@ -379,3 +379,9 @@ changed, restarts the systemd service `btr-bot`, and rolls back automatically if
   `Maker.refine` keeps a duo face as is. posts_scan.json gets "_v": 2 (old caches classified again). Reels: two guest
   faces apart without Marius = « both » → split screen, left guest on top. Boot one-shot duo_guests_1125: the latest
   episodes' posts not validated whose warnings say « pas de plan guest » get new photos (posts_make photos=True).
+- Description without thumbnails (Loïc 25.11, EP17: he made the thumbnail himself, so `make_thumbs` never wrote
+  ep["description"] → edit_description « can only concatenate str (not "NoneType") »): edit_description with no
+  description = `write_description` in the background (pipe.description, usual structure; a generic « écris / mets à
+  jour la description » is not sent to the rewrite) then `revise_description` → yt_meta_offer (button « Mettre à jour
+  YouTube », chapters in place at stage done). publish / description_for_youtube / description_with_chapters / recap
+  read ep.get("description") or "" (description_with_chapters writes one when missing).

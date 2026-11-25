@@ -900,6 +900,29 @@ async def on_reaction(update: Update, ctx):
         await say(ctx, f"↩️ {THUMB_NAMES[design].capitalize()} n'est plus validé. " + valid_status(ep), reply_markup=thumb_kb(ep))
 
 
+async def revise_description(ctx, ep, instruction: str = ""):
+    if instruction:
+        prompt = ("Rewrite this YouTube description following this instruction: " + instruction + "\n"
+                  "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n"
+                  + (ep.get("description") or ""))
+        ep["description"] = await run(lambda: pipe.llm._ask(prompt, task="description (retouche)"))
+        ep.save()
+    if ep.stage in AFTER_PUBLISH:
+        return await yt_meta_offer(ctx, ep, description=pipe.description_for_youtube(ep))
+    await plain(ctx, "Nouvelle description :\n\n" + (ep.get("description") or ""))
+    return "nouvelle description envoyée à Loïc"
+
+
+async def write_description(ctx, ep, instruction: str = ""):
+    await say(ctx, "✍️ Pas encore de description pour cet épisode : je l'écris avec la structure habituelle "
+                   "(1-2 min), puis je t'envoie l'aperçu avec le bouton pour YouTube.")
+    ep["description"] = await run(pipe.description, ep)
+    ep.save()
+    # the chat model's « write the description » is not a change to make: only a real request goes to the rewrite
+    generic = re.search(r"(écri|mettre à jour|actualis|génér|rédig|write|update).{0,40}description", instruction or "", re.I)
+    await revise_description(ctx, ep, "" if generic and len(instruction) < 400 else instruction)
+
+
 async def make_thumbs(ctx, ep, only: str | None = None):
     if only:
         await say(ctx, f"🎨 Je refais uniquement la miniature {THUMB_LABELS[only]} (les autres ne changent pas)…")
@@ -918,7 +941,7 @@ async def make_thumbs(ctx, ep, only: str | None = None):
     if only:
         await say(ctx, "Prêt à publier ? " + valid_status(ep), reply_markup=thumb_kb(ep))
         return
-    desc = ep["description"].replace("{{CHAPTERS}}", "[chapitres ajoutés quand le SRT est prêt]").replace("{CHAPTERS}", "[chapitres]")
+    desc = (ep.get("description") or "").replace("{{CHAPTERS}}", "[chapitres ajoutés quand le SRT est prêt]").replace("{CHAPTERS}", "[chapitres]")
     await say(ctx, f"<b>Titre :</b> {esc(ep['final']['title'])}\n\n<b>Description :</b>\n{esc(desc)[:3300]}")
     kb = thumb_kb(ep, [[B("🔁 Autre image guest", callback_data="more:guest"), B("🔁 Autre image Marius", callback_data="more:marius")]])
     await say(ctx, "Je publie titre + description + miniature ?\nDis « horizontal / vertical / carré validé » pour figer une miniature, "
@@ -1296,14 +1319,11 @@ def tool_handlers(ctx, images: list) -> dict:
 
     async def edit_description(instruction):
         ep = need(("thumbs_proposed",) + AFTER_PUBLISH)
-        prompt = ("Rewrite this YouTube description following this instruction: " + instruction + "\n"
-                  "Keep the same structure and keep the {CHAPTERS} line as is. Return only the description.\n\n" + ep["description"])
-        ep["description"] = await run(lambda: pipe.llm._ask(prompt, task="description (retouche)"))
-        ep.save()
-        if ep.stage in AFTER_PUBLISH:
-            return await yt_meta_offer(ctx, ep, description=pipe.description_for_youtube(ep))
-        await plain(ctx, "Nouvelle description :\n\n" + ep["description"])
-        return "nouvelle description envoyée à Loïc"
+        if not ep.get("description"):
+            # Loïc 25.11 (EP17: he made the thumbnail himself, so make_thumbs never wrote the description →
+            # « can only concatenate str (not "NoneType") »): written now in the usual structure, then the instruction
+            return bg(ctx, "Description YouTube", write_description(ctx, ep, instruction))
+        return await revise_description(ctx, ep, instruction)
 
     async def fix_guest_name(new, old=None, video=None):
         m = re.search(r"(?:v=|youtu\.be/|^)([\w-]{11})", (video or "").strip())
