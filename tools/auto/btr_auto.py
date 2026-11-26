@@ -77,7 +77,8 @@ def list_len(secs):             # Episodes list: "1:26:00" / "58:00"
     return f'{m // 60}:{m % 60:02d}:00' if m >= 60 else f'{m}:00'
 
 def first(name):
-    return name.split(' ')[0]
+    # two guests ("Amanda Besyedin & Sarah Nolan") -> "Amanda & Sarah"
+    return ' & '.join(n.strip().split(' ')[0] for n in name.split(' & '))
 
 def poss(name):
     return first(name) + '’s'
@@ -229,7 +230,7 @@ def chain_html(spec, next_guest=None):
         part = a.get('part', 0)
         ptxt = f'Part {part + 1} at ' if len(vids) > 1 else 'at '
         blocks.append(f'''<div style="display: flex; flex-direction: column; gap: 4px;">
-            <p style="margin: 0; font-size: 13px; color: #c9b8a6;">{subj(pr)} answers {esc(a["from"])}</p>
+            <p style="margin: 0; font-size: 13px; color: #c9b8a6;">{subj(pr)} {'answer' if subj(pr) == 'They' else 'answers'} {esc(a["from"])}</p>
             <p style="margin: 0; font-weight: 600;">“{esc(a["question"])}”</p>
             <a href="{yt(vids[part], a["sec"])}" style="{link}">{obj_poss(pr)} answer {ptxt}{fmt(a["sec"])}</a>
           </div>''')
@@ -243,7 +244,7 @@ def chain_html(spec, next_guest=None):
             if next_guest.get('ans'):
                 extra += f'''
             <a href="{yt(next_guest["vid"], next_guest["ans"])}" style="{link}">{esc(poss(next_guest["name"]))} answer at {fmt(next_guest["ans"])}</a>'''
-            head = f'{subj(pr)} leaves a question for {esc(next_guest["name"])}'
+            head = f'{subj(pr)} {"leave" if subj(pr) == "They" else "leaves"} a question for {esc(next_guest["name"])}'
         else:
             extra = f'''
             <a href="{yt(vids[part], l["sec"])}" style="{link}">{obj_poss(pr)} question at {fmt(l["sec"])}</a>''' if l.get('sec') else ''

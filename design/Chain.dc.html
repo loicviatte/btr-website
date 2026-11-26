@@ -289,7 +289,7 @@ function btrMotionStop(root) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { picked: 14, q: '', canL: false, canR: false };
+    this.state = { picked: 15, q: '', canL: false, canR: false };
     this.strip = null;
   }
   componentDidMount() {
@@ -336,6 +336,7 @@ class Component extends DCLogic {
       { name: 'Hannah Trever', initials: 'HT', label: '3 Nov', vid: 'O_ZdYlKrdwU' },
       { name: 'Lene James Mikkelsen', initials: 'LJ', label: '10 Nov', vid: '5Tujgy0WfJw' },
       { name: 'Joanna Wargala', initials: 'JW', label: '17 Nov', vid: 'UL72rwUr5og' },
+      { name: 'Amanda Besyedin & Sarah Nolan', initials: 'AS', label: '26 Nov', vid: 'lcGtQMjiQWI' },
       { name: 'Next guest', initials: '?', label: 'Coming soon', vid: '' }
     ];
     const qs = [
@@ -354,7 +355,8 @@ class Component extends DCLogic {
       { text: 'If you were president of dance all over the world, how would you financially get companies to invest in DanceSport and dance arts?', kind: 'QUESTION', ask: null, ans: 4674 },
       { text: 'If you were asking somebody who has never danced a step in their life before and you wanted to get them involved in what we do, how would you do that? How would you sell it to them?', kind: 'QUESTION', ask: null, ans: 3505 },
       { text: 'What caused you to become involved in dancing? What was the reason that you became involved?', kind: 'QUESTION', ask: null, ans: 4083 },
-      { text: 'Joanna’s question for the next guest', kind: 'COMING SOON', ask: null, ans: null }
+      { text: 'How will DanceSport and ballroom dancing look in 10 years?', kind: 'QUESTION', ask: null, ans: 5034 },
+      { text: 'What do you think about the American dancers and their style versus everybody else?', kind: 'QUESTION', ask: 5371, ans: null }
     ];
     const thumbs = {
       'ktcEnjS1SF4': 'f50ede373b1848443c2e35c4a49fbc4b', '6SKeUQM4E1k': '09c68242801f4b282a3331acd5a342fd', 'bIJ-LJsgLbE': '497a5e87cb63153785580ffe42072102',
@@ -362,8 +364,9 @@ class Component extends DCLogic {
       'aW03-xv1Iyc': '17ff73d440c3699a9cd0f1dbb6c14d99', 'c8xICOkFwEI': 'fda5fad96e887160af9fa9a1fcf78002', 'o3Daq6WSuzs': '061d818947d1c0a6765d98577a1cb7bf',
       'gmLzaixhDqo': 'bcea0d26b5e611d1a856631033e7a45c', 'SFl--dzjGvE': '24eb7384bb059d4fdbde52ab2838ee99', 'yO0vuX-Ygpc': 'd6442b82364bfd30966d31b8267286d1',
       'pi1IhRO8v4w': '6704faaedd6251c16887bc9024d7381e', 'PjDZ8X_JWY0': '551d9f610e702e27a8eb028b49abd59e', 'O_ZdYlKrdwU': 'a7af7ca057dc292d09de3b17c2cc5311',
-      '5Tujgy0WfJw': 'ad435bae6550d91a678626fc56a749af', 'UL72rwUr5og': 'e4c9203e86b6a8b63148215a8ca618b3'
+      '5Tujgy0WfJw': 'ad435bae6550d91a678626fc56a749af', 'UL72rwUr5og': 'e4c9203e86b6a8b63148215a8ca618b3', 'lcGtQMjiQWI': 'dcff3bcad57261da14e4335d223291a0'
     };
+    const firstOf = (n) => n.split(' & ').map((x) => x.split(' ')[0]).join(' & ');
     const fmt = (s) => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(x).padStart(2, '0'); };
     const yt = (vid, t) => 'https://www.youtube.com/watch?v=' + vid + (t ? '&t=' + t + 's' : '');
     const picked = this.state.picked;
@@ -383,7 +386,7 @@ class Component extends DCLogic {
       line += openLine ? ' border-top: 2px dashed rgba(254,203,122,0.8);' : (lineActive ? ' border-top: 3px solid #fecb7a;' : ' border-top: 2px solid rgba(254,203,122,0.3);');
       return {
         ...g,
-        first: isNext ? 'Next' : g.name.split(' ')[0],
+        first: isNext ? 'Next' : firstOf(g.name),
         boxStyle: box,
         nameStyle: 'font-size: 12px; line-height: 1.2; text-align: center; color: ' + (active ? '#fecb7a' : '#c9b8a6') + '; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px;',
         lineStyle: line,
@@ -432,16 +435,16 @@ class Component extends DCLogic {
       },
       sel: {
         text: s.text, kind: s.kind, openQ: isQ ? '“' : '', closeQ: isQ ? '”' : '',
-        from: from.name, to: to.name, fromIni: from.initials, toIni: to.initials, fromFirst: from.name.split(' ')[0],
+        from: from.name, to: to.name, fromIni: from.initials, toIni: to.initials, fromFirst: firstOf(from.name),
         hasAsk: !!s.ask, askUrl: s.ask ? yt(from.vid, s.ask) : '', askTime: s.ask ? fmt(s.ask) : '',
         hasAnswer: !isOpen && !s.pending,
         answerUrl: isOpen || s.pending ? '' : yt(to.vid, s.ans),
         thumb: to.vid ? '/_blob/' + thumbs[to.vid] : '',
         time: s.ans ? fmt(s.ans) : '',
-        answerCaption: 'Plays from the moment ' + to.name.split(' ')[0] + ' hears it',
+        answerCaption: 'Plays from the moment ' + firstOf(to.name) + (to.name.includes(' & ') ? ' hear it' : ' hears it'),
         playAria: 'Play ' + to.name + '’s answer from ' + (s.ans ? fmt(s.ans) : 'the start'),
         open: isOpen || !!s.pending,
-        openText: s.pending ? 'Oti hears Leila’s question in part 2 of her episode, out next week.' : from.name.split(' ')[0] + '’s question for the next guest is coming soon.'
+        openText: s.pending ? 'Oti hears Leila’s question in part 2 of her episode, out next week.' : firstOf(from.name) + '’s question for the next guest is coming soon.'
       }
     };
   }
